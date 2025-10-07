@@ -6,6 +6,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("django/", include("Basic.urls")),
     path("django/gwa/", include("gwa.urls")),
+    path("django/swa/", include("swa.urls")),
     path("django/drain-water-quality/", include("dashboard.urls")),
     path("django/wqa/", include("wqa.urls")),
 
