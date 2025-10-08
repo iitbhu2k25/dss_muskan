@@ -382,14 +382,15 @@ export default function Climate() {
               />
 
               <YAxis />
-              <Tooltip
-                formatter={(value: any, name: any) => [value, name === 'flow_in' ? 'Inflow' : 'Outflow']}
-                labelFormatter={(_, payload: any[]) => {
-                  if (!payload?.length) return '';
-                  const p = payload[0]?.payload;
-                  return `Year ${p.year}, ${p.monthLabel}`;
-                }}
-              />
+          <Tooltip
+  formatter={(value: any) => [Number(value).toFixed(2), ' Runoff (m³)']}
+  labelFormatter={(_: any, payload: readonly any[]) => {
+    if (!payload?.length) return '';
+    const p = payload[0]?.payload;
+    return `Year ${p.year}, ${p.monthLabel}`;
+  }}
+/>
+
               <Legend />
               {/* <Line type="monotone" dataKey="flow_in" stroke="#2563eb" dot={{ r: 3 }} name="Inflow" /> */}
               <Line type="monotone" dataKey="flow_out" stroke="#dc2626" dot={{ r: 3 }} name="Outflow" />

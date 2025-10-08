@@ -2,8 +2,8 @@
 
 import React from 'react';
 import LocationPage from './components/Location';
-import StreamFlow from '@/app/dss/GWM/MAR/SWA/drain/components/StreamFlow';
-import SurfaceWaterCard from '@/app/dss/GWM/MAR/SWA/drain/components/surfacewater';
+import StreamFlow from '@/app/dss/gwm/MAR/SWA/drain/components/StreamFlow';
+import SurfaceWaterCard from '@/app/dss/gwm/MAR/SWA/drain/components/surfacewater';
 import MapPage from './components/Map';
 import { LocationProvider, useLocationContext } from '@/contexts/surfacewater_assessment/drain/LocationContext';
 import { StreamFlowProvider } from '@/contexts/surfacewater_assessment/drain/StreamFlowContext';

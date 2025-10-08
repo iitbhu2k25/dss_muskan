@@ -230,8 +230,9 @@ export default function ClimateAdmin() {
         bytes = new Uint8Array(byteNums);
       }
 
-      const blob = new Blob([bytes], { type: 'image/png' });
-      const url = URL.createObjectURL(blob);
+     const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+const url = URL.createObjectURL(blob);
+
 
       const a = document.createElement('a');
       const sd = sanitizeFilenamePart(rec.subdistrict_code);
@@ -485,19 +486,23 @@ export default function ClimateAdmin() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="year"
-                ticks={[...new Set(chartData.map((d: any) => d.year))]
-                  .filter((y: number) => y % 2 === 0)}
+              ticks={
+  ([...new Set(chartData.map((d: any) => d.year))] as number[])
+    .filter(y => y % 2 === 0)
+}
+
                 tickFormatter={(val: number) => String(val)}
               />
               <YAxis />
-              <Tooltip
-                formatter={(value: any) => [Number(value).toFixed(2), ' Runoff (m³)']}
-                labelFormatter={(_, payload: any[]) => {
-                  if (!payload?.length) return '';
-                  const p = payload[0]?.payload;
-                  return `Year ${p.year}, ${p.monthLabel}`;
-                }}
-              />
+             <Tooltip
+  formatter={(value: any) => [Number(value).toFixed(2), ' Runoff (m³)']}
+  labelFormatter={(_: any, payload: readonly any[]) => {
+    if (!payload?.length) return '';
+    const p = payload[0]?.payload;
+    return `Year ${p.year}, ${p.monthLabel}`;
+  }}
+/>
+
               <Legend />
               <Line type="monotone" dataKey="runoff" stroke="#dc2626" dot={{ r: 2 }} name="Surface Water Contributing Runoff (m³)" />
             </LineChart>

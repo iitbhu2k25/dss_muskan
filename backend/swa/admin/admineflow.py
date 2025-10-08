@@ -1,9 +1,9 @@
 # views/adminflow.py
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView # type: ignore
+from rest_framework.response import Response # type: ignore
+from rest_framework import status # type: ignore
+from rest_framework.permissions import AllowAny # type: ignore
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -15,28 +15,48 @@ from ..models import AdminFlow
 
 
 class AdmineflowAPI(APIView):
-    """Main API: Returns calculations per village (no images)."""
+    """Main API: Returns calculations per village (either by subdistrict or vlcode)."""
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         subdistrict_codes = request.data.get("subdistrict_codes", [])
-        if not subdistrict_codes:
-            return Response({"error": "subdistrict_codes is required"}, status=status.HTTP_400_BAD_REQUEST)
+        vlcodes = request.data.get("vlcodes", [])
 
-        qs = AdminFlow.objects.filter(subdistrict_code_id__in=subdistrict_codes)
+        # --- Input validation ---
+        if subdistrict_codes and vlcodes:
+            return Response(
+                {"error": "Send either subdistrict_codes or vlcodes, not both."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not subdistrict_codes and not vlcodes:
+            return Response(
+                {"error": "Either subdistrict_codes or vlcodes is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # --- Fetch data based on input type ---
+        if subdistrict_codes:
+            qs = AdminFlow.objects.filter(subdistrict_code_id__in=subdistrict_codes)
+        else:  # if vlcodes are provided
+            qs = AdminFlow.objects.filter(vlcode__in=vlcodes)
+
         if not qs.exists():
             return Response({}, status=status.HTTP_200_OK)
 
+        # --- Convert to DataFrame ---
         df = pd.DataFrame.from_records(
             qs.values("vlcode", "village", "subdistrict_code_id", "year", "mon", "surq_cnt_m3")
         )
 
+        # --- Convert to flow rate (cms) ---
         days_in_month = 30
         seconds_in_month = days_in_month * 24 * 3600
         df["flow_out_cms"] = df["surq_cnt_m3"] / seconds_in_month
 
         all_results = {}
 
+        # --- Loop through each village ---
         for vlcode in df["vlcode"].unique():
             village_df = df[df["vlcode"] == vlcode]
             village_name = village_df["village"].iloc[0]
@@ -48,6 +68,7 @@ class AdmineflowAPI(APIView):
 
             Qmaf = np.mean(flows)
 
+            # --- Flow Duration Curve (FDC) ---
             flows_sorted = np.sort(flows)[::-1]
             N = len(flows_sorted)
             ranks = np.arange(1, N + 1)
@@ -59,6 +80,7 @@ class AdmineflowAPI(APIView):
             Q95 = flow_duration_curve(flows_sorted, prob, 95)
             Q90 = flow_duration_curve(flows_sorted, prob, 90)
 
+            # --- Eflow thresholds ---
             tennant_10 = 0.1 * Qmaf
             tennant_30 = 0.3 * Qmaf
             tennant_60 = 0.6 * Qmaf
@@ -71,7 +93,7 @@ class AdmineflowAPI(APIView):
                 thr = float(threshold)
                 surplus = np.where(flows_arr > thr, flows_arr - thr, 0.0)
                 surplus_volume_m3 = np.sum(surplus * 86400)
-                return float(surplus_volume_m3 / 1e6)
+                return float(surplus_volume_m3 / 1e6)  # million m³
 
             results = {
                 "FDC-Q95": compute_surplus(flows, Q95),
