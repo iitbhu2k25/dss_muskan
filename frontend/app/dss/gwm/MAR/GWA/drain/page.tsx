@@ -21,6 +21,8 @@ import { DemandProvider } from "@/contexts/groundwater_assessment/drain/DemandCo
 import { GSRProvider, useGSR } from "@/contexts/groundwater_assessment/drain/GSRContext";
 import { PDFProvider } from "@/contexts/groundwater_assessment/drain/PDFContext";
 import ResizablePanels from "./components/resizable-panels";
+import { useRecharge } from "@/contexts/groundwater_assessment/drain/RechargeContext";
+
 
 interface Step {
   id: number;
@@ -41,6 +43,15 @@ function GroundwaterAssessmentContent({ contourData, trendData, forecastData }: 
   const { addRasterLayer } = useMap();
   const { selectionsLocked } = useLocation();
   const { stressTableData } = useGSR();
+  const { computeRecharge, tableData, isLoading, canComputeRecharge } = useRecharge();
+
+
+  React.useEffect(() => {
+  if (activeStep === 3 && canComputeRecharge() && tableData.length === 0) {
+    console.log("🔄 Auto-triggering groundwater recharge computation (drain)...");
+    computeRecharge();
+  }
+}, [activeStep]);
 
   const steps: Step[] = [
     { id: 1, name: "Data Collection" },

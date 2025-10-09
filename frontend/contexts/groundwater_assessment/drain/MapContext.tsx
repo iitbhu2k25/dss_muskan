@@ -1165,7 +1165,7 @@ const buildGsrLegend = (features: any[]) => {
     }
   };
 
-  // Initialize map when container is set
+// Initialize map when container is set
   useEffect(() => {
     if (!mapContainer || mapInstanceRef.current) return;
 
@@ -1186,15 +1186,16 @@ const buildGsrLegend = (features: any[]) => {
       }),
     });
 
-    // NEW: Apply opacity
+    // Apply opacity
     applyLayerOpacity(initialBaseLayer, 'basemap');
 
     mapInstanceRef.current = map;
     console.log("Map initialized");
 
-    // ADD BASIN BOUNDARY LAYER HERE - RIGHT AFTER MAP INITIALIZATION
+    // ============ ADD ALL PERMANENT LAYERS HERE ============
+    
+    // 1. BASIN BOUNDARY LAYER
     console.log("Adding permanent basin boundary layer from GeoServer");
-
     const basinBoundaryLayer = new VectorLayer({
       source: new VectorSource({
         format: new GeoJSON(),
@@ -1208,8 +1209,6 @@ const buildGsrLegend = (features: any[]) => {
     basinBoundaryLayer.set('name', 'basin-boundary');
     basinBoundaryLayer.set('type', 'drainage');
     basinBoundaryLayer.set('permanent', true);
-
-    // NEW: Apply opacity
     applyLayerOpacity(basinBoundaryLayer, 'boundaries');
 
     // Add event listeners for debugging
@@ -1217,20 +1216,153 @@ const buildGsrLegend = (features: any[]) => {
     basinSource?.on("featuresloaderror", (event) => {
       console.log("Error loading basin boundary layer:", event);
     });
-
     basinSource?.on("featuresloadstart", () => {
       console.log("Started loading basin boundary layer");
     });
-
     basinSource?.on("featuresloadend", () => {
       console.log("Successfully loaded basin boundary layer");
       const features = basinSource.getFeatures();
       console.log(`Loaded ${features.length} basin boundary features`);
     });
 
-    // Store reference and add to map
     basinBoundaryLayerRef.current = basinBoundaryLayer;
     map.addLayer(basinBoundaryLayer);
+
+    // 2. RIVERS LAYER (Show ALL rivers)
+    console.log("Adding permanent rivers layer from GeoServer");
+    const riversLayer = new VectorLayer({
+      source: new VectorSource({
+        format: new GeoJSON(),
+        url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Rivers&outputFormat=application/json&CQL_FILTER=1=1`,
+      }),
+      style: riverStyle,
+      zIndex: 10,
+      visible: true,
+    });
+
+    riversLayer.set('name', 'rivers');
+    riversLayer.set('type', 'drainage');
+    riversLayer.set('permanent', true);
+    applyLayerOpacity(riversLayer, 'boundaries');
+
+    // Add event listeners for rivers
+    const riversSource = riversLayer.getSource();
+    riversSource?.on("featuresloaderror", (event) => {
+      console.log("Error loading rivers layer:", event);
+    });
+    riversSource?.on("featuresloadstart", () => {
+      console.log("Started loading rivers layer");
+    });
+    riversSource?.on("featuresloadend", () => {
+      console.log("Successfully loaded rivers layer");
+      const features = riversSource.getFeatures();
+      console.log(`Loaded ${features.length} river features`);
+    });
+
+    riversLayerRef.current = riversLayer;
+    map.addLayer(riversLayer);
+
+    // 3. STRETCHES LAYER (Show ALL stretches)
+    console.log("Adding permanent stretches layer from GeoServer");
+    const stretchesLayer = new VectorLayer({
+      source: new VectorSource({
+        format: new GeoJSON(),
+        url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Stretches&outputFormat=application/json&CQL_FILTER=1=1`,
+      }),
+      style: (feature) => {
+        const stretchId = feature.get('Stretch_ID');
+        const baseStyle = stretchId === selectedStretch ? selectedStretchStyle : stretchStyle;
+
+        // Get current zoom level
+        const currentZoom = map.getView().getZoom() || 0;
+
+        // Determine if label should be shown
+        const shouldShow = shouldShowStretchLabel(stretchId, currentZoom, showLabels);
+
+        if (shouldShow) {
+          return [
+            baseStyle,
+            createStretchLabelStyle(`S-${stretchId}`)
+          ];
+        }
+
+        return baseStyle;
+      },
+      zIndex: 11,
+      visible: true,
+    });
+
+    stretchesLayer.set('name', 'stretches');
+    stretchesLayer.set('type', 'drainage');
+    stretchesLayer.set('permanent', true);
+    applyLayerOpacity(stretchesLayer, 'boundaries');
+
+    // Add event listeners for stretches
+    const stretchesSource = stretchesLayer.getSource();
+    stretchesSource?.on("featuresloaderror", (event) => {
+      console.log("Error loading stretches layer:", event);
+    });
+    stretchesSource?.on("featuresloadstart", () => {
+      console.log("Started loading stretches layer");
+    });
+    stretchesSource?.on("featuresloadend", () => {
+      console.log("Successfully loaded stretches layer");
+      const features = stretchesSource.getFeatures();
+      console.log(`Loaded ${features.length} stretch features`);
+    });
+
+    // Add view change listener for stretch labels
+    const view = map.getView();
+    const stretchZoomChangeHandler = () => {
+      const currentZoom = view.getZoom() || 0;
+      console.log(`Zoom changed to: ${currentZoom.toFixed(1)} - Refreshing stretch labels`);
+      stretchesLayer.changed();
+    };
+    view.on('change:resolution', stretchZoomChangeHandler);
+    stretchesLayer.set('zoomChangeHandler', stretchZoomChangeHandler);
+
+    stretchesLayerRef.current = stretchesLayer;
+    map.addLayer(stretchesLayer);
+
+    // 4. DRAINS LAYER (Show ALL drains)
+    console.log("Adding permanent drains layer from GeoServer");
+    const drainsLayer = new VectorLayer({
+      source: new VectorSource({
+        format: new GeoJSON(),
+        url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Drain&outputFormat=application/json&CQL_FILTER=1=1`,
+      }),
+      style: (feature) => {
+        const drainNo = feature.get('Drain_No');
+        return drainNo === selectedDrain ? selectedDrainStyle : drainStyle;
+      },
+      zIndex: 12,
+      visible: true,
+    });
+
+    drainsLayer.set('name', 'drains');
+    drainsLayer.set('type', 'drainage');
+    drainsLayer.set('permanent', true);
+    applyLayerOpacity(drainsLayer, 'boundaries');
+
+    // Add event listeners for drains
+    const drainsSource = drainsLayer.getSource();
+    drainsSource?.on("featuresloaderror", (event) => {
+      console.log("Error loading drains layer:", event);
+    });
+    drainsSource?.on("featuresloadstart", () => {
+      console.log("Started loading drains layer");
+    });
+    drainsSource?.on("featuresloadend", () => {
+      console.log("Successfully loaded drains layer");
+      const features = drainsSource.getFeatures();
+      console.log(`Loaded ${features.length} drain features`);
+    });
+
+    drainsLayerRef.current = drainsLayer;
+    map.addLayer(drainsLayer);
+
+    // ============ END OF PERMANENT LAYERS ============
+
 
     const popupElement = document.createElement('div');
     popupElement.className = 'ol-popup';
@@ -1251,7 +1383,24 @@ const buildGsrLegend = (features: any[]) => {
     map.addOverlay(overlay);
     popupOverlayRef.current = overlay;
 
+    // Auto-zoom to basin boundary extent after all layers are loaded
+    basinSource?.on("featuresloadend", () => {
+      setTimeout(() => {
+        const extent = basinBoundaryLayer.getSource()?.getExtent();
+        if (extent && map) {
+          map.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            duration: 1000,
+          });
+        }
+      }, 500);
+    });
+
     return () => {
+      // Clean up zoom listener
+      if (stretchZoomChangeHandler) {
+        view.un('change:resolution', stretchZoomChangeHandler);
+      }
       map.setTarget(undefined);
       mapInstanceRef.current = null;
     };
@@ -1383,256 +1532,356 @@ const buildGsrLegend = (features: any[]) => {
     });
   };
 
-  // Effect to handle stretches layer when river is selected
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
+ // Effect to handle rivers layer - NO CHANGES NEEDED, already permanent
+useEffect(() => {
+  if (!mapInstanceRef.current) return;
 
-    // Remove existing stretches layer
-    removeLayerByRef(stretchesLayerRef, "stretches");
+  if (!riversLayerRef.current) {
+    console.log("Adding rivers layer");
+    const riversLayer = createDrainageWFSLayer(
+      "Rivers",
+      "1=1", // Show all rivers
+      riverStyle,
+      10,
+      "rivers"
+    );
 
-    if (selectedRiver) {
-      console.log(`Adding stretches layer for river: ${selectedRiver}`);
-      const cqlFilter = `River_Code=${selectedRiver}`;
+    // Apply opacity
+    applyLayerOpacity(riversLayer, 'boundaries');
 
-      // Create stretches layer with dynamic styling based on selection
-      const stretchesLayer = new VectorLayer({
-        source: new VectorSource({
-          format: new GeoJSON(),
-          url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Stretches&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cqlFilter)}`,
+    riversLayerRef.current = riversLayer;
+    mapInstanceRef.current.addLayer(riversLayer);
+
+    // Auto-zoom to rivers extent
+    riversLayer.getSource()?.on("featuresloadend", () => {
+      setTimeout(() => {
+        const extent = riversLayer.getSource()?.getExtent();
+        if (extent && mapInstanceRef.current) {
+          mapInstanceRef.current.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            duration: 1000,
+          });
+        }
+      }, 500);
+    });
+  }
+}, []);
+
+// Effect to UPDATE stretches styling when river/stretch is selected
+useEffect(() => {
+  if (!mapInstanceRef.current || !stretchesLayerRef.current) return;
+
+  console.log(`Updating stretches layer styling for river: ${selectedRiver}, stretch: ${selectedStretch}`);
+
+  // Update the style function to highlight selected items
+  stretchesLayerRef.current.setStyle((feature) => {
+    const stretchId = feature.get('Stretch_ID');
+    const riverCode = feature.get('River_Code');
+    
+    let baseStyle;
+    if (selectedStretch && stretchId === selectedStretch) {
+      baseStyle = selectedStretchStyle;
+    } else if (selectedRiver && riverCode === selectedRiver && !selectedStretch) {
+      baseStyle = new Style({
+        stroke: new Stroke({
+          color: "rgba(202, 12, 12, 1)ff",
+          width: 3,
         }),
-        style: (feature) => {
-          const stretchId = feature.get('Stretch_ID');
-          const baseStyle = stretchId === selectedStretch ? selectedStretchStyle : stretchStyle;
-
-          // Get current zoom level
-          const currentZoom = mapInstanceRef.current?.getView().getZoom() || 0;
-
-          // Determine if label should be shown using our helper function
-          const shouldShow = shouldShowStretchLabel(stretchId, currentZoom, showLabels);
-
-          if (shouldShow) {
-            return [
-              baseStyle,
-              createStretchLabelStyle(`S-${stretchId}`)
-            ];
-          }
-
-          return baseStyle;
-        },
-        zIndex: 11,
-        visible: true,
       });
-
-      stretchesLayer.set('name', 'stretches');
-      stretchesLayer.set('type', 'drainage');
-
-      // NEW: Apply opacity
-      applyLayerOpacity(stretchesLayer, 'boundaries');
-
-      stretchesLayerRef.current = stretchesLayer;
-      mapInstanceRef.current.addLayer(stretchesLayer);
-
-      // Add view change listener to refresh styles when zoom changes
-      const view = mapInstanceRef.current.getView();
-      const zoomChangeHandler = () => {
-        const currentZoom = view.getZoom() || 0;
-        console.log(`Zoom changed to: ${currentZoom.toFixed(1)} - Refreshing stretch labels`);
-        stretchesLayer.changed(); // Force re-render of the layer
-      };
-
-      view.on('change:resolution', zoomChangeHandler);
-
-      // Store the handler for cleanup
-      stretchesLayer.set('zoomChangeHandler', zoomChangeHandler);
-
-      // Cleanup function to remove zoom listener
-      const cleanup = () => {
-        view.un('change:resolution', zoomChangeHandler);
-      };
-      stretchesLayer.set('cleanup', cleanup);
-
-      // Just log when features are loaded
-      stretchesLayer.getSource()?.on("featuresloadend", () => {
-        console.log(`Successfully loaded stretches for river ${selectedRiver}`);
-        const currentZoom = view.getZoom() || 0;
-        console.log(`Current zoom level: ${currentZoom.toFixed(1)}`);
-      });
+    } else {
+      baseStyle = stretchStyle;
     }
-  }, [selectedRiver, selectedStretch, showLabels]);
 
-  // Effect to handle drains layer when stretch is selected
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    const currentZoom = mapInstanceRef.current?.getView().getZoom() || 0;
+    const shouldShow = shouldShowStretchLabel(stretchId, currentZoom, showLabels);
 
-    // Remove existing drains layer
-    removeLayerByRef(drainsLayerRef, "drains");
+    if (shouldShow) {
+      return [
+        baseStyle,
+        createStretchLabelStyle(`S-${stretchId}`)
+      ];
+    }
 
-    if (selectedStretch && selectedRiver) {
-      console.log(`Adding drains layer for stretch: ${selectedStretch}, river: ${selectedRiver}`);
-      const cqlFilter = `Stretch_ID=${selectedStretch} AND River_Code=${selectedRiver}`;
+    return baseStyle;
+  });
 
-      // Create drains layer with point styling for selected drain
-      const drainsLayer = new VectorLayer({
-        source: new VectorSource({
-          format: new GeoJSON(),
-          url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Drain&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cqlFilter)}`,
+  // Force layer refresh
+  stretchesLayerRef.current.changed();
+
+  // ZOOM TO SELECTION
+  setTimeout(() => {
+    const source = stretchesLayerRef.current?.getSource();
+    if (!source || !mapInstanceRef.current) return;
+
+    const features = source.getFeatures();
+    
+    if (selectedStretch) {
+      // Zoom to specific stretch
+      const selectedFeature = features.find((f: { get: (arg0: string) => number; }) => f.get('Stretch_ID') === selectedStretch);
+      if (selectedFeature) {
+        const geometry = selectedFeature.getGeometry();
+        if (geometry) {
+          const extent = geometry.getExtent();
+          mapInstanceRef.current.getView().fit(extent, {
+            padding: [100, 100, 100, 100],
+            duration: 1000,
+            maxZoom: 12,
+          });
+          console.log(`Zoomed to stretch ${selectedStretch}`);
+        }
+      }
+    } else if (selectedRiver) {
+      // Zoom to all stretches of the selected river
+      const riverFeatures = features.filter((f: { get: (arg0: string) => number; }) => f.get('River_Code') === selectedRiver);
+      if (riverFeatures.length > 0) {
+        // Calculate combined extent of all river stretches
+        let combinedExtent: any = null;
+        riverFeatures.forEach((feature: { getGeometry: () => any; }) => {
+          const geometry = feature.getGeometry();
+          if (geometry) {
+            const featureExtent = geometry.getExtent();
+            if (!combinedExtent) {
+              combinedExtent = [...featureExtent];
+            } else {
+              // Extend the combined extent
+              combinedExtent[0] = Math.min(combinedExtent[0], featureExtent[0]);
+              combinedExtent[1] = Math.min(combinedExtent[1], featureExtent[1]);
+              combinedExtent[2] = Math.max(combinedExtent[2], featureExtent[2]);
+              combinedExtent[3] = Math.max(combinedExtent[3], featureExtent[3]);
+            }
+          }
+        });
+        
+        if (combinedExtent) {
+          mapInstanceRef.current.getView().fit(combinedExtent, {
+            padding: [80, 80, 80, 80],
+            duration: 1000,
+            maxZoom: 11,
+          });
+          console.log(`Zoomed to river ${selectedRiver} with ${riverFeatures.length} stretches`);
+        }
+      }
+    }
+  }, 300); // Small delay to ensure style update is complete
+
+  console.log(`Stretches layer styling updated`);
+}, [selectedRiver, selectedStretch, showLabels]);
+
+// Effect to UPDATE drains styling when stretch/drain is selected
+useEffect(() => {
+  if (!mapInstanceRef.current || !drainsLayerRef.current) return;
+
+  console.log(`Updating drains layer styling for stretch: ${selectedStretch}, drain: ${selectedDrain}`);
+
+  // Update the style function to highlight selected items
+  drainsLayerRef.current.setStyle((feature) => {
+    const drainNo = feature.get('Drain_No');
+    const stretchId = feature.get('Stretch_ID');
+    const riverCode = feature.get('River_Code');
+    
+    if (selectedDrain && drainNo === selectedDrain) {
+      return selectedDrainStyle;
+    } else if (selectedStretch && stretchId === selectedStretch && !selectedDrain) {
+      return new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({
+            color: '#1d05f3ff',
+          }),
+          stroke: new Stroke({
+            color: '#FFFFFF',
+            width: 2,
+          }),
         }),
-        style: (feature) => {
-          const drainNo = feature.get('Drain_No');
-          return drainNo === selectedDrain ? selectedDrainStyle : drainStyle;
-        },
-        zIndex: 12,
-        visible: true,
       });
-
-      drainsLayer.set('name', 'drains');
-      drainsLayer.set('type', 'drainage');
-
-      // NEW: Apply opacity
-      applyLayerOpacity(drainsLayer, 'boundaries');
-
-      drainsLayerRef.current = drainsLayer;
-      mapInstanceRef.current.addLayer(drainsLayer);
-
-      // Auto-zoom to drains
-      drainsLayer.getSource()?.on("featuresloadend", () => {
-        setTimeout(() => {
-          const extent = drainsLayer.getSource()?.getExtent();
-          if (extent && mapInstanceRef.current) {
-            mapInstanceRef.current.getView().fit(extent, {
-              padding: [50, 50, 50, 50],
-              duration: 1000,
-            });
-          }
-        }, 500);
+    } else if (selectedRiver && riverCode === selectedRiver && !selectedStretch && !selectedDrain) {
+      return new Style({
+        stroke: new Stroke({
+          color: "#10B981",
+          width: 2.5,
+        }),
       });
+    } else {
+      return drainStyle;
     }
-  }, [selectedStretch, selectedRiver, selectedDrain]);
+  });
 
-  // Effect to handle catchments ONLY when drain is selected (based on Drain_No)
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
+  // Force layer refresh
+  drainsLayerRef.current.changed();
 
-    // Remove existing catchments layer
-    removeLayerByRef(catchmentsLayerRef, "catchments");
+  // ZOOM TO SELECTION
+  setTimeout(() => {
+    const source = drainsLayerRef.current?.getSource();
+    if (!source || !mapInstanceRef.current) return;
 
-    // Show catchments ONLY when a drain is selected, filtered by Drain_No
+    const features = source.getFeatures();
+    
     if (selectedDrain) {
-      console.log(`Adding catchments layer for drain number: ${selectedDrain}`);
-
-      // Filter catchments by the selected drain number
-      const catchmentsCqlFilter = `Drain_No=${selectedDrain}`;
-
-      console.log(`Using CQL filter for catchments: ${catchmentsCqlFilter}`);
-
-      const catchmentsLayer = new VectorLayer({
-        source: new VectorSource({
-          format: new GeoJSON(),
-          url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Catchment&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(catchmentsCqlFilter)}`,
-        }),
-        style: catchmentStyle,
-        zIndex: 13,
-        visible: true,
-      });
-
-      catchmentsLayer.set('name', 'catchments');
-      catchmentsLayer.set('type', 'drainage');
-
-      // NEW: Apply opacity
-      applyLayerOpacity(catchmentsLayer, 'boundaries');
-
-      // Enhanced error handling
-      const source = catchmentsLayer.getSource();
-      source?.on("featuresloaderror", (event: any) => {
-        console.log(`Error loading Catchment layer for drain ${selectedDrain}:`, event);
-        console.log(`URL attempted: ${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Catchment&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(catchmentsCqlFilter)}`);
-      });
-
-      source?.on("featuresloadstart", () => {
-        console.log(`Started loading Catchment layer for drain: ${selectedDrain}`);
-      });
-
-      source?.on("featuresloadend", () => {
-        console.log(`Successfully loaded Catchment layer for drain: ${selectedDrain}`);
-        const features = source.getFeatures();
-        console.log(`Loaded ${features.length} catchment features for drain ${selectedDrain}`);
-      });
-
-      catchmentsLayerRef.current = catchmentsLayer;
-      mapInstanceRef.current.addLayer(catchmentsLayer);
-
-      // Auto-zoom to catchments extent
-      catchmentsLayer.getSource()?.on("featuresloadend", () => {
-        setTimeout(() => {
-          const extent = catchmentsLayer.getSource()?.getExtent();
-          if (extent && mapInstanceRef.current) {
-            mapInstanceRef.current.getView().fit(extent, {
-              padding: [50, 50, 50, 50],
-              duration: 1000,
-            });
+      // Zoom to specific drain
+      const selectedFeature = features.find((f: { get: (arg0: string) => number; }) => f.get('Drain_No') === selectedDrain);
+      if (selectedFeature) {
+        const geometry = selectedFeature.getGeometry();
+        if (geometry) {
+          const extent = geometry.getExtent();
+          mapInstanceRef.current.getView().fit(extent, {
+            padding: [150, 150, 150, 150],
+            duration: 1000,
+            maxZoom: 13,
+          });
+          console.log(`Zoomed to drain ${selectedDrain}`);
+        }
+      }
+    } else if (selectedStretch) {
+      // Zoom to all drains of the selected stretch
+      const stretchFeatures = features.filter((f: { get: (arg0: string) => number; }) => f.get('Stretch_ID') === selectedStretch);
+      if (stretchFeatures.length > 0) {
+        let combinedExtent: any = null;
+        stretchFeatures.forEach((feature: { getGeometry: () => any; }) => {
+          const geometry = feature.getGeometry();
+          if (geometry) {
+            const featureExtent = geometry.getExtent();
+            if (!combinedExtent) {
+              combinedExtent = [...featureExtent];
+            } else {
+              combinedExtent[0] = Math.min(combinedExtent[0], featureExtent[0]);
+              combinedExtent[1] = Math.min(combinedExtent[1], featureExtent[1]);
+              combinedExtent[2] = Math.max(combinedExtent[2], featureExtent[2]);
+              combinedExtent[3] = Math.max(combinedExtent[3], featureExtent[3]);
+            }
           }
-        }, 500);
-      });
+        });
+        
+        if (combinedExtent) {
+          mapInstanceRef.current.getView().fit(combinedExtent, {
+            padding: [100, 100, 100, 100],
+            duration: 1000,
+            maxZoom: 12,
+          });
+          console.log(`Zoomed to stretch ${selectedStretch} drains: ${stretchFeatures.length}`);
+        }
+      }
     }
-  }, [selectedDrain]);
+  }, 300);
 
-  // Effect to handle villages ONLY when explicitly selected from dropdown
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
+  console.log(`Drains layer styling updated`);
+}, [selectedStretch, selectedRiver, selectedDrain]);
 
-    // Remove existing villages layer
-    removeLayerByRef(villagesLayerRef, "villages");
+// Effect to handle catchments - Keep as is (only show when drain selected)
+useEffect(() => {
+  if (!mapInstanceRef.current) return;
 
-    // Only show villages if they are explicitly selected from the dropdown
-    if (selectedVillages.length > 0) {
-      console.log(`Adding villages layer for selected villages: ${selectedVillages}`);
+  // Remove existing catchments layer
+  removeLayerByRef(catchmentsLayerRef, "catchments");
 
-      // Create filter for selected villages using village codes from LocationContext
-      const villageCodeFilter = selectedVillages.map(code => `'${code}'`).join(',');
-      const villagesCqlFilter = `village_co IN (${villageCodeFilter})`;
+  // Show catchments ONLY when a drain is selected, filtered by Drain_No
+  if (selectedDrain) {
+    console.log(`Adding catchments layer for drain number: ${selectedDrain}`);
 
-      const villagesLayer = new VectorLayer({
-        source: new VectorSource({
-          format: new GeoJSON(),
-          url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Village&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(villagesCqlFilter)}`,
-        }),
-        style: (feature) => {
-          const villageCode = feature.get('village_co');
-          const baseStyle = selectedVillages.includes(Number(villageCode)) ? selectedVillageStyle : villageStyle;
+    const catchmentsCqlFilter = `Drain_No=${selectedDrain}`;
 
-          if (showLabels) {
-            const villageName = feature.get('shapeName') || `Village ${villageCode}`;
-            return createCombinedStyle(baseStyle, villageName, 0);
-          }
-          return baseStyle;
-        },
-        zIndex: 14,
-        visible: true,
-      });
+    const catchmentsLayer = new VectorLayer({
+      source: new VectorSource({
+        format: new GeoJSON(),
+        url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Catchment&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(catchmentsCqlFilter)}`,
+      }),
+      style: catchmentStyle,
+      zIndex: 13,
+      visible: true,
+    });
 
-      villagesLayer.set('name', 'villages');
-      villagesLayer.set('type', 'drainage');
+    catchmentsLayer.set('name', 'catchments');
+    catchmentsLayer.set('type', 'drainage');
 
-      // NEW: Apply opacity
-      applyLayerOpacity(villagesLayer, 'boundaries');
+    applyLayerOpacity(catchmentsLayer, 'boundaries');
 
-      villagesLayerRef.current = villagesLayer;
-      mapInstanceRef.current.addLayer(villagesLayer);
+    const source = catchmentsLayer.getSource();
+    source?.on("featuresloaderror", (event: any) => {
+      console.log(`Error loading Catchment layer for drain ${selectedDrain}:`, event);
+    });
 
-      // Auto-zoom to villages extent
-      villagesLayer.getSource()?.on("featuresloadend", () => {
-        setTimeout(() => {
-          const extent = villagesLayer.getSource()?.getExtent();
-          if (extent && mapInstanceRef.current) {
-            mapInstanceRef.current.getView().fit(extent, {
-              padding: [50, 50, 50, 50],
-              duration: 1000,
-            });
-          }
-        }, 500);
-      });
-    }
-  }, [selectedVillages, showLabels]);
+    source?.on("featuresloadstart", () => {
+      console.log(`Started loading Catchment layer for drain: ${selectedDrain}`);
+    });
+
+    source?.on("featuresloadend", () => {
+      console.log(`Successfully loaded Catchment layer for drain: ${selectedDrain}`);
+      const features = source.getFeatures();
+      console.log(`Loaded ${features.length} catchment features for drain ${selectedDrain}`);
+    });
+
+    catchmentsLayerRef.current = catchmentsLayer;
+    mapInstanceRef.current.addLayer(catchmentsLayer);
+
+    // Auto-zoom to catchments extent
+    catchmentsLayer.getSource()?.on("featuresloadend", () => {
+      setTimeout(() => {
+        const extent = catchmentsLayer.getSource()?.getExtent();
+        if (extent && mapInstanceRef.current) {
+          mapInstanceRef.current.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            duration: 1000,
+          });
+        }
+      }, 500);
+    });
+  }
+}, [selectedDrain]);
+
+// Effect to handle villages - UPDATE styling when selected
+useEffect(() => {
+  if (!mapInstanceRef.current) return;
+
+  // Remove existing villages layer
+  removeLayerByRef(villagesLayerRef, "villages");
+
+  // Only show villages if they are explicitly selected from the dropdown
+  if (selectedVillages.length > 0) {
+    console.log(`Adding villages layer for selected villages: ${selectedVillages}`);
+
+    const villageCodeFilter = selectedVillages.map(code => `'${code}'`).join(',');
+    const villagesCqlFilter = `village_co IN (${villageCodeFilter})`;
+
+    const villagesLayer = new VectorLayer({
+      source: new VectorSource({
+        format: new GeoJSON(),
+        url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Village&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(villagesCqlFilter)}`,
+      }),
+      style: (feature) => {
+        const villageCode = feature.get('village_co');
+        const baseStyle = selectedVillages.includes(Number(villageCode)) ? selectedVillageStyle : villageStyle;
+
+        if (showLabels) {
+          const villageName = feature.get('shapeName') || `Village ${villageCode}`;
+          return createCombinedStyle(baseStyle, villageName, 0);
+        }
+        return baseStyle;
+      },
+      zIndex: 14,
+      visible: true,
+    });
+
+    villagesLayer.set('name', 'villages');
+    villagesLayer.set('type', 'drainage');
+
+    applyLayerOpacity(villagesLayer, 'boundaries');
+
+    villagesLayerRef.current = villagesLayer;
+    mapInstanceRef.current.addLayer(villagesLayer);
+
+    // Auto-zoom to villages extent
+    villagesLayer.getSource()?.on("featuresloadend", () => {
+      setTimeout(() => {
+        const extent = villagesLayer.getSource()?.getExtent();
+        if (extent && mapInstanceRef.current) {
+          mapInstanceRef.current.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            duration: 1000,
+          });
+        }
+      }, 500);
+    });
+  }
+}, [selectedVillages, showLabels]);
 
   // Function to manage village layer visibility based on raster state
   const manageVillageLayerVisibility = () => {
