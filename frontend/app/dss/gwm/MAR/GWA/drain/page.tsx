@@ -167,7 +167,7 @@ function GroundwaterAssessmentContent({ contourData, trendData, forecastData }: 
               }}
               className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
-            <span className="text-xs sm:text-sm font-medium text-gray-700">Enable Groundwater Depth Analysis</span>
+            <span className="text-xs sm:text-sm font-medium text-gray-700"> Groundwater Depth Analysis</span>
           </label>
 
           <label className="flex items-center space-x-2 cursor-pointer">
@@ -184,7 +184,7 @@ function GroundwaterAssessmentContent({ contourData, trendData, forecastData }: 
               }}
               className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
-            <span className="text-xs sm:text-sm font-medium text-gray-700">Enable Timeseries Analysis and Forecasting</span>
+            <span className="text-xs sm:text-sm font-medium text-gray-700"> Timeseries Analysis and Forecasting</span>
           </label>
         </div>
       </div>
