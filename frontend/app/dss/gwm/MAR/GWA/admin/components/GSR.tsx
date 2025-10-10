@@ -11,7 +11,7 @@ interface GSRProps {
   step: number;
 }
 
-// Stress Identification Component - UPDATED
+// Stress Identification Component
 const StressIdentification: React.FC = () => {
   const [yearsCount, setYearsCount] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -48,17 +48,17 @@ const StressIdentification: React.FC = () => {
     }
   };
 
-  // UPDATED Stress Data Table Display
+  //  Stress Data Table Display
   const StressTableDisplay = ({ tableData }: { tableData: any[] }) => {
     if (tableData.length === 0) return null;
 
-    // Updated visible columns to match new backend structure
+    //  visible columns to match new backend structure
     const visibleColumns = [
       'village_name',
       'recharge',
       'total_demand',
       'injection',
-      'stress_value'  // Only stress value, no classification
+      'stress_value'
     ];
 
     const formatHeader = (header: string): string => {
@@ -74,14 +74,14 @@ const StressIdentification: React.FC = () => {
       return headerMap[header] || header.replace(/_/g, ' ').toUpperCase();
     };
 
-    // UPDATED cell formatting for stress values
+    // formatting for stress values
     const formatCellValue = (value: any, column: string): string => {
       if (value === null || value === undefined) return '-';
 
       // Format numbers with appropriate precision
       if (typeof value === 'number') {
         if (['recharge', 'total_demand', 'injection', 'stress_value'].includes(column)) {
-          return value.toFixed(2);  // 2 decimal places for precision
+          return value.toFixed(2);
         } else {
           return value.toString();
         }
@@ -90,7 +90,7 @@ const StressIdentification: React.FC = () => {
       return String(value);
     };
 
-    // UPDATED cell classes for stress values - removed old classification logic
+    //  cell classes for stress values - removed old classification logic
     const getCellClasses = (row: any, column: string): string => {
       const value = row[column];
       let baseClasses = "px-4 py-3 text-sm whitespace-nowrap";
@@ -164,31 +164,6 @@ const StressIdentification: React.FC = () => {
             </tbody>
           </table>
         </div>
-
-        {/* UPDATED summary information with color legend */}
-        {/* <div className="mt-2 text-sm text-gray-600 flex justify-between">
-          <span>
-            Showing {tableData.length} village{tableData.length !== 1 ? 's' : ''} with stress analysis
-          </span>
-          <span className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span>High (&gt;100)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-orange-500 rounded"></div>
-              <span>Medium (50-100)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-              <span>Low (0-50)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span>Minimal (0)</span>
-            </span>
-          </span>
-        </div> */}
       </div>
     );
   };
@@ -297,53 +272,53 @@ const StressIdentification: React.FC = () => {
         {/* Toggle Button */}
         {stressData.length > 0 && (
           <button
-  onClick={() => setShowStressTable(!showStressTable)}
-  className="inline-flex items-center justify-center p-2 rounded-full focus:outline-none"
-  aria-label={showStressTable ? "Hide Table" : "Show Table"}
-  title={showStressTable ? "Hide Table" : "Show Table"}
->
-  {showStressTable ? (
-    // Eye icon (visible)
-    <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      {/* Center circle */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      {/* Eye outline */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-      />
-    </svg>
-  ) : (
-    // Eye-off icon (hidden)
-    <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      {/* Center circle */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      {/* Eye outline with slash */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M17.94 17.94A10.016 10.016 0 0112 19
+            onClick={() => setShowStressTable(!showStressTable)}
+            className="inline-flex items-center justify-center p-2 rounded-full focus:outline-none"
+            aria-label={showStressTable ? "Hide Table" : "Show Table"}
+            title={showStressTable ? "Hide Table" : "Show Table"}
+          >
+            {showStressTable ? (
+              // Eye icon (visible)
+              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Center circle */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                {/* Eye outline */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+              </svg>
+            ) : (
+              // Eye-off icon (hidden)
+              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Center circle */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                {/* Eye outline with slash */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.94 17.94A10.016 10.016 0 0112 19
            c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95
            M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7
            a9.958 9.958 0 01-4.042 5.142"
-      />
-      <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-    </svg>
-  )}
-</button>
+                />
+                <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
 
         )}
       </div>
@@ -358,7 +333,7 @@ const StressIdentification: React.FC = () => {
   );
 };
 
-// GSR Analysis Component (UNCHANGED - keeping exactly the same)
+// GSR Analysis Component
 const GSRAnalysis: React.FC = () => {
   const {
     gsrTableData,
@@ -371,9 +346,8 @@ const GSRAnalysis: React.FC = () => {
   // Get data from other contexts for status display
   const { tableData: rechargeTableData } = useRecharge();
   const { domesticTableData, agriculturalTableData } = useDemand();
-  const [showGsrTable, setShowGsrTable] = useState(true);        // inside GSRAnalysis
+  const [showGsrTable, setShowGsrTable] = useState(true);        
 
-  // *** CONFIGURABLE COLUMNS - Comment/uncomment to show/hide columns ***
   // These are the actual column names returned by your API
   const visibleColumns = [
     // 'village_code',
@@ -381,27 +355,27 @@ const GSRAnalysis: React.FC = () => {
     // 'subdistrict_code',
     'recharge',
     // 'domestic_demand',
-    // 'agricultural_demand',      // Comment to hide
+    // 'agricultural_demand',     
     'total_demand',
     'gsr',
     // 'gsr_status',
-    'trend_status',               // ← Added trend status column
-    'gsr_classification',         // ← NEW: Added GSR classification column
-    // 'classification_color',       // ← NEW: Added GSR classification color
-    // 'has_recharge_data',       // Uncomment to show this column
-    // 'has_domestic_data',       // Uncomment to show this column  
-    // 'has_agricultural_data',   // Uncomment to show this column
+    'trend_status',    
+    'gsr_classification',         
+    // 'classification_color',      
+    // 'has_recharge_data',       
+    // 'has_domestic_data',      
+    // 'has_agricultural_data',  
   ];
 
   // GSR Table Display Component with configurable columns
   const GSRTableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => {
     if (tableData.length === 0) return null;
 
-    // 🔍 DEBUG: Log the actual data structure for admin case
-    console.log('🔍 DEBUG - Admin GSR First row:', tableData[0]);
-    console.log('🔍 DEBUG - Admin Available columns:', Object.keys(tableData[0] || {}));
-    console.log('🔍 DEBUG - Admin GSR Classification:', tableData[0]?.gsr_classification);
-    console.log('🔍 DEBUG - Admin Classification Color:', tableData[0]?.classification_color);
+    //  DEBUG: Log the actual data structure for admin case
+    console.log(' DEBUG - Admin GSR First row:', tableData[0]);
+    console.log(' DEBUG - Admin Available columns:', Object.keys(tableData[0] || {}));
+    console.log(' DEBUG - Admin GSR Classification:', tableData[0]?.gsr_classification);
+    console.log(' DEBUG - Admin Classification Color:', tableData[0]?.classification_color);
 
     // Get all available columns from the data
     const allColumns = Object.keys(tableData[0] || {});
@@ -422,7 +396,7 @@ const GSRAnalysis: React.FC = () => {
         'gsr': 'GSR Ratio',
         'gsr_status': 'GSR Status',
         'trend_status': 'Trend Status',
-        'gsr_classification': 'GSR Classification',  // ← NEW: Added classification header
+        'gsr_classification': 'GSR Classification',  
         'classification_color': 'Classification Color',
         'has_recharge_data': 'Has Recharge Data',
         'has_domestic_data': 'Has Domestic Data',
@@ -484,7 +458,7 @@ const GSRAnalysis: React.FC = () => {
           baseClasses += " text-gray-900";
         }
       }
-      // ← NEW: GSR Classification styling with backend colors
+      //  GSR Classification styling 
       else if (column === 'gsr_classification') {
         baseClasses += " font-medium rounded px-2 py-1";
 
@@ -500,7 +474,7 @@ const GSRAnalysis: React.FC = () => {
         if (backendColor) {
           // Apply dynamic color from backend
           baseClasses += " text-white";
-          return baseClasses; // We'll apply the background color via inline style
+          return baseClasses; 
         } else {
           // Fallback to predefined colors
           const classificationValue = String(value).toLowerCase();
@@ -578,7 +552,7 @@ const GSRAnalysis: React.FC = () => {
                     <td
                       key={column}
                       className={getCellClasses(row, column)}
-                      style={getInlineStyle(row, column)} // ← NEW: Apply backend colors
+                      style={getInlineStyle(row, column)} 
                     >
                       {formatCellValue(row[column], column)}
                     </td>
@@ -665,9 +639,9 @@ const GSRAnalysis: React.FC = () => {
       )}
 
       {/* Compute GSR Button */}
-      {/* Buttons Row + Conditional Table for GSR */}
+   
       <div className="mb-4 flex items-center gap-4">
-        {/* Compute GSR Button */}
+  
         <button
           onClick={computeGSR}
           disabled={gsrLoading || !canComputeGSR()}
@@ -683,54 +657,54 @@ const GSRAnalysis: React.FC = () => {
 
         {/* Toggle Button */}
         {gsrTableData.length > 0 && (
-        <button
-  onClick={() => setShowGsrTable(!showGsrTable)}
-  className="inline-flex items-center justify-center p-2 rounded-full focus:outline-none"
-  aria-label={showGsrTable ? "Hide Table" : "Show Table"}
-  title={showGsrTable ? "Hide Table" : "Show Table"}
->
-  {showGsrTable ? (
-    // Eye icon (table visible)
-    <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      {/* Center circle */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      {/* Eye outline */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-      />
-    </svg>
-  ) : (
-    // Eye-off icon (table hidden)
-    <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      {/* Center circle */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      {/* Eye outline with slash */}
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M17.94 17.94A10.016 10.016 0 0112 19
+          <button
+            onClick={() => setShowGsrTable(!showGsrTable)}
+            className="inline-flex items-center justify-center p-2 rounded-full focus:outline-none"
+            aria-label={showGsrTable ? "Hide Table" : "Show Table"}
+            title={showGsrTable ? "Hide Table" : "Show Table"}
+          >
+            {showGsrTable ? (
+              // Eye icon (table visible)
+              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Center circle */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                {/* Eye outline */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+              </svg>
+            ) : (
+              // Eye-off icon (table hidden)
+              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Center circle */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                {/* Eye outline with slash */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.94 17.94A10.016 10.016 0 0112 19
            c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95
            M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7
            a9.958 9.958 0 01-4.042 5.142"
-      />
-      <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-    </svg>
-  )}
-</button>
+                />
+                <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
 
         )}
       </div>

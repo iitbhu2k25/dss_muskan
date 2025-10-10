@@ -14,7 +14,7 @@ const DISPLAY_FIELDS: string[] = [
   "recharge",
 ];
 
-// Updated labels to match your CSV structure
+//  labels to match your CSV structure
 const LABEL_MAP: Record<string, string> = {
   village: "Village",
   SY: "Specific Yield",
@@ -31,13 +31,13 @@ const formatValue = (key: string, value: any): string => {
   if (typeof value === "number") {
     switch (key) {
       case "SY":
-        return value.toFixed(3); // Specific yield to 3 decimal places
+        return value.toFixed(3); 
       case "mean_water_fluctuation":
         return `${value.toFixed(2)} m`; // Water fluctuation in meters
       case "Shape_Area":
-        return value.toLocaleString(undefined, { maximumFractionDigits: 0 }); // Area without decimals
+        return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
       case "recharge":
-        return value.toLocaleString(undefined, { maximumFractionDigits: 2 }); // Recharge with 2 decimals
+        return value.toLocaleString(undefined, { maximumFractionDigits: 2 }); 
       default:
         return value.toString();
     }
@@ -52,8 +52,8 @@ const formatLabel = (key: string) =>
 
 const Recharge = () => {
   const { tableData, isLoading, error, computeRecharge, canComputeRecharge } = useRecharge();
-  const { selectedVillages } = useLocation(); // Uses selectedVillages for drain case
-  const { csvFilename } = useWell(); // wells CSV status if desired
+  const { selectedVillages } = useLocation(); 
+  const { csvFilename } = useWell();
 
   // State to control table visibility
   const [showTable, setShowTable] = useState(true);
@@ -151,23 +151,6 @@ const Recharge = () => {
         Groundwater Recharge Analysis
       </h3>
 
-      {/* Status section */}
-      {/* <div className="mb-4 text-sm text-gray-600">
-        <p>
-          <strong>Wells CSV:</strong> {csvFilename || "Not available (upload/confirm wells first)"}
-        </p>
-        <p>
-          <strong>Selected Villages:</strong> {selectedVillages.length} selected
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-          <p className="font-medium">Computation Failed</p>
-          <p className="text-sm mt-1">{String(error)}</p>
-        </div>
-      )} */}
-
       {!canComputeRecharge() && (
         <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md">
           <p className="font-medium">Requirements Not Met</p>
@@ -235,12 +218,6 @@ const Recharge = () => {
             </button>
         )}
 
-        {/* Quick stats */}
-        {/* {tableData.length > 0 && (
-          <span className="text-sm text-blue-600 font-medium">
-            {tableData.length} village{tableData.length !== 1 ? "s" : ""} computed
-          </span>
-        )} */}
       </div>
 
 

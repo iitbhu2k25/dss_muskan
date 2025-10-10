@@ -101,7 +101,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
 
       return {
         selectedSubDistricts: locationContext.selectedSubDistricts,
-        csv_filename: wellContext.csvFilename // Use snake_case
+        csv_filename: wellContext.csvFilename 
       };
     } catch (error) {
       console.log('Error preparing PDF data:', error);
@@ -111,7 +111,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
 
   // Main PDF generation function
   const generatePDFReport = async (): Promise<PDFGenerationResponse | null> => {
-    console.log('🚀 Starting PDF generation process...');
+    console.log(' Starting PDF generation process...');
     
     // Reset previous state
     setIsGeneratingPDF(true);
@@ -121,26 +121,26 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
 
     try {
       // Step 1: Validate data
-      console.log('📋 Validating PDF data...');
+      console.log(' Validating PDF data...');
       const validation = validatePDFData();
       if (!validation.valid) {
         throw new Error(validation.message);
       }
 
       // Step 2: Prepare simplified data
-      console.log('📦 Preparing simplified PDF data...');
+      console.log(' Preparing simplified PDF data...');
       const pdfRequest: PDFGenerationRequest = {
         selectedSubDistricts: locationContext.selectedSubDistricts,
-        csv_filename: wellContext.csvFilename // Use snake_case to match API
+        csv_filename: wellContext.csvFilename 
       };
 
-      console.log('📊 PDF request prepared:', {
+      console.log(' PDF request prepared:', {
         selectedSubDistricts: pdfRequest.selectedSubDistricts,
         csv_filename: pdfRequest.csv_filename
       });
 
       // Step 3: Send to API
-      console.log('📡 Sending PDF generation request to /pdf API...');
+      console.log(' Sending PDF generation request to /pdf API...');
       const response = await fetch('/django/gwa/pdf', {
         method: 'POST',
         headers: {
@@ -181,7 +181,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
 
   // Reset PDF generation state
   const resetPDFState = (): void => {
-    console.log('🔄 Resetting PDF state...');
+    console.log(' Resetting PDF state...');
     setIsGeneratingPDF(false);
     setPdfGenerationSuccess(false);
     setPdfGenerationError(null);
@@ -193,7 +193,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
     if (pdfGenerationSuccess) {
       const timer = setTimeout(() => {
         setPdfGenerationSuccess(false);
-      }, 10000); // Reset success state after 10 seconds
+      }, 10000); 
 
       return () => clearTimeout(timer);
     }
@@ -216,11 +216,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
     // PDF functions
     generatePDFReport,
     resetPDFState,
-    
-    // Data validation
     validatePDFData,
-    
-    // Get prepared data
     getPreparedData,
   };
 

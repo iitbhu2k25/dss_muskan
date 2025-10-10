@@ -67,11 +67,7 @@ const AreaSelection: React.FC<AreaSelectionProps> = ({ onAreaConfirmed }) => {
           {error}
         </div>
       )}
-      {/* {isLoading && (
-        <div className="mb-4 p-2 bg-blue-100 text-blue-700 rounded">
-          Loading data...
-        </div>
-      )} */}
+   
 
       {/* AREA SELECTION SECTION */}
       <div className="mb-6">

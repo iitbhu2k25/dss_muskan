@@ -9,10 +9,10 @@ interface TableData {
 }
 
 interface CropData {
-  [season: string]: string[]; // season -> array of crop names
+  [season: string]: string[]; 
 }
 
-// Updated interface for chart data - structured JSON data instead of images
+// interface for chart data
 interface ChartData {
   individual_crops: {
     type: "scatter";
@@ -56,16 +56,16 @@ interface DemandContextType {
   // Groundwater Factor
   groundwaterFactor: number;
   
-  // Charts State - now includes structured chart data
+  // Charts State 
   chartData: ChartData | null;
   chartsError: string | null;
 
-  // Data State - separate for each demand type
+  // Data State 
   domesticTableData: TableData[];
   agriculturalTableData: TableData[];
   industrialTableData: TableData[];
 
-  // Loading and Error State - separate for each demand type
+  // Loading and Error State 
   domesticLoading: boolean;
   agriculturalLoading: boolean;
   industrialLoading: boolean;
@@ -339,7 +339,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
           rabi: rabiChecked,
           zaid: zaidChecked
         },
-        include_charts: true  // Always include charts
+        include_charts: true  
       };
 
       console.log('Computing agricultural demand with payload:', requestPayload);
@@ -368,7 +368,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
         throw new Error('Invalid response format from server');
       }
 
-      // Handle chart data - now supports structured JSON data
+      // Handle chart data
       if (result.charts) {
         if (result.charts_error) {
           setChartsError(result.charts_error);
@@ -388,7 +388,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       console.log('Error computing agricultural demand:', errorMessage);
       setAgriculturalError(errorMessage);
       setAgriculturalTableData([]);
-      clearChartData(); // Clear charts on error
+      clearChartData(); 
     } finally {
       setAgriculturalLoading(false);
     }
@@ -471,12 +471,12 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     chartData,
     chartsError,
 
-    // Data State - separate for each demand type
+    // Data State 
     domesticTableData,
     agriculturalTableData,
     industrialTableData,
 
-    // Loading and Error State - separate for each demand type
+    // Loading and Error State
     domesticLoading,
     agriculturalLoading,
     industrialLoading,

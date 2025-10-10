@@ -146,25 +146,6 @@ const Recharge = () => {
         Groundwater Recharge Analysis
       </h3>
 
-      {/* Status information */}
-      {/* <div className="mb-4 text-sm text-gray-600">
-        <p>
-          <strong>Wells CSV:</strong>{" "}
-          {csvFilename || "Not available (upload/confirm wells first)"}
-        </p>
-        <p>
-          <strong>Selected Sub-districts:</strong>{" "}
-          {selectedSubDistricts.length} selected
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-          <p className="font-medium">Computation Failed</p>
-          <p className="text-sm mt-1">{String(error)}</p>
-        </div>
-      )} */}
-
       {!canComputeRecharge() && (
         <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md">
           <p className="font-medium">Requirements Not Met</p>
@@ -174,10 +155,10 @@ const Recharge = () => {
         </div>
       )}
 
-      {/* Compute Recharge Button */}
+    
       {/* Buttons Row */}
       <div className="mb-4 flex items-center gap-4">
-        {/* Compute Recharge Button */}
+  
         <button
           onClick={handleComputeRecharge}
           disabled={isLoading || !canComputeRecharge()}
@@ -234,9 +215,7 @@ const Recharge = () => {
                 </svg>
               )}
             </button>
-            {/* <span className="-ml-4 text-sm text-black-600 font-medium ">
-              {tableData.length} village{tableData.length !== 1 ? "s" : ""} computed
-            </span> */}
+       
 
           </>
         )}

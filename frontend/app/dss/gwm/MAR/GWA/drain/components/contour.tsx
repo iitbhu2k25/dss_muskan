@@ -246,8 +246,7 @@ const GroundwaterContour: React.FC<GroundwaterContourProps> = ({ activeTab, step
           >
             <option value="">Select Method...</option>
             <option value="idw">Inverse Distance Weighted (IDW)</option>
-            {/* <option value="kriging">Kriging</option>
-            <option value="spline">Spline</option> */}
+          
           </select>
         </div>
 
@@ -343,7 +342,7 @@ const GroundwaterContour: React.FC<GroundwaterContourProps> = ({ activeTab, step
             </div>
           </div>
 
-          {/* PNG Preview Section - UPDATED WITH DOWNLOAD FUNCTIONALITY */}
+          {/* PNG Preview Section */}
           {visualizationData && (visualizationData.png_base64 || visualizationData.png_path) && (
             <div className="p-4 border border-gray-300 rounded-md bg-white mt-4">
               <div className="flex justify-between items-center mb-2">

@@ -167,7 +167,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
     return gsrTableData.length > 0;
   };
 
-  // Compute GSR function - CORRECTED to match API structure
+  // Compute GSR function
   const computeGSR = async () => {
     try {
       setGSRLoading(true);
@@ -195,13 +195,13 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         console.log('⚠️ No trend CSV available for GSR computation');
       }
 
-      // CORRECTED: Prepare request payload to match API expectations
+      //Prepare request payload to match API expectations
       const requestPayload = {
-        rechargeData: rechargeTableData,        // API expects 'rechargeData'
-        domesticData: domesticTableData,        // API expects 'domesticData'
-        agriculturalData: agriculturalTableData, // API expects 'agriculturalData'
-        selectedSubDistricts: selectedVillages, // API expects 'selectedSubDistricts' (even for villages)
-        trendCsvFilename: trendCsvFilename,     // API expects 'trendCsvFilename'
+        rechargeData: rechargeTableData,        
+        domesticData: domesticTableData,       
+        agriculturalData: agriculturalTableData,
+        selectedSubDistricts: selectedVillages,
+        trendCsvFilename: trendCsvFilename,     
         hasDomesticDemand: domesticChecked && domesticTableData.length > 0,
         hasAgriculturalDemand: agriculturalChecked && agriculturalTableData.length > 0,
         hasRechargeData: rechargeTableData.length > 0
@@ -226,26 +226,26 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       const result = await response.json();
       console.log('GSR computation result:', result);
 
-      // CORRECTED: Extract table data from API response
+      // Extract table data from API response
       if (result.success && result.data && Array.isArray(result.data)) {
         setGSRTableData(result.data);
-        console.log(`✅ GSR Table Data set: ${result.data.length} villages`);
+        console.log(` GSR Table Data set: ${result.data.length} villages`);
       } else {
         throw new Error('Invalid response format from server - missing data array');
       }
 
-      // CORRECTED: Extract summary data
+      // Extract summary data
       if (result.summary) {
         setGSRSummary(result.summary);
-        console.log('✅ GSR Summary set:', result.summary);
+        console.log('GSR Summary set:', result.summary);
       }
 
-      // CORRECTED: Extract and set GeoJSON data
+      //  Extract and set GeoJSON data
       if (result.geospatial_data) {
         try {
           addGsrLayer(result.geospatial_data);
           setGSRGeojsonData(result.geospatial_data);
-          console.log('✅ GSR GeoJSON data set and layer added to map');
+          console.log(' GSR GeoJSON data set and layer added to map');
         } catch (e) {
           console.log('Failed to add GSR layer to map:', e);
         }
@@ -255,13 +255,13 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         console.log('⚠️ No GeoJSON data received');
       }
 
-      // CORRECTED: Set merge statistics
+      //  Set merge statistics
       if (result.merge_statistics) {
         setMergeStatistics(result.merge_statistics);
         console.log('📊 Merge statistics:', result.merge_statistics);
       }
 
-      // CORRECTED: Handle map image data
+      // Handle map image data
       if (result.map_image_filename) {
         setMapImageFilename(result.map_image_filename);
         console.log('📍 GSR map image filename:', result.map_image_filename);

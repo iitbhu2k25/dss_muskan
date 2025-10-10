@@ -48,7 +48,7 @@ function GroundwaterAssessmentContent({ contourData, trendData, forecastData }: 
 
   React.useEffect(() => {
   if (activeStep === 3 && canComputeRecharge() && tableData.length === 0) {
-    console.log("🔄 Auto-triggering groundwater recharge computation (drain)...");
+    console.log(" Auto-triggering groundwater recharge computation (drain)...");
     computeRecharge();
   }
 }, [activeStep]);

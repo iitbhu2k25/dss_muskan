@@ -190,7 +190,7 @@ export const GroundwaterTrendProvider = ({
     setTrendData(null);
     setError(null);
     setTrendMapFilename(null);
-    setTrendMapBase64(null); // NEW: Clear base64
+    setTrendMapBase64(null); 
     removeTrendLayer();
     setLegendData((prev: any) => ({
       ...prev,
@@ -224,7 +224,7 @@ export const GroundwaterTrendProvider = ({
     return trendMapFilename;
   };
 
-  // NEW: Get base64 directly
+  // Get base64 directly
   const getTrendMapBase64 = (): string | null => {
     return trendMapBase64;
   };
@@ -236,7 +236,7 @@ export const GroundwaterTrendProvider = ({
   const availableCharts = trendData ? Object.keys(trendData.charts || {}) : [];
 
   const handleGenerate = async () => {
-    // Validation logic (unchanged)
+    // Validation logic 
     if (!trendMethod || !yearStart || !yearEnd) {
       alert("Please fill all required fields: Trend Method, Start Year, and End Year.");
       return;
@@ -295,8 +295,7 @@ export const GroundwaterTrendProvider = ({
       setError(null);
       setTrendData(null);
       setTrendMapFilename(null);
-      setTrendMapBase64(null); // NEW: Clear base64
-
+      setTrendMapBase64(null);
       removeTrendLayer();
 
       console.log("Sending trend analysis request:", payload);
@@ -334,7 +333,7 @@ export const GroundwaterTrendProvider = ({
       console.log("Yearly Timeseries CSV Filename:", data.summary_stats.file_info.timeseries_yearly_csv_filename);
       console.log("Seasonal Timeseries CSV Filename:", data.summary_stats.file_info.timeseries_seasonal_csv_filename);
       
-      // NEW: Handle trend map base64 (priority) and filename
+      // Handle trend map base64 (priority) and filename
       const mapBase64 = data.trend_map_base64 || data.summary_stats?.file_info?.trend_map_base64;
       const mapFilename = data.trend_map_filename || data.summary_stats?.file_info?.trend_map_filename;
       
@@ -360,7 +359,7 @@ export const GroundwaterTrendProvider = ({
       setTrendData(data);
       onTrendData(data);
 
-      // Add trend data to map if village_geojson is available
+      //  trend data to map if village_geojson is available
       if (data.village_geojson && data.village_geojson.features && data.village_geojson.features.length > 0) {
         console.log("Adding village trend data to map:", data.village_geojson.features.length, "villages");
         
@@ -412,16 +411,16 @@ export const GroundwaterTrendProvider = ({
           },
           trendMapFilename: mapFilename,
           trendMapUrl: mapFilename ? `/django/media/temp/${mapFilename}` : null,
-          trendMapBase64: mapBase64, // NEW: Add base64 to legend data
+          trendMapBase64: mapBase64, 
         },
       }));
 
-      console.log("✅ Trend analysis completed successfully!");
-      console.log(`📊 Analyzed ${data.total_villages} villages`);
-      console.log(`📈 Trends: ${data.summary_stats.trend_distribution.increasing} increasing, ${data.summary_stats.trend_distribution.decreasing} decreasing, ${data.summary_stats.trend_distribution.no_trend} no trend`);
-      console.log(`📁 Generated 3 CSV files: 1 trend analysis + 1 yearly time series + 1 seasonal time series`);
+      console.log(" Trend analysis completed successfully!");
+      console.log(` Analyzed ${data.total_villages} villages`);
+      console.log(` Trends: ${data.summary_stats.trend_distribution.increasing} increasing, ${data.summary_stats.trend_distribution.decreasing} decreasing, ${data.summary_stats.trend_distribution.no_trend} no trend`);
+      console.log(` Generated 3 CSV files: 1 trend analysis + 1 yearly time series + 1 seasonal time series`);
       if (mapBase64) {
-        console.log(`🗺️ Generated trend map with base64 (ready for PDF)`);
+        console.log(` Generated trend map with base64 (ready for PDF)`);
       }
 
     } catch (error) {
@@ -433,8 +432,7 @@ export const GroundwaterTrendProvider = ({
       setError(errorMessage);
       setTrendData(null);
       setTrendMapFilename(null);
-      setTrendMapBase64(null); // NEW: Clear base64 on error
-
+      setTrendMapBase64(null); 
       removeTrendLayer();
     } finally {
       setIsLoading(false);
@@ -452,7 +450,7 @@ export const GroundwaterTrendProvider = ({
         isLoading,
         error,
         trendMapFilename,
-        trendMapBase64, // NEW: Provide base64
+        trendMapBase64, 
         setTrendMethod,
         setYearStart,
         setYearEnd,
@@ -464,7 +462,7 @@ export const GroundwaterTrendProvider = ({
         getChartImage,
         getTrendMapUrl,
         getTrendMapFilename,
-        getTrendMapBase64, // NEW: Provide base64 getter
+        getTrendMapBase64, 
         hasTrendMap,
       }}
     >

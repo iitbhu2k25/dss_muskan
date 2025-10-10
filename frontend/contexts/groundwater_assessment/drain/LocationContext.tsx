@@ -115,8 +115,8 @@ const LocationContext = createContext<LocationContextType>({
 
 export const LocationProvider: React.FC<LocationProviderProps> = ({
   children,
-  geoServerBaseUrl = "/geoserver/api", // Updated default GeoServer base URL
-  villageApiBaseUrl = "/django", // Default Village API base URL
+  geoServerBaseUrl = "/geoserver/api", 
+  villageApiBaseUrl = "/django", 
 }) => {
   // Location state
   const [rivers, setRivers] = useState<River[]>([]);
@@ -173,7 +173,7 @@ const fetchVillagesFromAPI = async (drainNumbers: number[]) => {
         name: village.name || `Village ${village.village_code}`,
         code: village.village_code,
         village_code: village.village_code,
-        catchment_gridcode: drainNo, // Now storing drain number instead of gridcode
+        catchment_gridcode: drainNo,
       }));
       
       allVillages.push(...villageData);
@@ -489,13 +489,13 @@ useEffect(() => {
     setAreaConfirmed(false);
   };
 
-  // Update catchments with area confirmation reset
+  //  catchments with area confirmation reset
   const updateSelectedCatchments = (catchmentCodes: number[]): void => {
     setSelectedCatchments(catchmentCodes);
     setAreaConfirmed(false);
   };
 
-  // Update villages with area confirmation reset
+  //  villages with area confirmation reset
   const updateSelectedVillages = (villageCodes: number[]): void => {
     setSelectedVillages(villageCodes);
     setAreaConfirmed(false);

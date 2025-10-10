@@ -1,4 +1,3 @@
-// frontend/app/dss/GWM/MAR/GWA/admin/components/contour.tsx
 "use client";
 
 import React, { useContext, useEffect } from 'react';

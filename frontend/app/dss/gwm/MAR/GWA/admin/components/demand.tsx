@@ -5,7 +5,7 @@ import { useDemand } from '@/contexts/groundwater_assessment/admin/DemandContext
 import { useLocation } from '@/contexts/groundwater_assessment/admin/LocationContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 interface CropData {
-  [crop: string]: number[];  // Array of values for each crop
+  [crop: string]: number[];
 }
 interface ChartData {
   individual_crops: {
@@ -38,7 +38,6 @@ const Demand = () => {
     cropsLoading,
     cropsError,
     groundwaterFactor,
-    // Chart states - now includes structured chart data
     chartData,
     chartsError,
     domesticTableData,
@@ -55,7 +54,6 @@ const Demand = () => {
     setIndustrialChecked,
     setPerCapitaConsumption,
     setGroundwaterFactor,
-    // Chart actions
     clearChartData,
     setKharifChecked,
     setRabiChecked,
@@ -75,19 +73,8 @@ const Demand = () => {
   const [selectedChart, setSelectedChart] = useState<'individual' | 'cumulative'>('individual');
   const [showDomesticTable, setShowDomesticTable] = useState(true);
   const toggleDomesticTable = () => setShowDomesticTable((prev) => !prev);
-  // ✅ Add this state at top of Demand component
   const [showAgriculturalTable, setShowAgriculturalTable] = useState(true);
   const toggleAgriculturalTable = () => setShowAgriculturalTable((prev) => !prev);
-  // Add the hover state for tracking the hovered data
-  // const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
-  // const [hoveredValue, setHoveredValue] = useState<number | null>(null);
-
-  // // Handle the hover functionality
-  // const handleHover = (data: any) => {
-  //   setHoveredMonth(data.month);  // or use the appropriate property for the month
-  //   setHoveredValue(data.value);  // replace with the value that you want to show
-  // };
-
   // Custom table component for domestic demand with specific columns
   const DomesticTableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => (
     <div className="mt-4">
@@ -374,7 +361,7 @@ const Demand = () => {
 
 
 
-  // Generic table component for Industrial (unchanged)
+  // Generic table component for Industrial 
   const TableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => (
     <div className="mt-4">
       <div className="flex items-center gap-2 mb-3">
@@ -644,11 +631,7 @@ const Demand = () => {
 
 
 
-                {/* Quick stats */}
-                {/* <span className="text-sm text-blue-600 font-medium">
-                  {domesticTableData.length} record
-                  {domesticTableData.length !== 1 ? "s" : ""} computed
-                </span> */}
+
               </>
             )}
           </div>
@@ -991,9 +974,8 @@ const Demand = () => {
           )}
 
           {/* Compute Button */}
-          {/* Buttons Row */}
           <div className="mb-4 flex items-center gap-4 mt-4">
-            {/* Compute Button */}
+
             <button
               onClick={computeAgriculturalDemand}
               disabled={agriculturalLoading || !canComputeAgriculturalDemand()}
@@ -1011,7 +993,7 @@ const Demand = () => {
               )}
             </button>
 
-            {/* Show/Hide Table Button */}
+            {/* Show/Hide Table */}
             {agriculturalTableData.length > 0 && (
               <>
                 <button
@@ -1054,35 +1036,28 @@ const Demand = () => {
                     </svg>
                   )}
                 </button>
-
-
-                {/* Quick stats */}
-                {/* <span className="text-sm text-yellow-700 font-medium">
-                  {agriculturalTableData.length} village
-                  {agriculturalTableData.length !== 1 ? "s" : ""} computed
-                </span> */}
               </>
             )}
           </div>
-        {/* Agricultural Table + Charts Container */}
-{agriculturalTableData.length > 0 && (
-  <div className="mt-6 grid grid-cols-1 gap-6">
-    {/* Left: Table (always visible when toggled on) */}
-    <div className="overflow-auto">
-      {showAgriculturalTable && (
-        <AgriculturalTableDisplay
-          tableData={agriculturalTableData}
-          title="Groundwater Consumption for Agricultural Need"
-        />
-      )}
-    </div>
+          {/* Agricultural Table + Charts Container */}
+          {agriculturalTableData.length > 0 && (
+            <div className="mt-6 grid grid-cols-1 gap-6">
+              {/* Left: Table (always visible when toggled on) */}
+              <div className="overflow-auto">
+                {showAgriculturalTable && (
+                  <AgriculturalTableDisplay
+                    tableData={agriculturalTableData}
+                    title="Groundwater Consumption for Agricultural Need"
+                  />
+                )}
+              </div>
 
-    {/* Right: Chart Panel (persistent — does not re-render table) */}
-    <div>
-      <ChartDisplay />
-    </div>
-  </div>
-)}
+              {/* Right: Chart Panel */}
+              <div>
+                <ChartDisplay />
+              </div>
+            </div>
+          )}
 
 
 

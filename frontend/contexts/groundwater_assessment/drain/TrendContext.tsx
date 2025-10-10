@@ -18,7 +18,7 @@ interface TrendSummaryStats {
     timeseries_yearly_csv_filename: string;
     timeseries_seasonal_csv_filename: string;
     trend_map_filename: string;
-    trend_map_base64: string; // NEW: Base64 encoded map image
+    trend_map_base64: string;
   };
   trend_distribution: {
     increasing: number;
@@ -98,7 +98,7 @@ interface TrendData {
   summary_stats: TrendSummaryStats;
   village_geojson: VillageGeoJSON;
   villages: VillageData[];
-  charts: Record<string, string>; // base64 encoded charts
+  charts: Record<string, string>; 
   summary_tables: Record<string, any[]>;
   color_mapping: Record<string, {
     color: string;
@@ -109,7 +109,7 @@ interface TrendData {
   filtered_by_subdis_cod: number[];
   filtered_by_village_codes: number[];
   trend_map_filename: string;
-  trend_map_base64: string; // NEW: Base64 encoded map image
+  trend_map_base64: string;
 }
 
 interface GroundwaterTrendContextType {
@@ -123,7 +123,7 @@ interface GroundwaterTrendContextType {
   
   // Map image functionality
   trendMapFilename: string | null;
-  trendMapBase64: string | null; // NEW: Base64 data
+  trendMapBase64: string | null; 
   getTrendMapUrl: () => string | null;
   
   setTrendMethod: (value: string) => void;
@@ -275,7 +275,7 @@ export const GroundwaterTrendProvider = ({
       return;
     }
 
-    // Prepare payload with village_codes (matching API expectations)
+    // Prepare payload with village_codes
     const payload = {
       wells_csv_filename: csvFilename,
       trend_years: Array.from({ length: endYearNum - startYearNum + 1 }, (_, i) => String(startYearNum + i)),
@@ -329,14 +329,14 @@ export const GroundwaterTrendProvider = ({
       
       if (mapFilename) {
         setTrendMapFilename(mapFilename);
-        console.log("✅ Trend Map Image Generated:", mapFilename);
+        console.log(" Trend Map Image Generated:", mapFilename);
       }
       
       if (mapBase64) {
         setTrendMapBase64(mapBase64);
-        console.log("✅ Trend Map Base64 Data Available");
+        console.log(" Trend Map Base64 Data Available");
       } else {
-        console.log("⚠️ No trend map base64 data available");
+        console.log(" No trend map base64 data available");
       }
 
       if (!data || typeof data !== "object" || !data.success) {
@@ -382,7 +382,7 @@ export const GroundwaterTrendProvider = ({
           analysisDate: data.summary_stats?.file_info?.analysis_date || new Date().toLocaleDateString(),
           colorMapping: data.color_mapping,
           filteredVillages: selectedVillages,
-          // CSV filenames for easy access
+          // CSV filenames
           csvFiles: {
             trend: data.summary_stats?.file_info?.trend_csv_filename,
             yearly: data.summary_stats?.file_info?.timeseries_yearly_csv_filename,
@@ -397,11 +397,11 @@ export const GroundwaterTrendProvider = ({
         },
       }));
 
-      console.log("✅ Trend analysis completed successfully!");
-      console.log(`📊 Analyzed ${data.total_villages} villages`);
-      console.log(`📈 Trends: ${data.summary_stats.trend_distribution.increasing} increasing, ${data.summary_stats.trend_distribution.decreasing} decreasing, ${data.summary_stats.trend_distribution.no_trend} no trend`);
-      console.log(`📁 Generated 3 CSV files: 1 trend analysis + 1 yearly time series + 1 seasonal time series`);
-      console.log(`🗺️ Generated trend map: ${mapFilename || 'none'} ${mapBase64 ? '(with base64 data)' : '(no base64 data)'}`);
+      console.log(" Trend analysis completed successfully!");
+      console.log(` Analyzed ${data.total_villages} villages`);
+      console.log(` Trends: ${data.summary_stats.trend_distribution.increasing} increasing, ${data.summary_stats.trend_distribution.decreasing} decreasing, ${data.summary_stats.trend_distribution.no_trend} no trend`);
+      console.log(` Generated 3 CSV files: 1 trend analysis + 1 yearly time series + 1 seasonal time series`);
+      console.log(` Generated trend map: ${mapFilename || 'none'} ${mapBase64 ? '(with base64 data)' : '(no base64 data)'}`);
 
     } catch (error) {
       const errorMessage =

@@ -60,13 +60,13 @@ export const GroundwaterForecastProvider = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔥 Access TrendContext - get ALL values to ensure fresh reference
+  //  Access TrendContext
   const trendContextValue = useContext(GroundwaterTrendContext);
   
-  // 🔥 Extract trendData separately for better reactivity
+  // Extract trendData separately for better reactivity
   const { trendData, trendMethod, yearStart, yearEnd } = trendContextValue;
   
-  // 🔥 Use useCallback to get the latest trendData reference
+  //  Use useCallback to get the latest trendData reference
   const getLatestTrendData = useCallback(() => {
     return trendContextValue.trendData;
   }, [trendContextValue.trendData]);
@@ -74,20 +74,20 @@ export const GroundwaterForecastProvider = ({
   // Debug function to check context access
   const debugTrendAccess = useCallback(() => {
     const latestTrendData = getLatestTrendData();
-    console.log('=== 🔍 DEBUGGING TREND CONTEXT ACCESS ===');
-    console.log('🔗 trendContextValue:', trendContextValue);
-    console.log('🔗 trendContextValue available?:', !!trendContextValue);
-    console.log('📊 trendData from destructuring:', trendData);
-    console.log('📊 latestTrendData from callback:', latestTrendData);
-    console.log('📊 trendData available?:', !!latestTrendData);
+    console.log('===  DEBUGGING TREND CONTEXT ACCESS ===');
+    console.log(' trendContextValue:', trendContextValue);
+    console.log(' trendContextValue available?:', !!trendContextValue);
+    console.log(' trendData from destructuring:', trendData);
+    console.log(' latestTrendData from callback:', latestTrendData);
+    console.log(' trendData available?:', !!latestTrendData);
     
     if (latestTrendData) {
-      console.log('✅ TrendData found!');
-      console.log('🎯 success:', latestTrendData.success);
-      console.log('📁 summary_stats:', !!latestTrendData.summary_stats);
-      console.log('📂 file_info:', !!latestTrendData.summary_stats?.file_info);
-      console.log('📄 timeseries_yearly_csv_filename:', latestTrendData.summary_stats?.file_info?.timeseries_yearly_csv_filename);
-      console.log('🔗 Full analysis info:', {
+      console.log(' TrendData found!');
+      console.log(' success:', latestTrendData.success);
+      console.log(' summary_stats:', !!latestTrendData.summary_stats);
+      console.log(' file_info:', !!latestTrendData.summary_stats?.file_info);
+      console.log(' timeseries_yearly_csv_filename:', latestTrendData.summary_stats?.file_info?.timeseries_yearly_csv_filename);
+      console.log(' Full analysis info:', {
         success: latestTrendData.success,
         total_villages: latestTrendData.total_villages,
         analysis_timestamp: latestTrendData.analysis_timestamp,
@@ -95,7 +95,7 @@ export const GroundwaterForecastProvider = ({
       });
     } else {
       console.log('❌ No trendData found');
-      console.log('🔍 Context debug info:', {
+      console.log(' Context debug info:', {
         'trendContextValue exists': !!trendContextValue,
         'trendData from destructuring': !!trendData,
         'direct access trendContextValue.trendData': !!trendContextValue?.trendData,
@@ -104,19 +104,19 @@ export const GroundwaterForecastProvider = ({
     console.log('=============================================');
   }, [trendContextValue, trendData, getLatestTrendData]);
 
-  // Helper to get timeseries filename - use latest data
+  // Helper to get timeseries filename 
   const getTimeseriesFilename = useCallback((): string | null => {
     const latestTrendData = getLatestTrendData();
     const filename = latestTrendData?.summary_stats?.file_info?.timeseries_yearly_csv_filename || null;
-    console.log('🔍 getTimeseriesFilename - latest:', filename);
+    console.log(' getTimeseriesFilename - latest:', filename);
     return filename;
   }, [getLatestTrendData]);
 
-  // 🔥 Monitor ALL trend context changes
+  //  Monitor ALL trend context changes
   useEffect(() => {
-    console.log('🔄 ForecastContext: TrendContext changed');
-    console.log('🔄 TrendData exists:', !!trendData);
-    console.log('🔄 TrendData timestamp:', trendData?.analysis_timestamp);
+    console.log(' ForecastContext: TrendContext changed');
+    console.log(' TrendData exists:', !!trendData);
+    console.log(' TrendData timestamp:', trendData?.analysis_timestamp);
     debugTrendAccess();
   }, [trendContextValue, trendData, debugTrendAccess]);
 
@@ -141,9 +141,7 @@ export const GroundwaterForecastProvider = ({
   };
 
   const handleGenerate = async () => {
-    console.log('🚀 === FORECAST GENERATION STARTED ===');
-    
-    // First debug trend access with latest data
+    console.log(' === FORECAST GENERATION STARTED ===');
     debugTrendAccess();
     
     // Validate all required fields
@@ -152,7 +150,7 @@ export const GroundwaterForecastProvider = ({
       return;
     }
 
-    // 🔥 Get latest trend data using callback
+    //  trend data using callback
     const latestTrendData = getLatestTrendData();
 
     // Check if trend context is available
@@ -192,8 +190,8 @@ export const GroundwaterForecastProvider = ({
       return;
     }
 
-    console.log('✅ All validations passed!');
-    console.log('📄 Using timeseries file:', timeseriesCsvFilename);
+    console.log(' All validations passed!');
+    console.log(' Using timeseries file:', timeseriesCsvFilename);
 
     // Validate year selection based on forecast type
     if (forecastType === 'single') {
@@ -256,17 +254,17 @@ export const GroundwaterForecastProvider = ({
       setError(null);
       setForecastData(null);
 
-      console.log('📡 === Posting Forecast Analysis Payload ===');
-      console.log('📊 Trend Analysis Info:');
-      console.log(`   - Analysis Date: ${latestTrendData.summary_stats?.file_info?.analysis_date}`);
-      console.log(`   - Total Villages: ${latestTrendData.total_villages}`);
-      console.log(`   - Analysis Timestamp: ${latestTrendData.analysis_timestamp}`);
-      console.log('🎯 Forecast Payload Details:');
-      console.log(`   - Method: ${payload.method}`);
-      console.log(`   - Forecast Type: ${payload.forecast_type}`);
-      console.log(`   - Target Years: ${payload.target_years.join(', ')}`);
-      console.log(`   - Timeseries CSV: ${payload.timeseries_yearly_csv_filename}`);
-      console.log('📋 Full Payload:', JSON.stringify(payload, null, 2));
+      console.log(' === Posting Forecast Analysis Payload ===');
+      console.log(' Trend Analysis Info:');
+      console.log(`   Analysis Date: ${latestTrendData.summary_stats?.file_info?.analysis_date}`);
+      console.log(`    Total Villages: ${latestTrendData.total_villages}`);
+      console.log(`   Analysis Timestamp: ${latestTrendData.analysis_timestamp}`);
+      console.log(' Forecast Payload Details:');
+      console.log(`    Method: ${payload.method}`);
+      console.log(`    Forecast Type: ${payload.forecast_type}`);
+      console.log(`    Target Years: ${payload.target_years.join(', ')}`);
+      console.log(`    Timeseries CSV: ${payload.timeseries_yearly_csv_filename}`);
+      console.log(' Full Payload:', JSON.stringify(payload, null, 2));
 
       const response = await fetch('/django/gwa/forecast', {
         method: 'POST',
@@ -277,7 +275,7 @@ export const GroundwaterForecastProvider = ({
         body: JSON.stringify(payload),
       });
 
-      console.log('📡 Forecast API response status:', response.status);
+      console.log(' Forecast API response status:', response.status);
 
       if (!response.ok) {
         let errorMessage = `Failed to generate forecast analysis: ${response.status} ${response.statusText}`;
@@ -292,8 +290,8 @@ export const GroundwaterForecastProvider = ({
       }
 
       const data = await response.json();
-      console.log('✅ Forecast analysis completed successfully!');
-      console.log('📊 Data received:', data);
+      console.log(' Forecast analysis completed successfully!');
+      console.log(' Data received:', data);
 
       // Validate response data
       if (!data || typeof data !== 'object') {
@@ -303,8 +301,8 @@ export const GroundwaterForecastProvider = ({
       setForecastData(data);
       onForecastData(data);
 
-      console.log('🎉 Forecast generation completed!');
-      console.log(`📄 Based on: ${timeseriesCsvFilename}`);
+      console.log(' Forecast generation completed!');
+      console.log(` Based on: ${timeseriesCsvFilename}`);
       
     } catch (error) {
       console.log('❌ Error generating forecast analysis:', error);

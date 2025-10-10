@@ -296,9 +296,6 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                     Trend analysis will be performed for {parseInt(yearEnd) - parseInt(yearStart) + 1} years
                     ({yearStart} to {yearEnd}).
                   </p>
-                  {/* <p className="text-blue-600">
-                    Method: {trendMethod?.replace('_', ' ')} | Wells: {wellsData?.length || 0} | Sub-districts: {selectedSubDistricts.length}
-                  </p> */}
                 </div>
               </div>
             </div>

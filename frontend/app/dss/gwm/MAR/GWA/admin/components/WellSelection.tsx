@@ -135,7 +135,7 @@ const WellSelection: React.FC<WellSelectionProps> = ({ onWellsConfirmed, onReset
       return;
     }
 
-    // Use the wellData as received from popup (already contains all columns)
+    // Use the wellData as received from popup
     const completeWellData: WellData = { ...wellData };
 
     // Ensure coordinates are properly set
@@ -215,7 +215,7 @@ const WellSelection: React.FC<WellSelectionProps> = ({ onWellsConfirmed, onReset
     };
   }, []);
 
-  // UPDATED: Combined handleFinalConfirm function that saves and confirms
+  //Combined handleFinalConfirm function that saves and confirms
   const handleFinalConfirm = async (): Promise<void> => {
     if (!areaConfirmed || wellsData.length === 0) {
       console.log("Cannot confirm: Area not confirmed or no wells data");
@@ -470,7 +470,7 @@ const WellSelection: React.FC<WellSelectionProps> = ({ onWellsConfirmed, onReset
         </div>
       </div>
 
-      {/* WELLS TABLE SECTION - Fixed height container */}
+      {/* WELLS TABLE SECTION */}
       {wellsData.length > 0 && (
         <div className="flex-1 mt-4 p-4 bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
           <div className="flex justify-between items-center mb-4 flex-shrink-0">
@@ -631,7 +631,7 @@ const WellSelection: React.FC<WellSelectionProps> = ({ onWellsConfirmed, onReset
             </div>
           </div>
 
-          {/* UPDATED FINAL ACTIONS - Single combined button */}
+          
           <div className="flex justify-center space-x-4 mt-4 pt-4 border-t border-gray-200 flex-shrink-0">
             <button
               className={`${areaConfirmed && wellsData.length > 0

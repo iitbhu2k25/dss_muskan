@@ -270,7 +270,6 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     setSelectedSubDistricts([]);
     setTotalPopulation(0);
     setSelectionsLocked(false);
-    // Reset area confirmation when state changes
     setAreaConfirmed(false);
   };
 

@@ -467,9 +467,9 @@ def match_village_data(
             'total_demand': round(total_demand, 4),
             'gsr': round(gsr, 4) if gsr is not None else None,
             'gsr_status': gsr_status,
-            'trend_status': trend_status,                    # Trend from CSV
-            'gsr_classification': gsr_classification,        # ✅ NEW: Classification field
-            'classification_color': classification_color,    # ✅ NEW: Color field
+            'trend_status': trend_status,                  
+            'gsr_classification': gsr_classification,       
+            'classification_color': classification_color,    
             'has_recharge_data': village_code in recharge_map,
             'has_domestic_data': village_code in domestic_map,
             'has_agricultural_data': village_code in agricultural_map,

@@ -108,8 +108,6 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
   return (
     <div className="h-full overflow-auto flex flex-col relative">
       {/* Full Screen Loading Overlay */}
-      {/* Full Screen Loading Overlay */}
-      {/* Full Screen Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="text-center bg-white rounded-xl shadow-2xl p-8">
@@ -503,8 +501,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
-                          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Quality</th> */}
-                          {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depth Info</th> */}
+                        
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">

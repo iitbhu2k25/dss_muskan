@@ -11,7 +11,7 @@ interface GSRProps {
   step: number;
 }
 
-// UPDATED: Stress Identification Component for Drain Case - Now uses new stress structure
+// Stress Identification Component 
 const StressIdentification: React.FC = () => {
   const [yearsCount, setYearsCount] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -46,17 +46,17 @@ const StressIdentification: React.FC = () => {
     }
   };
 
-  // UPDATED Drain Stress Data Table Display - New structure
+  //  Drain Stress Data Table Display 
   const StressTableDisplay = ({ tableData }: { tableData: any[] }) => {
     if (tableData.length === 0) return null;
 
-    // Updated visible columns to match new backend structure
+    //  visible columns
     const visibleColumns = [
       'village_name',
       'recharge',
       'total_demand',
       'injection',
-      'stress_value'  // Only stress value, no classification
+      'stress_value'  
     ];
 
     const formatHeader = (header: string): string => {
@@ -72,14 +72,14 @@ const StressIdentification: React.FC = () => {
       return headerMap[header] || header.replace(/_/g, ' ').toUpperCase();
     };
 
-    // UPDATED cell formatting for stress values
+    // cell formatting for stress values
     const formatCellValue = (value: any, column: string): string => {
       if (value === null || value === undefined) return '-';
 
       // Format numbers with appropriate precision
       if (typeof value === 'number') {
         if (['recharge', 'total_demand', 'injection', 'stress_value'].includes(column)) {
-          return value.toFixed(4);  // 4 decimal places for precision
+          return value.toFixed(4);  
         } else {
           return value.toString();
         }
@@ -88,7 +88,7 @@ const StressIdentification: React.FC = () => {
       return String(value);
     };
 
-    // UPDATED cell classes for stress values - removed old classification logic
+    // cell classes for stress values 
     const getCellClasses = (row: any, column: string): string => {
       const value = row[column];
       let baseClasses = "px-4 py-3 text-sm whitespace-nowrap";
@@ -163,30 +163,8 @@ const StressIdentification: React.FC = () => {
           </table>
         </div>
 
-        {/* UPDATED summary information with color legend */}
-        {/* <div className="mt-2 text-sm text-gray-600 flex justify-between">
-          <span>
-            Showing {tableData.length} drain village{tableData.length !== 1 ? 's' : ''} with stress analysis
-          </span>
-          <span className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span>High (&gt;100)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-orange-500 rounded"></div>
-              <span>Medium (50-100)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-              <span>Low (0-50)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span>Minimal (0)</span>
-            </span>
-          </span>
-        </div> */}
+  
+       
       </div>
     );
   };
@@ -275,10 +253,7 @@ const StressIdentification: React.FC = () => {
 
         </div>
 
-        {/* ADDED: Formula display for drain case */}
-        {/* <div className="text-xs text-blue-600 mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-          <strong>Formula:</strong> Stress Value = |Recharge - Total Demand| + (Injection / Years Count)
-        </div> */}
+      
       </div>
       <div className="mb-4 flex items-center gap-4">
         {/* Compute Stress Button */}
@@ -358,7 +333,7 @@ const StressIdentification: React.FC = () => {
   );
 };
 
-// GSR Analysis Component for Drain Case (unchanged)
+// GSR Analysis Component 
 const GSRAnalysis: React.FC = () => {
   const {
     gsrTableData,
@@ -373,7 +348,6 @@ const GSRAnalysis: React.FC = () => {
   const { domesticTableData, agriculturalTableData } = useDemand();
   const [showGsrTable, setShowGsrTable] = useState(true);
 
-  // *** CONFIGURABLE COLUMNS - Comment/uncomment to show/hide columns ***
   // These are the actual column names returned by your API
   const visibleColumns = [
     // 'village_code',
@@ -381,27 +355,27 @@ const GSRAnalysis: React.FC = () => {
     // 'subdistrict_code',
     'recharge',
     // 'domestic_demand',
-    // 'agricultural_demand',      // Comment to hide
+    // 'agricultural_demand', 
     'total_demand',
     'gsr',
     // 'gsr_status',
-    'trend_status',               // ← NEW: Added trend status column
-    'gsr_classification',         // ← NEW: Added GSR classification column
-    // 'classification_color',       // ← NEW: Added GSR classification color
-    // 'has_recharge_data',       // Uncomment to show this column
-    // 'has_domestic_data',       // Uncomment to show this column  
-    // 'has_agricultural_data',   // Uncomment to show this column
+    'trend_status',               
+    'gsr_classification',         
+    // 'classification_color', 
+    // 'has_recharge_data',       
+    // 'has_domestic_data',       
+    // 'has_agricultural_data',   
   ];
 
   // GSR Table Display Component with configurable columns
   const GSRTableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => {
     if (tableData.length === 0) return null;
 
-    // 🔍 DEBUG: Log the actual data structure for drain case
-    console.log('🔍 DEBUG - Drain GSR First row:', tableData[0]);
-    console.log('🔍 DEBUG - Drain Available columns:', Object.keys(tableData[0] || {}));
-    console.log('🔍 DEBUG - Drain GSR Classification:', tableData[0]?.gsr_classification);
-    console.log('🔍 DEBUG - Drain Classification Color:', tableData[0]?.classification_color);
+    //  DEBUG: Log the actual data structure for drain case
+    console.log(' DEBUG - Drain GSR First row:', tableData[0]);
+    console.log(' DEBUG - Drain Available columns:', Object.keys(tableData[0] || {}));
+    console.log(' DEBUG - Drain GSR Classification:', tableData[0]?.gsr_classification);
+    console.log(' DEBUG - Drain Classification Color:', tableData[0]?.classification_color);
 
     // Get all available columns from the data
     const allColumns = Object.keys(tableData[0] || {});
@@ -422,7 +396,7 @@ const GSRAnalysis: React.FC = () => {
         'gsr': 'GSR Ratio',
         'gsr_status': 'GSR Status',
         'trend_status': 'Trend Status',
-        'gsr_classification': 'GSR Classification',  // ← NEW: Added classification header
+        'gsr_classification': 'GSR Classification',  
         'classification_color': 'Classification Color',
         'has_recharge_data': 'Has Recharge Data',
         'has_domestic_data': 'Has Domestic Data',
@@ -500,7 +474,7 @@ const GSRAnalysis: React.FC = () => {
         if (backendColor) {
           // Apply dynamic color from backend
           baseClasses += " text-white";
-          return baseClasses; // We'll apply the background color via inline style
+          return baseClasses; 
         } else {
           // Fallback to predefined colors
           const classificationValue = String(value).toLowerCase();
@@ -580,7 +554,7 @@ const GSRAnalysis: React.FC = () => {
                     <td
                       key={column}
                       className={getCellClasses(row, column)}
-                      style={getInlineStyle(row, column)} // ← NEW: Apply backend colors
+                      style={getInlineStyle(row, column)} 
                     >
                       {formatCellValue(row[column], column)}
                     </td>
@@ -762,7 +736,7 @@ const GSR: React.FC<GSRProps> = ({ step }) => {
 
         <GSRAnalysis />
 
-        {/* UPDATED: Stress Identification Component for Drain - Now uses new stress structure */}
+        {/*  Stress Identification Component for Drain */}
         <StressIdentification />
 
 

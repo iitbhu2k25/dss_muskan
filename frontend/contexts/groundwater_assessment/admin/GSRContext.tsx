@@ -35,7 +35,7 @@ interface GSRContextType {
   stressError: string | null;
 
   // GeoJSON State
-  gsrGeojsonData: any | null; // GeoJSON FeatureCollection
+  gsrGeojsonData: any | null; 
   mergeStatistics: MergeStatistics | null;
 
   // Map Image State
@@ -46,7 +46,7 @@ interface GSRContextType {
   computeGSR: () => Promise<void>;
   canComputeGSR: () => boolean;
 
-  // Stress Identification Actions (uses yearsCount instead of calendar year)
+  // Stress Identification Actions 
   computeStressIdentification: (yearsCount: number) => Promise<StressData[]>;
   canComputeStressIdentification: () => boolean;
 
@@ -100,11 +100,10 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
   // Get map image URL helper
   const getMapImageUrl = (): string | null => {
     if (!mapImageFilename) return null;
-    // Construct the full URL to the image in media/temp/
     return `/django/media/temp/${mapImageFilename}`;
   };
 
-  // Get map image source helper (prefer base64 if available)
+  // Get map image source helper 
   const getMapImageSrc = (): string | null => {
     if (mapImageBase64) return mapImageBase64;
     return getMapImageUrl();
@@ -249,7 +248,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
     }
   };
 
-  // Compute Stress Identification (UPDATED: uses yearsCount instead of calendar year)
+  // Compute Stress Identification (UPDATED: uses yearsCount)
   const computeStressIdentification = async (yearsCount: number): Promise<StressData[]> => {
     try {
       setStressLoading(true);
@@ -268,7 +267,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       // Request payload: use yearsCount instead of year
       const requestPayload = {
         gsrData: gsrTableData,
-        years_count: yearsCount, // CHANGED: now accepts count of years (1-50)
+        years_count: yearsCount,
         selectedSubDistricts: selectedSubDistricts,
         timestamp: new Date().toISOString()
       };

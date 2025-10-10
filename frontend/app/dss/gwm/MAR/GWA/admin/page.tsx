@@ -29,7 +29,7 @@ interface Step {
   name: string;
 }
 
-// UPDATED COMPONENT: Compute Available Water Button with Query Parameters + sessionStorage for Stress Data
+//  Compute Available Water Button 
 function ComputeAvailableWaterButton() {
   const { selectedState, selectedDistricts, selectedSubDistricts } = useLocation();
   const { stressTableData } = useGSR(); // Get stress data from GSR context
@@ -52,15 +52,15 @@ function ComputeAvailableWaterButton() {
     if (stressTableData && stressTableData.length > 0) {
       try {
        localStorage.setItem('gwa_stress_data', JSON.stringify(stressTableData));
-        console.log('✅ Stress data stored in sessionStorage:', stressTableData.length, 'villages');
+        console.log(' Stress data stored in sessionStorage:', stressTableData.length, 'villages');
       } catch (error) {
-        console.log('❌ Failed to store stress data:', error);
+        console.log(' Failed to store stress data:', error);
         alert('Warning: Could not transfer stress data. The dataset might be too large.');
       }
     } else {
       // Clear any old stress data
       localStorage.removeItem('gwa_stress_data');
-      console.log('⚠️ No stress data available to transfer');
+      console.log(' No stress data available to transfer');
     }
 
     const url = `/dss/gwm/MAR/SWA?${params.toString()}`;
@@ -142,7 +142,7 @@ function GroundwaterAssessmentContent() {
 
   React.useEffect(() => {
   if (activeStep === 3 && canComputeRecharge() && tableData.length === 0) {
-    console.log("🔄 Auto-triggering groundwater recharge computation...");
+    console.log(" Auto-triggering groundwater recharge computation...");
     computeRecharge();
   }
 }, [activeStep]);

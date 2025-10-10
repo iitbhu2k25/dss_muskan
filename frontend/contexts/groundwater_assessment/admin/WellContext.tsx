@@ -49,7 +49,7 @@ interface WellContextType {
   removeRow: (index: number) => void;
   addNewColumn: () => void;
   removeColumn: (columnName: string) => void;
-  saveWellTable: () => Promise<boolean>; // Updated to return Promise<boolean>
+  saveWellTable: () => Promise<boolean>;
   exportToCSV: () => void;
   setNewColumnName: (name: string) => void;
   getDisplayColumns: () => string[];
@@ -98,7 +98,7 @@ const WellContext = createContext<WellContextType>({
   removeRow: () => {},
   addNewColumn: () => {},
   removeColumn: () => {},
-  saveWellTable: async () => false, // Updated default
+  saveWellTable: async () => false, 
   exportToCSV: () => {},
   setNewColumnName: () => {},
   getDisplayColumns: () => [],
@@ -204,7 +204,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
   };
 
   // Mandatory columns to display
-  // Updated getDisplayColumns function to handle CSV mode
+
   const getDisplayColumns = () => {
     if (wellSelectionMode === 'upload_csv' && wellsData.length > 0) {
       // For CSV mode, use the actual columns from the uploaded data
@@ -313,7 +313,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
     }
   };
 
-  // Updated saveWellTable to return Promise<boolean>
+  // saveWellTable to return Promise<boolean>
   const saveWellTable = async (): Promise<boolean> => {
     if (wellsData.length === 0) return false;
 
@@ -425,7 +425,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
     }
   };
 
-  // Function to validate and upload CSV - FIXED VERSION
+  // Function to validate and upload CSV 
   const validateAndProcessCSV = async (file: File): Promise<{ success: boolean; message: string; data?: WellData[] }> => {
     try {
       console.log("Validating CSV file...");
@@ -455,7 +455,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
 
       console.log("CSV validation successful:", validationResult);
 
-      // Parse CSV data EXACTLY as uploaded - preserve original structure
+      // Parse CSV data EXACTLY as uploaded 
       const csvText = await file.text();
       const lines = csvText.split('\n').filter(line => line.trim() !== '');
       const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
@@ -586,8 +586,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
       useNewWells: wellSelectionMode !== null,
       newWellsMode: wellSelectionMode,
     });
-    
-    // Fixed type issue: ensure wellSelectionMode is properly typed
+   
     const newWellsMode: 'existing_and_new' | 'only_new' | 'upload_csv' | undefined = 
       wellSelectionMode === 'existing_and_new' ? 'existing_and_new' :
       wellSelectionMode === 'upload_csv' ? 'upload_csv' :

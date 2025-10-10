@@ -9,10 +9,10 @@ interface TableData {
 }
 
 interface CropData {
-  [season: string]: string[]; // season -> array of crop names
+  [season: string]: string[]; 
 }
 
-// Updated interface for chart data matching the new API response
+//  interface for chart data matching the new API response
 interface ChartData {
   individual_crops: {
     type: "scatter";
@@ -56,16 +56,16 @@ interface DemandContextType {
   // Groundwater Factor
   groundwaterFactor: number;
   
-  // Charts State - Updated to match new API response structure
+  // Charts State 
   chartData: ChartData | null;
   chartsError: string | null;
 
-  // Data State - separate for each demand type
+  // Data State 
   domesticTableData: TableData[];
   agriculturalTableData: TableData[];
   industrialTableData: TableData[];
 
-  // Loading and Error State - separate for each demand type
+  // Loading and Error State
   domesticLoading: boolean;
   agriculturalLoading: boolean;
   industrialLoading: boolean;
@@ -127,16 +127,16 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   // Groundwater Factor
   const [groundwaterFactor, setGroundwaterFactor] = useState<number>(0.8);
   
-  // Charts State - Updated to match new API response structure
+  // Charts State 
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [chartsError, setChartsError] = useState<string | null>(null);
 
-  // Data State - separate for each demand type
+  // Data State
   const [domesticTableData, setDomesticTableData] = useState<TableData[]>([]);
   const [agriculturalTableData, setAgriculturalTableData] = useState<TableData[]>([]);
   const [industrialTableData, setIndustrialTableData] = useState<TableData[]>([]);
 
-  // Loading and Error State - separate for each demand type
+  // Loading and Error State 
   const [domesticLoading, setDomesticLoading] = useState<boolean>(false);
   const [agriculturalLoading, setAgriculturalLoading] = useState<boolean>(false);
   const [industrialLoading, setIndustrialLoading] = useState<boolean>(false);
@@ -144,7 +144,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   const [agriculturalError, setAgriculturalError] = useState<string | null>(null);
   const [industrialError, setIndustrialError] = useState<string | null>(null);
 
-  // Context dependencies - Updated for drain case
+  // Context dependencies 
   const { selectedVillages } = useLocation();
   const { csvFilename } = useWell();
 
@@ -239,7 +239,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     });
   };
 
-  // Check if compute demand can be performed for each type - Updated for drain case
+  // Check if compute demand can be performed for each type 
   const canComputeDomesticDemand = (): boolean => {
     return !!(domesticChecked && selectedVillages.length > 0 && perCapitaConsumption > 0 && csvFilename);
   };
@@ -351,7 +351,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       
       // Prepare request payload with selected crops, groundwater factor, irrigation intensity, and charts flag
       const requestPayload = {
-        village_code: villageCodes, // Use village_code for drain version
+        village_code: villageCodes, 
         selectedCrops: selectedCrops,
         groundwaterFactor: groundwaterFactor,
         irrigationIntensity: 0.8,  // Fixed value - not shown on frontend
@@ -409,7 +409,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       console.log('Error computing agricultural demand:', errorMessage);
       setAgriculturalError(errorMessage);
       setAgriculturalTableData([]);
-      clearChartData(); // Clear charts on error
+      clearChartData();
     } finally {
       setAgriculturalLoading(false);
     }
@@ -493,12 +493,12 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     chartData,
     chartsError,
 
-    // Data State - separate for each demand type
+    // Data State 
     domesticTableData,
     agriculturalTableData,
     industrialTableData,
 
-    // Loading and Error State - separate for each demand type
+    // Loading and Error State 
     domesticLoading,
     agriculturalLoading,
     industrialLoading,

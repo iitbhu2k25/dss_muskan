@@ -31,7 +31,6 @@ const Demand = () => {
     cropsLoading,
     cropsError,
     groundwaterFactor,
-    // Chart states - Updated for new structure
     chartData,
     chartsError,
     domesticTableData,
@@ -48,7 +47,6 @@ const Demand = () => {
     setIndustrialChecked,
     setPerCapitaConsumption,
     setGroundwaterFactor,
-    // Chart actions
     clearChartData,
     setKharifChecked,
     setRabiChecked,
@@ -71,8 +69,6 @@ const Demand = () => {
   const toggleAgriculturalTable = () => setShowAgriculturalTable((prev) => !prev);
   const [showIndustrialTable, setShowIndustrialTable] = useState(false);
   const toggleIndustrialTable = () => setShowIndustrialTable((prev) => !prev);
-
-
   // State for chart selection between individual and cumulative charts
   const [selectedChart, setSelectedChart] = useState<'individual' | 'cumulative'>('individual');
 
@@ -83,9 +79,9 @@ const Demand = () => {
     'forecast_population',
     'target_year',
     'lpcd',
-    // 'village_code',           // Uncomment to show village code
-    // 'current_population',     // Uncomment to show current population
-    // 'growth_rate',           // Uncomment to show growth rate
+    // 'village_code',        
+    // 'current_population',    
+    // 'growth_rate',           
   ];
 
   // *** CONFIGURABLE COLUMNS FOR AGRICULTURAL TABLE ***
@@ -97,15 +93,13 @@ const Demand = () => {
     // 'index_sum_across_seasons_crops',
     // 'groundwater_factor',
     'village_demand',
-    // 'total_irrigated_area',   // Uncomment to show total irrigated area
-    // 'irrigation_method',      // Uncomment to show irrigation method
-    // 'crop_intensity',         // Uncomment to show crop intensity
+    // 'total_irrigated_area',   
+    // 'irrigation_method',     
+    // 'crop_intensity',       
   ];
 
   // *** CONFIGURABLE COLUMNS FOR INDUSTRIAL TABLE ***
   const industrialVisibleColumns: string | string[] = [
-    // Add the columns you want to show for industrial data
-    // This will be populated based on your actual industrial API response
   ];
 
   // Custom table component for domestic demand with configurable columns
@@ -289,7 +283,7 @@ const Demand = () => {
     );
   };
 
-  // NEW: Interactive Chart Display Component using Recharts
+  // Interactive Chart Display Component using Recharts
   const ChartDisplay = () => {
     if (!chartData) return null;
 
@@ -1064,7 +1058,6 @@ const Demand = () => {
             </div>
           )}
 
-          {/* Compute Button */}
           {/* Buttons Row */}
           <div className="mb-4 flex items-center gap-4 mt-4">
             <button
@@ -1134,7 +1127,7 @@ const Demand = () => {
       )}
     </div>
 
-    {/* Right: Chart Panel (persistent — does not re-render table) */}
+    {/* Right: Chart Panel*/}
     <div>
       <ChartDisplay />
     </div>
@@ -1197,7 +1190,6 @@ const Demand = () => {
           )}
 
           {/* Compute Button */}
-          {/* Buttons Row */}
           <div className="mb-4 flex items-center gap-4">
             <button
               onClick={computeIndustrialDemand}
