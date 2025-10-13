@@ -1302,7 +1302,6 @@ const Population: React.FC<PopulationProps> = ({
 
                             <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                                 <p className="text-blue-700 text-sm">
-                                    <strong>Auto-selection criteria:</strong> Method with minimum average growth rate (most conservative approach for planning).
                                     {(window as any).selectedMethodReason && (
                                         <span className="block mt-1">
                                             <strong>Current selection:</strong> {(window as any).selectedMethodReason}

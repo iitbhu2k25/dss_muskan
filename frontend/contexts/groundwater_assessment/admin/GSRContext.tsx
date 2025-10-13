@@ -35,7 +35,7 @@ interface GSRContextType {
   stressError: string | null;
 
   // GeoJSON State
-  gsrGeojsonData: any | null; 
+  gsrGeojsonData: any | null;
   mergeStatistics: MergeStatistics | null;
 
   // Map Image State
@@ -141,6 +141,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
     return gsrTableData.length > 0;
   };
 
+
   // Compute GSR
   const computeGSR = async () => {
     try {
@@ -163,22 +164,22 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       // Trend CSV from trend context
       const trendCsvFilename = trendData?.summary_stats?.file_info?.trend_csv_filename || null;
 
-      const requestPayload = {
-        selectedSubDistricts: selectedSubDistricts,
-        rechargeData: rechargeTableData,
-        domesticData: domesticTableData,
-        agriculturalData: agriculturalTableData,
-        hasDomesticDemand: domesticChecked && domesticTableData.length > 0,
-        hasAgriculturalDemand: agriculturalChecked && agriculturalTableData.length > 0,
-        hasRechargeData: rechargeTableData.length > 0,
-        trendCsvFilename: trendCsvFilename,
-        timestamp: new Date().toISOString()
-      };
+      //  Create FormData instead of JSON
+      const formData = new FormData();
+      formData.append('selectedSubDistricts', JSON.stringify(selectedSubDistricts));
+      formData.append('rechargeData', JSON.stringify(rechargeTableData));
+      formData.append('domesticData', JSON.stringify(domesticTableData));
+      formData.append('agriculturalData', JSON.stringify(agriculturalTableData));
+      formData.append('hasDomesticDemand', JSON.stringify(domesticChecked && domesticTableData.length > 0));
+      formData.append('hasAgriculturalDemand', JSON.stringify(agriculturalChecked && agriculturalTableData.length > 0));
+      formData.append('hasRechargeData', JSON.stringify(rechargeTableData.length > 0));
+      formData.append('trendCsvFilename', trendCsvFilename || '');
+      formData.append('timestamp', new Date().toISOString());
 
+      //  Send FormData via fetch (no headers for Content-Type)
       const response = await fetch('/django/gwa/gsr', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -188,7 +189,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
 
       const result = await response.json();
 
-      // Table data
+      //  Same handling as before
       if (result.success && result.data && Array.isArray(result.data)) {
         setGSRTableData(result.data);
       } else if (result.gsr_data && Array.isArray(result.gsr_data)) {
@@ -199,7 +200,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         throw new Error('Invalid response format from server');
       }
 
-      // Map GeoJSON
+      // GeoJSON handling
       if (result.geospatial_data) {
         try {
           addGsrLayer(result.geospatial_data);
@@ -217,22 +218,21 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         setMergeStatistics(result.merge_statistics);
       }
 
-      // Handle map image filename
+      // Map images
       if (result.map_image_filename) {
         setMapImageFilename(result.map_image_filename);
-        console.log('📍 GSR map image generated:', result.map_image_filename);
+        console.log(' GSR map image generated:', result.map_image_filename);
       } else {
         setMapImageFilename(null);
-        console.log('⚠️ No map image generated');
+        console.log(' No map image generated');
       }
 
-      // Handle map image base64
       if (result.map_image_base64) {
         setMapImageBase64(result.map_image_base64);
-        console.log('📍 GSR map image base64 received');
+        console.log(' GSR map image base64 received');
       } else {
         setMapImageBase64(null);
-        console.log('⚠️ No map image base64 received');
+        console.log(' No map image base64 received');
       }
 
     } catch (err) {
@@ -248,7 +248,8 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
     }
   };
 
-  // Compute Stress Identification (UPDATED: uses yearsCount)
+
+  // Compute Stress Identification
   const computeStressIdentification = async (yearsCount: number): Promise<StressData[]> => {
     try {
       setStressLoading(true);
@@ -315,7 +316,6 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
     gsrTableData,
     gsrLoading,
     gsrError,
-
     // Stress State
     stressTableData,
     stressLoading,

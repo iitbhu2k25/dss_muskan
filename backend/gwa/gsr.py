@@ -546,6 +546,17 @@ class GSRComputeAPIView(APIView):
     def post(self, request, format=None):
         try:
             data = request.data
+            data = request.data.copy()   #  Make a mutable copy
+            print("aaaaaaaaa")
+
+            for key in ["rechargeData", "domesticData", "agriculturalData", "selectedSubDistricts"]:
+                if isinstance(data.get(key), str):
+                    try:
+                        data[key] = json.loads(data[key])
+                    except json.JSONDecodeError:
+                        data[key] = []
+
+
             
             # Extract data arrays from request
             recharge_data = data.get('rechargeData', [])
