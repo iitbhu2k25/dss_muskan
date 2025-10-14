@@ -1030,11 +1030,7 @@ const Demand = () => {
                 Please select at least one season and crop.
               </div>
             )}
-
-
-
-
-
+            
             {/* Show/Hide Table */}
             {agriculturalTableData.length > 0 && (
               <>

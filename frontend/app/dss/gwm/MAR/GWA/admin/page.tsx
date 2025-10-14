@@ -352,13 +352,13 @@ function GroundwaterAssessmentContent() {
       </svg>
     </button>
     {/* Show red dot if next button is disabled on step 1 (before confirm) */}
-    {(activeStep === 1 && !selectionsLocked) && (
+    {/* {(activeStep === 1 && !selectionsLocked) && (
       <span
         className="absolute -right-3 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-lg animate-pulse"
         title="Please confirm wells before proceeding"
         aria-label="Confirmation required"
       />
-    )}
+    )} */}
   </div>
 </div>
 
