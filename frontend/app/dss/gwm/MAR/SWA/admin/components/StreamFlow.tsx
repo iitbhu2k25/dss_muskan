@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { useStreamFlowContext } from '@/contexts/surfacewater_assessment/admin/StreamFlowContext'; // fixed to village path
+import { useStreamFlowContext } from '@/contexts/surfacewater_assessment/admin/StreamFlowContext';
 import { useLocationContext } from '@/contexts/surfacewater_assessment/admin/LocationContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 
@@ -63,6 +63,8 @@ export default function StreamFlow() {
     useStreamFlowContext();
 
   const [selectedVillage, setSelectedVillage] = useState<string | null>(null);
+  const [villageSearchTerm, setVillageSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (series.length > 0) {
@@ -83,6 +85,14 @@ export default function StreamFlow() {
         label: s.subdistrictCode ? `${s.village}` : s.village,
       })),
     [series]
+  );
+
+  const filteredVillageOptions = useMemo(
+    () =>
+      villageOptions.filter((opt) =>
+        opt.label.toLowerCase().includes(villageSearchTerm.toLowerCase())
+      ),
+    [villageOptions, villageSearchTerm]
   );
 
   const chartData = useMemo(() => {
@@ -119,9 +129,30 @@ export default function StreamFlow() {
     if (ids.length > 0) fetchData(ids);
   }, [getConfirmedSubdistrictIds, fetchData]);
 
+  // Auto-fetch data when component becomes visible and selection is confirmed
+  useEffect(() => {
+    if (selectionConfirmed && !hasData && !loading && !error) {
+      handleFetch();
+    }
+  }, [selectionConfirmed, hasData, loading, error, handleFetch]);
+
   // Fullscreen handling
   const chartWrapRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        setVillageSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  
   useEffect(() => {
     const handler = () => setIsFullscreen(!!getFullscreenElement());
     document.addEventListener('fullscreenchange', handler);
@@ -135,6 +166,7 @@ export default function StreamFlow() {
       document.removeEventListener('MSFullscreenChange', handler as any);
     };
   }, []);
+
   const toggleFullscreen = useCallback(async () => {
     try {
       if (isFullscreen) await exitDocFullscreen();
@@ -212,12 +244,8 @@ export default function StreamFlow() {
   if (!hasData) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-        <button
-          onClick={handleFetch}
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Flow Duration Curve
-        </button>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Flow Duration Curve</h2>
+        <p className="text-gray-600">Loading data...</p>
       </div>
     );
   }
@@ -234,19 +262,59 @@ export default function StreamFlow() {
           </div>
 
           <div className="flex items-center gap-2">
-            <select
-              className="border rounded-md px-2 py-1 text-sm"
-              value={selectedVillage ?? ''}
-              onChange={(e) => setSelectedVillage(String(e.target.value))}
-              disabled={series.length === 0}
-              title="Select village"
-            >
-              {villageOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="border rounded-md px-3 py-1.5 text-sm bg-white hover:bg-gray-50 min-w-[200px] text-left flex items-center justify-between"
+                disabled={series.length === 0}
+                title="Select village"
+              >
+                <span className="truncate">
+                  {selectedVillage
+                    ? villageOptions.find((opt) => opt.value === selectedVillage)?.label
+                    : 'Select village'}
+                </span>
+                <svg className="w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-80 overflow-hidden flex flex-col">
+                  <div className="p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      placeholder="Search villages..."
+                      value={villageSearchTerm}
+                      onChange={(e) => setVillageSearchTerm(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="overflow-y-auto max-h-60">
+                    {filteredVillageOptions.length > 0 ? (
+                      filteredVillageOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            setSelectedVillage(opt.value);
+                            setIsDropdownOpen(false);
+                            setVillageSearchTerm('');
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                            selectedVillage === opt.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-gray-500 text-center">No villages found</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={toggleFullscreen}

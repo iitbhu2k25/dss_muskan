@@ -85,6 +85,8 @@ export default function Eflow() {
   } = useEflowContext();
 
   const [selectedVillage, setSelectedVillage] = useState<number | null>(null);
+  const [villageSearchTerm, setVillageSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [chartKey, setChartKey] = useState(0);
 
   useEffect(() => {
@@ -108,6 +110,14 @@ export default function Eflow() {
     [items]
   );
 
+  const filteredVillageOptions = useMemo(
+    () =>
+      villageOptions.filter((opt) =>
+        opt.label.toLowerCase().includes(villageSearchTerm.toLowerCase())
+      ),
+    [villageOptions, villageSearchTerm]
+  );
+
   const currentVillage = useMemo(() => {
     if (!selectedVillage) return null;
     return items.find((s) => s.vlcode === selectedVillage) ?? null;
@@ -122,31 +132,36 @@ export default function Eflow() {
   const [selectedMethod, setSelectedMethod] = useState<MethodKey>('FDC-Q95');
   const methodsOrder: MethodKey[] = ['FDC-Q95', 'FDC-Q90', 'Tennant-10%', 'Tennant-30%', 'Tennant-60%', 'Smakhtin', 'Tessmann'];
 
-  // CSV download
   const handleDownloadCSV = useCallback(() => {
     if (mergedItems.length === 0) return;
 
-    const header = ['Village', 'Subdistrict', ...methodsOrder, ...stressColumns].join(',');
+    const eflowHeaders = methodsOrder.map(method => `${method} (m³/yr)`);
+    const header = ['Village', 'Subdistrict', ...eflowHeaders, ...stressColumns].join(',');
 
     const rows = mergedItems.map((r) => {
-      const eflowVals = methodsOrder.map((k) => String(r.summary?.[k]?.toFixed(3) ?? ''));
+      const eflowVals = methodsOrder.map((k) => {
+        const val = r.summary?.[k];
+        return val !== undefined && val !== null ? String(val.toFixed(2)) : '';
+      });
+      
       const stressVals = stressColumns.map((displayCol) => {
         const originalCol = getOriginalColumnName(displayCol);
         const val = r.stressData?.[originalCol];
         return val !== undefined && val !== null ? String(val) : '';
       });
+      
       return [r.village, String(r.subdistrict_code), ...eflowVals, ...stressVals].join(',');
     });
 
     const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = 'eflow_with_stress_data.csv';
+    a.href = URL.createObjectURL(blob);
+    a.download = 'eflow_surplus_data.csv';
     a.click();
     URL.revokeObjectURL(a.href);
-  }, [mergedItems, stressColumns]);
+  }, [mergedItems, stressColumns, methodsOrder]);
 
-  // PNG download via dedicated API
   const handleDownloadPNG = useCallback(
     async (vlcode: number, method: MethodKey) => {
       const rec = items.find((r) => r.vlcode === vlcode);
@@ -166,7 +181,21 @@ export default function Eflow() {
 
   // Fullscreen
   const chartWrapRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        setVillageSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const handler = () => setIsFullscreen(!!getFullscreenElement());
     document.addEventListener('fullscreenchange', handler);
@@ -202,6 +231,14 @@ export default function Eflow() {
 
   const threshold = currentVillage?.curves?.[selectedMethod]?.threshold ?? null;
   const villageName = currentVillage?.village ?? 'Unknown Village';
+
+  const formatVolume = (value: number | undefined): string => {
+    if (value === undefined || value === null) return '-';
+    return value.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  };
 
   if (!selectionConfirmed) {
     return (
@@ -319,13 +356,13 @@ export default function Eflow() {
               <thead className="sticky top-0 bg-white">
                 <tr className="text-left border-b">
                   <th className="px-3 py-2 bg-gray-50">Village</th>
-                  <th className="px-3 py-2 bg-blue-50">FDC-Q95 (Mm³/yr)</th>
-                  <th className="px-3 py-2 bg-blue-50">FDC-Q90</th>
-                  <th className="px-3 py-2 bg-blue-50">Tennant-10%</th>
-                  <th className="px-3 py-2 bg-blue-50">Tennant-30%</th>
-                  <th className="px-3 py-2 bg-blue-50">Tennant-60%</th>
-                  <th className="px-3 py-2 bg-blue-50">Smakhtin</th>
-                  <th className="px-3 py-2 bg-blue-50">Tessmann</th>
+                  <th className="px-3 py-2 bg-blue-50">FDC-Q95 (m³/yr)</th>
+                  <th className="px-3 py-2 bg-blue-50">FDC-Q90 (m³/yr)</th>
+                  <th className="px-3 py-2 bg-blue-50">Tennant-10% (m³/yr)</th>
+                  <th className="px-3 py-2 bg-blue-50">Tennant-30% (m³/yr)</th>
+                  <th className="px-3 py-2 bg-blue-50">Tennant-60% (m³/yr)</th>
+                  <th className="px-3 py-2 bg-blue-50">Smakhtin (m³/yr)</th>
+                  <th className="px-3 py-2 bg-blue-50">Tessmann (m³/yr)</th>
 
                   {hasStressData &&
                     stressColumns.map((displayCol) => (
@@ -340,13 +377,13 @@ export default function Eflow() {
                   <tr key={r.vlcode} className="border-b hover:bg-gray-50">
                     <td className="px-3 py-2 font-medium">{r.village}</td>
 
-                    <td className="px-3 py-2">{r.summary['FDC-Q95']?.toFixed(3) ?? '-'}</td>
-                    <td className="px-3 py-2">{r.summary['FDC-Q90']?.toFixed(3) ?? '-'}</td>
-                    <td className="px-3 py-2">{r.summary['Tennant-10%']?.toFixed(3) ?? '-'}</td>
-                    <td className="px-3 py-2">{r.summary['Tennant-30%']?.toFixed(3) ?? '-'}</td>
-                    <td className="px-3 py-2">{r.summary['Tennant-60%']?.toFixed(3) ?? '-'}</td>
-                    <td className="px-3 py-2">{r.summary['Smakhtin']?.toFixed(3) ?? '-'}</td>
-                    <td className="px-3 py-2">{r.summary['Tessmann']?.toFixed(3) ?? '-'}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['FDC-Q95'])}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['FDC-Q90'])}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['Tennant-10%'])}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['Tennant-30%'])}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['Tennant-60%'])}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['Smakhtin'])}</td>
+                    <td className="px-3 py-2">{formatVolume(r.summary['Tessmann'])}</td>
 
                     {hasStressData &&
                       stressColumns.map((displayCol) => {
@@ -383,26 +420,67 @@ export default function Eflow() {
         ref={chartWrapRef}
         className={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm ${isFullscreen ? 'w-screen h-screen fixed inset-0 z-50 m-0 rounded-none' : ''}`}
       >
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-xl font-semibold text-gray-900">Flow Curves: {villageName}</h2>
+        <div className="flex items-center gap-4 flex-wrap">
+            <h2 className="text-xl font-semibold text-gray-900 mb-5">Flow Curves: {villageName}</h2>
           </div>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+          
 
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-700">Village:</label>
-            <select
-              className="border rounded-md px-2 py-1 text-sm"
-              value={selectedVillage ?? ''}
-              onChange={(e) => setSelectedVillage(Number(e.target.value))}
-              disabled={items.length === 0}
-              title="Select village"
-            >
-              {villageOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="border rounded-md px-3 py-1.5 text-sm bg-white hover:bg-gray-50 min-w-[200px] text-left flex items-center justify-between"
+                disabled={items.length === 0}
+                title="Select village"
+              >
+                <span className="truncate">
+                  {selectedVillage
+                    ? villageOptions.find((opt) => opt.value === selectedVillage)?.label
+                    : 'Select village'}
+                </span>
+                <svg className="w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-80 overflow-hidden flex flex-col">
+                  <div className="p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      placeholder="Search villages..."
+                      value={villageSearchTerm}
+                      onChange={(e) => setVillageSearchTerm(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="overflow-y-auto max-h-60">
+                    {filteredVillageOptions.length > 0 ? (
+                      filteredVillageOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            setSelectedVillage(opt.value);
+                            setIsDropdownOpen(false);
+                            setVillageSearchTerm('');
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                            selectedVillage === opt.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-gray-500 text-center">No villages found</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <label className="text-sm text-gray-700 ml-2">Method:</label>
             <select

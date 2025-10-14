@@ -76,6 +76,8 @@ export default function ClimateAdmin() {
   }, [results, selectedSourceId, selectedSubdistrictIds]);
 
   const [selectedCombo, setSelectedCombo] = useState<string | null>(null);
+  const [villageSearchTerm, setVillageSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!results) {
@@ -87,6 +89,14 @@ export default function ClimateAdmin() {
     if (firstOk) setSelectedCombo(firstOk);
     else setSelectedCombo(null);
   }, [results, selectedCombo, combos]);
+
+  const filteredCombos = useMemo(
+    () =>
+      combos.filter((opt) =>
+        opt.label.toLowerCase().includes(villageSearchTerm.toLowerCase())
+      ),
+    [combos, villageSearchTerm]
+  );
 
   const current = useMemo(() => {
     if (!results || !selectedCombo) return null as any;
@@ -152,7 +162,21 @@ export default function ClimateAdmin() {
   }, [results, selectedSourceId, selectedSubdistrictIds]);
 
   const chartWrapRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        setVillageSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const handler = () => setIsFullscreen(!!getFullscreenElement());
     document.addEventListener('fullscreenchange', handler);
@@ -166,6 +190,7 @@ export default function ClimateAdmin() {
       document.removeEventListener('MSFullscreenChange', handler as any);
     };
   }, []);
+
   const toggleFullscreen = useCallback(async () => {
     try {
       if (isFullscreen) await exitDocFullscreen();
@@ -192,7 +217,7 @@ export default function ClimateAdmin() {
       end_year: Number(selectedEndYear),
     };
 
-    const res = await fetch(`${apiBase}/swa/adminclimateimage`, {
+    const res = await fetch(`${apiBase}/django/swa/adminclimateimage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
@@ -218,8 +243,6 @@ export default function ClimateAdmin() {
 
       const { rec, b64 } = out;
 
-      // Convert Base64 -> Blob for safe download via Object URL
-      // Prefer modern decoding helpers when available; atob fallback otherwise.
       let bytes: Uint8Array;
       if ((Uint8Array as any).fromBase64) {
         bytes = (Uint8Array as any).fromBase64(b64);
@@ -230,9 +253,8 @@ export default function ClimateAdmin() {
         bytes = new Uint8Array(byteNums);
       }
 
-     const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-const url = URL.createObjectURL(blob);
-
+      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
       const sd = sanitizeFilenamePart(rec.subdistrict_code);
@@ -327,6 +349,8 @@ const url = URL.createObjectURL(blob);
     return [126, 245, 370, 585].includes(n);
   };
 
+  const hasData = results && Object.keys(results).length > 0 && combos.length > 0;
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 p-6 flex items-center justify-between">
@@ -358,22 +382,6 @@ const url = URL.createObjectURL(blob);
       )}
 
       <div className="p-6 grid grid-cols-1 md:grid-cols-6 gap-4">
-        <div className="flex flex-col gap-2 md:col-span-3">
-          <label className="text-sm font-medium text-gray-700">Village</label>
-          <select
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-            value={selectedCombo ?? ''}
-            onChange={(e) => setSelectedCombo(e.target.value || null)}
-            disabled={!results || Object.keys(results).length === 0 || combos.length === 0}
-            title="Select village"
-          >
-            <option value="">Select...</option>
-            {combos.map(c => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-        </div>
-
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-gray-700">Scenario</label>
           <select
@@ -440,45 +448,100 @@ const url = URL.createObjectURL(blob);
               ? `Admin Climate:  Village: ${current.village}, Scenario ${current.source_id}, ${current.start_year}-${current.end_year}`
               : 'Admin Climate'}
           </h4>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={toggleFullscreen}
-              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-            >
-              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            </button>
-            <button
-              onClick={downloadServerPng}
-              title="Download PNG"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              disabled={!selectedCombo || !current}
-            >
-              Download PNG
-            </button>
-            <button
-              onClick={downloadTableAsCSV}
-              title="Download data as CSV"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              disabled={tableRows.length === 0}
-            >
-              Download CSV
-            </button>
-          </div>
+          {hasData && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={toggleFullscreen}
+                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                  isFullscreen ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M8 3H5a2 2 0 00-2 2v3m0 8v3a2 2 0 002 2h3m8-18h3a2 2 0 012 2v3m0 8v3a2 2 0 01-2 2h-3" />
+                </svg>
+                <span>{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+              </button>
+              <button
+                onClick={downloadServerPng}
+                title="Download PNG"
+                className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                disabled={!selectedCombo || !current}
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                </svg>
+                <span>Download PNG</span>
+              </button>
+              <button
+                onClick={downloadTableAsCSV}
+                title="Download data as CSV"
+                className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                disabled={tableRows.length === 0}
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                </svg>
+                <span>Download CSV</span>
+              </button>
+            </div>
+          )}
         </div>
-        <select
-          className={`px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm ${isFullscreen ? 'relative z-[10000]' : ''
-            }`}
-          value={selectedCombo ?? ''}
-          onChange={(e) => setSelectedCombo(e.target.value || null)}
-          disabled={!results || Object.keys(results).length === 0 || combos.length === 0}
-          title="Select village"
-        >
-          <option value="">Select...</option>
-          {combos.map(c => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+
+        <div className="relative mb-4" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="border rounded-md px-3 py-1.5 text-sm bg-white hover:bg-gray-50 min-w-[200px] text-left flex items-center justify-between"
+            disabled={!hasData}
+            title="Select village"
+          >
+            <span className="truncate">
+              {selectedCombo && combos.find((c) => c.value === selectedCombo)?.label || 'Select...'}
+            </span>
+            <svg className="w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {isDropdownOpen && hasData && (
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-80 overflow-hidden flex flex-col">
+              <div className="p-2 border-b border-gray-200">
+                <input
+                  type="text"
+                  placeholder="Search villages..."
+                  value={villageSearchTerm}
+                  onChange={(e) => setVillageSearchTerm(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+              <div className="overflow-y-auto max-h-60">
+                {filteredCombos.length > 0 ? (
+                  filteredCombos.map((c) => (
+                    <button
+                      key={c.value}
+                      onClick={() => {
+                        setSelectedCombo(c.value);
+                        setIsDropdownOpen(false);
+                        setVillageSearchTerm('');
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                        selectedCombo === c.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500 text-center">No villages found</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {current?.data?.points && (
           <ResponsiveContainer width="100%" height={isFullscreen ? '85%' : 420}>
@@ -486,23 +549,21 @@ const url = URL.createObjectURL(blob);
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="year"
-              ticks={
-  ([...new Set(chartData.map((d: any) => d.year))] as number[])
-    .filter(y => y % 2 === 0)
-}
-
+                ticks={
+                  ([...new Set(chartData.map((d: any) => d.year))] as number[])
+                    .filter(y => y % 2 === 0)
+                }
                 tickFormatter={(val: number) => String(val)}
               />
               <YAxis />
-             <Tooltip
-  formatter={(value: any) => [Number(value).toFixed(2), ' Runoff (m³)']}
-  labelFormatter={(_: any, payload: readonly any[]) => {
-    if (!payload?.length) return '';
-    const p = payload[0]?.payload;
-    return `Year ${p.year}, ${p.monthLabel}`;
-  }}
-/>
-
+              <Tooltip
+                formatter={(value: any) => [Number(value).toFixed(2), ' Runoff (m³)']}
+                labelFormatter={(_: any, payload: readonly any[]) => {
+                  if (!payload?.length) return '';
+                  const p = payload[0]?.payload;
+                  return `Year ${p.year}, ${p.monthLabel}`;
+                }}
+              />
               <Legend />
               <Line type="monotone" dataKey="runoff" stroke="#dc2626" dot={{ r: 2 }} name="Surface Water Contributing Runoff (m³)" />
             </LineChart>
@@ -542,7 +603,7 @@ const url = URL.createObjectURL(blob);
         ) : (
           <div className="text-center py-8 px-4 bg-gray-50 rounded-lg">
             <p className="text-gray-500">
-              No summary data to display. Run the analysis to generate results.
+              No data to display. Run the analysis to generate results.
             </p>
           </div>
         )}

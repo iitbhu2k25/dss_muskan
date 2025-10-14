@@ -1061,32 +1061,7 @@ const DrainLocationsSelector: React.FC<DrainLocationsSelectorProps> = ({
           </div>
 
 
-          {/* {process.env.NODE_ENV === 'development' && (
-          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <div className="font-semibold">Debug Info:</div>
-            <div>isDropdownUpdating: {isDropdownUpdating.toString()}</div>
-            <div>villageChangeSource (prop): {villageChangeSource || 'null'}</div>
-            <div>window.villageChangeSource: {window.villageChangeSource || 'null'}</div>
-            <div>pendingVillages: {pendingVillages ? pendingVillages.length : 'null'}</div>
-            <div>selectedVillages: {selectedVillages.length}</div>
-            <div>intersectedVillages: {intersectedVillages.length}</div>
-            <div>intersectedVillages selected: {intersectedVillages.filter(v => v.selected !== false).length}</div>
-            <button
-              className="mt-1 px-2 py-1 bg-blue-500 text-white text-xs rounded"
-              onClick={() => {
-                console.log('=== MANUAL DEBUG ===');
-                console.log('intersectedVillages:', intersectedVillages);
-                console.log('selectedVillages:', selectedVillages);
-                console.log('villageChangeSource:', villageChangeSource);
-                console.log('window.villageChangeSource:', window.villageChangeSource);
-                console.log('isDropdownUpdating:', isDropdownUpdating);
-                console.log('pendingVillages:', pendingVillages);
-              }}
-            >
-              Log Debug Info
-            </button>
-          </div>
-        )} */}
+          
         </div>
 
 

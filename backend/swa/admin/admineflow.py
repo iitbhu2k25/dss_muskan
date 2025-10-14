@@ -50,9 +50,9 @@ class AdmineflowAPI(APIView):
         )
 
         # --- Convert to flow rate (cms) ---
-        days_in_month = 30
-        seconds_in_month = days_in_month * 24 * 3600
-        df["flow_out_cms"] = df["surq_cnt_m3"] / seconds_in_month
+        # Since surq_cnt_m3 is daily volume and mon represents day of year (1-365)
+        seconds_in_day = 86400
+        df["flow_out_cms"] = df["surq_cnt_m3"] / seconds_in_day
 
         all_results = {}
 
@@ -62,9 +62,10 @@ class AdmineflowAPI(APIView):
             village_name = village_df["village"].iloc[0]
             subdistrict_code = village_df["subdistrict_code_id"].iloc[0]
 
-            monthly_avg = village_df.groupby("mon")["flow_out_cms"].mean().reset_index()
-            flows = monthly_avg["flow_out_cms"].values
-            days = monthly_avg["mon"].values
+            # Group by day of year (mon field: 1-365) and compute average across all years
+            daily_avg = village_df.groupby("mon")["flow_out_cms"].mean().reset_index()
+            flows = daily_avg["flow_out_cms"].values
+            days = daily_avg["mon"].values  # Day of year (1-365)
 
             Qmaf = np.mean(flows)
 
@@ -84,16 +85,32 @@ class AdmineflowAPI(APIView):
             tennant_10 = 0.1 * Qmaf
             tennant_30 = 0.3 * Qmaf
             tennant_60 = 0.6 * Qmaf
-            Qmonthly_avg = np.mean(monthly_avg["flow_out_cms"].values)
-            tessmann = 0.4 * Qmaf if Qmaf > 0.4 * Qmonthly_avg else Qmonthly_avg
+            Qdaily_avg = np.mean(daily_avg["flow_out_cms"].values)
+            tessmann = 0.4 * Qmaf if Qmaf > 0.4 * Qdaily_avg else Qdaily_avg
             smakhtin = 0.2 * Qmaf
 
             def compute_surplus(flows_arr, threshold):
-                flows_arr = np.array(flows_arr, dtype=float)
+                """
+                Compute annual surplus volume in m³/year.
+                
+                Args:
+                    flows_arr: Array of daily average flows in cms
+                    threshold: Environmental flow threshold in cms
+                
+                Returns:
+                    Annual surplus volume in m³/year
+                """
+                flows_arr = np.array(flows_arr, dtype=float)  # cms
                 thr = float(threshold)
-                surplus = np.where(flows_arr > thr, flows_arr - thr, 0.0)
-                surplus_volume_m3 = np.sum(surplus * 86400)
-                return float(surplus_volume_m3 / 1e6)  # million m³
+                
+                # Calculate surplus flow for each day (in cms)
+                surplus_cms = np.where(flows_arr > thr, flows_arr - thr, 0.0)
+                
+                # Convert to daily volumes (m³/day) and sum for annual total (m³/year)
+                surplus_volume_m3_per_year = np.sum(surplus_cms * seconds_in_day)
+                
+                # Return in m³/year
+                return float(surplus_volume_m3_per_year)
 
             results = {
                 "FDC-Q95": compute_surplus(flows, Q95),
@@ -117,8 +134,8 @@ class AdmineflowAPI(APIView):
 
             curves = {
                 method_key: {
-                    "days": days.tolist(),
-                    "flows": flows.tolist(),
+                    "days": days.tolist(),  # Day of year (1-365)
+                    "flows": flows.tolist(),  # Daily average flows in cms
                     "threshold": float(Qe),
                 }
                 for method_key, Qe in thresholds.items()
@@ -128,7 +145,7 @@ class AdmineflowAPI(APIView):
                 "vlcode": int(vlcode),
                 "village": village_name,
                 "subdistrict_code": int(subdistrict_code),
-                "summary": results,
+                "summary": results,  # Surplus volumes in million m³/year
                 "curves": curves,
             }
 
@@ -141,8 +158,8 @@ class AdmineflowImageAPI(APIView):
 
     def render_method_png(self, days, flows, threshold, village_name, vlcode, method_key,
                         width=1000, height=420, dpi=140):
-        x = np.array(days, dtype=float)
-        y = np.array(flows, dtype=float)
+        x = np.array(days, dtype=float)  # Day of year (1-365)
+        y = np.array(flows, dtype=float)  # cms
 
         # --- Flow Duration Curve (fixed curve) ---
         flows_sorted = np.sort(y)[::-1]
@@ -152,17 +169,15 @@ class AdmineflowImageAPI(APIView):
 
         fig, ax = plt.subplots(figsize=(width / dpi, height / dpi), dpi=dpi)
 
-        # Monthly flow curve
-        ax.plot(x, y, color="#2563eb", linewidth=2, marker="o", label="Monthly Flow")
-
-        
+        # Daily flow curve
+        ax.plot(x, y, color="#2563eb", linewidth=2, marker="o", markersize=2, label="Daily Flow")
 
         # Threshold
         if threshold is not None and np.isfinite(threshold):
             ax.axhline(y=float(threshold), color="#7c3aed", linestyle="--", linewidth=2,
                     label=f"{method_key} threshold")
 
-        ax.set_xlabel("X-axis (Month / Probability)")  # since both are on same X
+        ax.set_xlabel("Day of Year")
         ax.set_ylabel("Flow (cms)")
         ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.6)
         ax.set_title(f"Eflow: {method_key} • {village_name} ({vlcode})")
@@ -190,10 +205,14 @@ class AdmineflowImageAPI(APIView):
             qs.values("vlcode", "village", "year", "mon", "surq_cnt_m3")
         )
 
-        df["flow_out_cms"] = df["surq_cnt_m3"] / (30 * 24 * 3600)
-        monthly_avg = df.groupby("mon")["flow_out_cms"].mean().reset_index()
-        flows = monthly_avg["flow_out_cms"].values
-        days = monthly_avg["mon"].values
+        # Convert daily volume to flow rate (cms)
+        seconds_in_day = 86400
+        df["flow_out_cms"] = df["surq_cnt_m3"] / seconds_in_day
+        
+        # Group by day of year
+        daily_avg = df.groupby("mon")["flow_out_cms"].mean().reset_index()
+        flows = daily_avg["flow_out_cms"].values
+        days = daily_avg["mon"].values  # Day of year (1-365)
         village_name = df["village"].iloc[0]
 
         # Compute thresholds (same as above)
