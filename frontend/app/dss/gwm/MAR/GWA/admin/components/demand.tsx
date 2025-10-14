@@ -75,6 +75,8 @@ const Demand = () => {
   const toggleDomesticTable = () => setShowDomesticTable((prev) => !prev);
   const [showAgriculturalTable, setShowAgriculturalTable] = useState(true);
   const toggleAgriculturalTable = () => setShowAgriculturalTable((prev) => !prev);
+  const [showSelectionWarning, setShowSelectionWarning] = useState(false);
+
   // Custom table component for domestic demand with specific columns
   const DomesticTableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => (
     <div className="mt-4">
@@ -196,6 +198,22 @@ const Demand = () => {
       </div>
     </div>
   );
+  const handleAgriculturalClick = () => {
+    // Check if no season is checked and no crops selected for any season
+    const isAnySeasonSelected = kharifChecked || rabiChecked || zaidChecked;
+    const isAnyCropSelected = Object.values(selectedCrops).some(
+      (cropsArray) => cropsArray && cropsArray.length > 0
+    );
+
+    if (!isAnySeasonSelected || !isAnyCropSelected) {
+      setShowSelectionWarning(true);
+      return; // Do not compute if validation fails
+    }
+
+    // Proceed with computation
+    setShowSelectionWarning(false);
+    computeAgriculturalDemand();
+  };
 
   const ChartDisplay = () => {
     if (!chartData) return null;
@@ -977,7 +995,7 @@ const Demand = () => {
           <div className="mb-4 flex items-center gap-4 mt-4">
 
             <button
-              onClick={computeAgriculturalDemand}
+              onClick={handleAgriculturalClick}
               disabled={agriculturalLoading || !canComputeAgriculturalDemand()}
               className={[
                 "inline-flex items-center justify-center gap-2 text-white font-medium transition-colors duration-200 rounded-full py-3 px-5 shadow-md focus:outline-none focus:ring-4",
@@ -992,6 +1010,30 @@ const Demand = () => {
                 <span>Compute Agricultural Demand</span>
               )}
             </button>
+            {showSelectionWarning && (
+              <div className="mb-2 p-3 text-yellow-800 rounded flex items-center">
+                <span
+                  className="mr-2 bg-white rounded-full text-blue-500 flex items-center justify-center w-7 h-7 border border-blue-100 shadow-sm"
+                  role="img"
+                  aria-label="Information"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    className="w-5 h-5"
+                    aria-hidden="true"
+                  >
+                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-7a1 1 0 011-1h.01a1 1 0 11-2 0 1 1 0 011-1zm-.75-4a.75.75 0 111.5 0v.75a.75.75 0 11-1.5 0V7z" />
+                  </svg>
+                </span>
+                Please select at least one season and crop.
+              </div>
+            )}
+
+
+
+
 
             {/* Show/Hide Table */}
             {agriculturalTableData.length > 0 && (

@@ -458,7 +458,7 @@ const GSRAnalysis: React.FC = () => {
           baseClasses += " text-gray-900";
         }
       }
-      // ← NEW: GSR Classification styling with backend colors
+      // GSR Classification styling with backend colors
       else if (column === 'gsr_classification') {
         baseClasses += " font-medium rounded px-2 py-1";
 

@@ -292,8 +292,8 @@ export const GroundwaterForecastProvider = ({
       }
 
       const data = await response.json();
-      console.log('✅ Forecast analysis completed successfully!');
-      console.log('📊 Data received:', data);
+      console.log(' Forecast analysis completed successfully!');
+      console.log(' Data received:', data);
 
       // Validate response data
       if (!data || typeof data !== 'object') {

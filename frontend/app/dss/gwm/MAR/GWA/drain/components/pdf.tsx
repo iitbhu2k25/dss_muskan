@@ -228,11 +228,11 @@ const PDF: React.FC<PDFProps> = ({
 
 
 
-  // Add Trend Analysis Table - UPDATED to handle new API structure
+  // Add Trend Analysis Table - UPDATED to handle  API structure
   const addTrendAnalysisTable = (doc: jsPDF, startY: number): number => {
     console.log("Adding trend analysis table. TrendData:", finalTrendData);
 
-    // Check if we have trend data from new API structure
+    // Check if we have trend data from API structure
     if (!finalTrendData || !finalTrendData.villages || finalTrendData.villages.length === 0) {
       console.log("No trend data available for PDF");
       return startY;
@@ -389,7 +389,7 @@ const PDF: React.FC<PDFProps> = ({
     return cursorY + SECTION_SPACING;
   };
 
-  // Add Trend Map Image - UPDATED to handle new API structure
+  // Trend Map Image - UPDATED to handle  API structure
   const addTrendMapImage = (doc: jsPDF, startY: number): number => {
     console.log("Adding trend map image. Checking for base64 data...");
 
@@ -485,7 +485,7 @@ const PDF: React.FC<PDFProps> = ({
         doc.addPage();
         cursorY = MARGIN_TOP;
 
-        // Redraw header on new page
+        // Redraw header on page
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.setFillColor(230, 230, 230);

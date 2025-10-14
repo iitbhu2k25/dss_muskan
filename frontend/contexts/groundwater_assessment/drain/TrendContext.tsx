@@ -5,6 +5,20 @@ import { useMap } from "@/contexts/groundwater_assessment/drain/MapContext";
 import { useLocation } from "./LocationContext";
 import { useWell } from "./WellContext";
 
+
+interface VillageTimeseriesData {
+  village_id: string;
+  village_name: string;
+  block: string;
+  district: string;
+  subdis_cod: string;
+  trend_status: string;
+  color: string;
+  mann_kendall_tau: number | null;
+  sen_slope: number | null;
+  years: string[];
+  depths: (number | null)[];
+}
 interface TrendSummaryStats {
   statistical_summary: any;
   file_info: {
@@ -110,6 +124,8 @@ interface TrendData {
   filtered_by_village_codes: number[];
   trend_map_filename: string;
   trend_map_base64: string;
+   village_timeseries_data?: VillageTimeseriesData[];
+  all_years?: string[];
 }
 
 interface GroundwaterTrendContextType {
@@ -135,6 +151,9 @@ interface GroundwaterTrendContextType {
   resetForm: () => void;
   availableCharts: string[];
   getChartImage: (chartKey: string) => string | null;
+  villageTimeseriesData: VillageTimeseriesData[];  
+  allYears: string[];  
+  getVillageTimeseries: (villageId: string) => VillageTimeseriesData | null; 
 }
 
 interface GroundwaterTrendProviderProps {
@@ -166,6 +185,9 @@ export const GroundwaterTrendContext = createContext<GroundwaterTrendContextType
   resetForm: () => { },
   availableCharts: [],
   getChartImage: () => null,
+  villageTimeseriesData: [],
+  allYears: [],
+  getVillageTimeseries: () => null, 
 });
 
 export const GroundwaterTrendProvider = ({
@@ -235,7 +257,17 @@ export const GroundwaterTrendProvider = ({
   };
 
   const availableCharts = trendData ? Object.keys(trendData.charts || {}) : [];
+  const villageTimeseriesData = trendData?.village_timeseries_data || [];
+  const allYears = trendData?.all_years || [];
 
+  // Method to get timeseries for a specific village
+  const getVillageTimeseries = (villageId: string): VillageTimeseriesData | null => {
+    if (!villageTimeseriesData || villageTimeseriesData.length === 0) {
+      return null;
+    }
+    const village = villageTimeseriesData.find(v => v.village_id === villageId);
+    return village || null;
+  };
   const handleGenerate = async () => {
     if (!trendMethod || !yearStart || !yearEnd) {
       alert("Please fill all required fields: Trend Method, Start Year, and End Year.");
@@ -441,6 +473,9 @@ export const GroundwaterTrendProvider = ({
         resetForm,
         availableCharts,
         getChartImage,
+        villageTimeseriesData, 
+        allYears, 
+        getVillageTimeseries, 
       }}
     >
       {children}

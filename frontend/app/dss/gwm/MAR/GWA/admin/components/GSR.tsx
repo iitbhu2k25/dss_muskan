@@ -19,7 +19,7 @@ const StressIdentification: React.FC = () => {
   const [stressData, setStressData] = useState<any[]>([]);
 
   const { gsrTableData, computeStressIdentification, canComputeStressIdentification } = useGSR();
-  const [showStressTable, setShowStressTable] = useState(true);  // inside StressIdentification
+  const [showStressTable, setShowStressTable] = useState(true);  
 
 
 
@@ -52,7 +52,7 @@ const StressIdentification: React.FC = () => {
   const StressTableDisplay = ({ tableData }: { tableData: any[] }) => {
     if (tableData.length === 0) return null;
 
-    //  visible columns to match new backend structure
+    //  visible columns to match backend structure
     const visibleColumns = [
       'village_name',
       'recharge',
@@ -732,7 +732,7 @@ const GSR: React.FC<GSRProps> = ({ step }) => {
 
         <GSRAnalysis />
 
-        {/* NEW: Stress Identification Component */}
+        {/*  Stress Identification Component */}
         <StressIdentification />
 
       </div>

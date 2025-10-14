@@ -5,6 +5,19 @@ import { useMap } from "@/contexts/groundwater_assessment/admin/MapContext";
 import { useLocation } from "./LocationContext";
 import { useWell } from "./WellContext";
 
+interface VillageTimeseriesData {
+  village_id: string;
+  village_name: string;
+  block: string;
+  district: string;
+  subdis_cod: string;
+  trend_status: string;
+  color: string;
+  mann_kendall_tau: number | null;
+  sen_slope: number | null;
+  years: string[];
+  depths: (number | null)[];
+}
 interface TrendSummaryStats {
   data_quality: any;
   data_quality_additional: any;
@@ -19,7 +32,8 @@ interface TrendSummaryStats {
     timeseries_yearly_csv_filename: string;
     timeseries_seasonal_csv_filename: string;
     trend_map_filename?: string;
-    trend_map_base64?: string; // NEW: Base64 encoded trend map
+    trend_map_base64?: string; // Base64 encoded trend map
+    
   };
   trend_distribution: {
     increasing: number;
@@ -96,7 +110,9 @@ interface TrendData {
   analysis_timestamp: string;
   filtered_by_subdis_cod: number[];
   trend_map_filename?: string;
-  trend_map_base64?: string; // NEW: Base64 encoded trend map at root level
+  trend_map_base64?: string; // trend map 
+  village_timeseries_data?: VillageTimeseriesData[];  
+  all_years?: string[];
 }
 
 interface GroundwaterTrendContextType {
@@ -108,7 +124,7 @@ interface GroundwaterTrendContextType {
   isLoading: boolean;
   error: string | null;
   trendMapFilename: string | null;
-  trendMapBase64: string | null; // NEW: Base64 encoded trend map
+  trendMapBase64: string | null; //   trend map
   setTrendMethod: (value: string) => void;
   setYearStart: (value: string) => void;
   setYearEnd: (value: string) => void;
@@ -120,8 +136,11 @@ interface GroundwaterTrendContextType {
   getChartImage: (chartKey: string) => string | null;
   getTrendMapUrl: () => string | null;
   getTrendMapFilename: () => string | null;
-  getTrendMapBase64: () => string | null; // NEW: Get base64 directly
+  getTrendMapBase64: () => string | null;
   hasTrendMap: () => boolean;
+  villageTimeseriesData: VillageTimeseriesData[];  
+  allYears: string[];
+  getVillageTimeseries: (villageId: string) => VillageTimeseriesData | null; 
 }
 
 interface GroundwaterTrendProviderProps {
@@ -153,6 +172,9 @@ export const GroundwaterTrendContext = createContext<GroundwaterTrendContextType
   getTrendMapFilename: () => null,
   getTrendMapBase64: () => null,
   hasTrendMap: () => false,
+   villageTimeseriesData: [], 
+  allYears: [], 
+  getVillageTimeseries: () => null,
 });
 
 export const GroundwaterTrendProvider = ({
@@ -168,8 +190,8 @@ export const GroundwaterTrendProvider = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [trendMapFilename, setTrendMapFilename] = useState<string | null>(null);
-  const [trendMapBase64, setTrendMapBase64] = useState<string | null>(null); // NEW: Store base64
-
+  const [trendMapBase64, setTrendMapBase64] = useState<string | null>(null); 
+  
   // Get map context for adding trend layer
   const { addTrendLayer, removeTrendLayer, setLegendData } = useMap();
 
@@ -178,6 +200,7 @@ export const GroundwaterTrendProvider = ({
 
   // Get well context for csvFilename
   const { csvFilename } = useWell();
+  
 
   // Clear data when tab changes
   useEffect(() => {
@@ -234,7 +257,18 @@ export const GroundwaterTrendProvider = ({
   };
 
   const availableCharts = trendData ? Object.keys(trendData.charts || {}) : [];
+  // Extract village timeseries data and years
+  const villageTimeseriesData = trendData?.village_timeseries_data || [];
+  const allYears = trendData?.all_years || [];
 
+  // Method to get timeseries for a specific village
+  const getVillageTimeseries = (villageId: string): VillageTimeseriesData | null => {
+    if (!villageTimeseriesData || villageTimeseriesData.length === 0) {
+      return null;
+    }
+    const village = villageTimeseriesData.find(v => v.village_id === villageId);
+    return village || null;
+  };
   const handleGenerate = async () => {
     // Validation logic 
     if (!trendMethod || !yearStart || !yearEnd) {
@@ -450,7 +484,7 @@ export const GroundwaterTrendProvider = ({
         isLoading,
         error,
         trendMapFilename,
-        trendMapBase64, 
+        trendMapBase64,
         setTrendMethod,
         setYearStart,
         setYearEnd,
@@ -462,8 +496,11 @@ export const GroundwaterTrendProvider = ({
         getChartImage,
         getTrendMapUrl,
         getTrendMapFilename,
-        getTrendMapBase64, 
+        getTrendMapBase64,
         hasTrendMap,
+        villageTimeseriesData, 
+        allYears, 
+        getVillageTimeseries,  
       }}
     >
       {children}

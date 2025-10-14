@@ -16,7 +16,6 @@ export interface PDFGenerationRequest {
   selectedSubDistricts: number[];
   csv_filename: string | null; // Changed to snake_case to match API
 }
-
 export interface PDFGenerationResponse {
   success: boolean;
   message: string;

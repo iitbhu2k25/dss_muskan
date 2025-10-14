@@ -547,6 +547,27 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
   const hoverOverlayRef = useRef<Overlay | null>(null);
   const highlightLayerRef = useRef<VectorLayer<any> | null>(null);
 
+ // Add these variables near where you define boundaryLayerStyle, villageOverlayStyle, etc.
+
+const statePolygonStyle = new Style({
+  fill: new Fill({ color: 'rgba(0, 188, 212, 0.15)' }), 
+  stroke: new Stroke({ color: '#00BCD4', width: 3 })     // Pink
+});
+
+const districtPolygonStyle = new Style({
+  fill: new Fill({ color: 'rgba(255, 192, 4, 0.3)' }),  // Amber fill
+  stroke: new Stroke({ color: '#FFC107', width: 3 })
+});
+
+const subdistrictPolygonStyle = new Style({
+  fill: new Fill({ color: 'rgba(233, 30, 99, 0.30)' }),  // pink fill
+  stroke: new Stroke({ color: '#E91E63', width: 2 })
+});
+
+const villagePolygonStyle = new Style({
+  fill: new Fill({ color: 'rgba(233, 30, 99, 0.30)' }),  // Pink fill
+  stroke: new Stroke({ color: '#e91ec4ff', width: 2 })
+});
 
   // NEW: Function to set layer opacity
   const setLayerOpacity = (layerType: keyof LayerOpacityState, opacity: number) => {
@@ -1532,32 +1553,42 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     };
   }, [mapInstanceRef.current, isWellAddModeActive]);
 
-  const createWFSLayer = (
-    layerName: string,
-    cqlFilter: string,
-    zIndex: number,
-    isBasinWell: boolean = false,
-    isVillageOverlay: boolean = false
-  ): VectorLayer<any> => {
-    console.log(`Creating WFS layer: ${layerName} with filter: ${cqlFilter}`);
+const createWFSLayer = (
+  layerName: string,
+  cqlFilter: string,
+  zIndex: number,
+  isBasinWell: boolean = false,
+  isVillageOverlay: boolean = false
+): VectorLayer<any> => {
+  console.log(`Creating WFS layer: ${layerName} with filter: ${cqlFilter}`);
 
-    let style = boundaryLayerStyle;
-    if (isBasinWell) {
-      style = basinWellStyle;
-    } else if (isVillageOverlay) {
-      style = villageOverlayStyle;
-    }
+  let style = boundaryLayerStyle; // default fallback
 
-    const layer = new VectorLayer({
-      source: new VectorSource({
-        format: new GeoJSON(),
-        url: `/geoserver/api/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:${layerName}&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cqlFilter)}`,
-      }),
-      style: style,
-      zIndex,
-      visible: isVillageOverlay ? isVillageOverlayVisible : true,
-    });
+  // Assign correct style for each administrative boundary
+  if (layerName === "B_district") {
+    style = statePolygonStyle;  // State level (shows districts within state)
+  } else if (layerName === "B_subdistrict") {
+    style = districtPolygonStyle;  // District level (shows subdistricts within district)
+  } else if (layerName === "Village" && !isVillageOverlay) {
+    style = subdistrictPolygonStyle;  // Subdistrict/Village level
+  } else if (isVillageOverlay) {
+    style = villageOverlayStyle;  // Village overlay on raster
+  }
 
+// else if (/* add subdistrict condition if your code needs it */) style = subdistrictPolygonStyle;
+
+const layer = new VectorLayer({
+  source: new VectorSource({
+    format: new GeoJSON(),
+    url: `/geoserver/api/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:${layerName}&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cqlFilter)}`,
+  }),
+  style: style,
+  zIndex: zIndex,
+  visible: isVillageOverlay ? isVillageOverlayVisible : true,
+});
+
+
+    
     // NEW: Apply opacity based on layer type
     if (isVillageOverlay) {
       applyLayerOpacity(layer, 'villageOverlay');
@@ -1897,7 +1928,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     }
   }, [isVillageOverlayVisible]);
 
-  // NEW: Effect to apply opacity changes to existing layers
+  // Effect to apply opacity changes to existing layers
   useEffect(() => {
     // Apply opacity changes to basemap
     if (baseLayerRef.current) {
@@ -2066,31 +2097,45 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     }
   };
 
-  // Update state layer
-  useEffect(() => {
-    if (!mapInstanceRef.current || !selectedState) {
-      if (stateLayerRef.current && mapInstanceRef.current) {
-        mapInstanceRef.current.removeLayer(stateLayerRef.current);
-        stateLayerRef.current = null;
-      }
-      return;
-    }
 
-    if (stateLayerRef.current) {
+ // Update state layer
+useEffect(() => {
+  if (!mapInstanceRef.current || !selectedState) {
+    if (stateLayerRef.current && mapInstanceRef.current) {
       mapInstanceRef.current.removeLayer(stateLayerRef.current);
+      stateLayerRef.current = null;
     }
+    // Add back India layer when no state is selected
+    if (indiaLayerRef.current && mapInstanceRef.current) {
+      if (!mapInstanceRef.current.getAllLayers().includes(indiaLayerRef.current)) {
+        mapInstanceRef.current.addLayer(indiaLayerRef.current);
+        console.log("India layer added back");
+      }
+    }
+    return;
+  }
 
-    const formattedStateCode = selectedState.toString().padStart(2, "0");
-    const cqlFilter = `STATE_CODE = '${formattedStateCode}'`;
-    const stateLayer = createWFSLayer("B_district", cqlFilter, 2);
+  // Remove India layer when state is selected
+  if (indiaLayerRef.current && mapInstanceRef.current) {
+    mapInstanceRef.current.removeLayer(indiaLayerRef.current);
+    console.log("India layer removed - state selected");
+  }
 
-    stateLayerRef.current = stateLayer;
-    mapInstanceRef.current.addLayer(stateLayer);
+  if (stateLayerRef.current) {
+    mapInstanceRef.current.removeLayer(stateLayerRef.current);
+  }
 
-    zoomToFeature("B_district", cqlFilter);
+  const formattedStateCode = selectedState.toString().padStart(2, "0");
+  const cqlFilter = `STATE_CODE = '${formattedStateCode}'`;
+  const stateLayer = createWFSLayer("B_district", cqlFilter, 2);
 
-    console.log("Added state layer with filter:", cqlFilter);
-  }, [selectedState]);
+  stateLayerRef.current = stateLayer;
+  mapInstanceRef.current.addLayer(stateLayer);
+
+  zoomToFeature("B_district", cqlFilter);
+
+  console.log("Added state layer with filter:", cqlFilter);
+}, [selectedState]);
 
   // Update district layer
   useEffect(() => {
@@ -2512,10 +2557,6 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
       gsrLayerRef.current = null;
     };
   }, []);
-
-
-
-
 
   return (
     <MapContext.Provider value={contextValue}>

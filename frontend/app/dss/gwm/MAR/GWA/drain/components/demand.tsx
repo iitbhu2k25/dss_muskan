@@ -71,6 +71,7 @@ const Demand = () => {
   const toggleIndustrialTable = () => setShowIndustrialTable((prev) => !prev);
   // State for chart selection between individual and cumulative charts
   const [selectedChart, setSelectedChart] = useState<'individual' | 'cumulative'>('individual');
+ const [showSelectionWarning, setShowSelectionWarning] = useState(false);
 
   // *** CONFIGURABLE COLUMNS FOR DOMESTIC TABLE ***
   const domesticVisibleColumns = [
@@ -101,6 +102,22 @@ const Demand = () => {
   // *** CONFIGURABLE COLUMNS FOR INDUSTRIAL TABLE ***
   const industrialVisibleColumns: string | string[] = [
   ];
+  const handleAgriculturalClick = () => {
+  // Check if no season is checked and no crops selected for any season
+  const isAnySeasonSelected = kharifChecked || rabiChecked || zaidChecked;
+  const isAnyCropSelected = Object.values(selectedCrops).some(
+    (cropsArray) => cropsArray && cropsArray.length > 0
+  );
+
+  if (!isAnySeasonSelected || !isAnyCropSelected) {
+    setShowSelectionWarning(true);
+    return; // Do not compute if validation fails
+  }
+
+  // Proceed with computation
+  setShowSelectionWarning(false);
+  computeAgriculturalDemand();
+};
 
   // Custom table component for domestic demand with configurable columns
   const DomesticTableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => {
@@ -1061,7 +1078,7 @@ const Demand = () => {
           {/* Buttons Row */}
           <div className="mb-4 flex items-center gap-4 mt-4">
             <button
-              onClick={computeAgriculturalDemand}
+              onClick={handleAgriculturalClick}
               disabled={agriculturalLoading || !canComputeAgriculturalDemand()}
               className={`inline-flex items-center justify-center gap-2 text-white font-medium transition-colors duration-200 rounded-full py-3 px-5
       ${agriculturalLoading || !canComputeAgriculturalDemand()
@@ -1070,7 +1087,26 @@ const Demand = () => {
             >
               {agriculturalLoading ? "Computing Agricultural Demand..." : "Compute Agricultural Demand"}
             </button>
-
+              {showSelectionWarning && (
+              <div className="mb-2 p-3 text-yellow-800 rounded flex items-center">
+                <span
+                  className="mr-2 bg-white rounded-full text-blue-500 flex items-center justify-center w-7 h-7 border border-blue-100 shadow-sm"
+                  role="img"
+                  aria-label="Information"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    className="w-5 h-5"
+                    aria-hidden="true"
+                  >
+                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-7a1 1 0 011-1h.01a1 1 0 11-2 0 1 1 0 011-1zm-.75-4a.75.75 0 111.5 0v.75a.75.75 0 11-1.5 0V7z" />
+                  </svg>
+                </span>
+                Please select at least one season and crop.
+              </div>
+            )}
             {agriculturalTableData.length > 0 && (
               <button
                 onClick={toggleAgriculturalTable}
