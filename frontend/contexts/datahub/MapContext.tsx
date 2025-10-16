@@ -105,7 +105,7 @@ interface MapProviderProps {
 const MapContext = createContext<MapContextType | undefined>(undefined);
 
 const DEFAULT_STYLE: LayerStyle = {
-    shape: 'flag',
+    shape: 'star',
     color: '#3B82F6',
     size: 15,
     opacity: 0.8,
