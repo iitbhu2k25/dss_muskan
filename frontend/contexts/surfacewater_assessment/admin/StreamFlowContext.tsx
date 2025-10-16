@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocationContext } from '@/contexts/surfacewater_assessment/admin/LocationContext';
 
 export type FDCPoint = { p: number; q: number };
@@ -10,7 +10,6 @@ export type FDCSeries = {
   n: number;
   curve: FDCPoint[];
   quantiles: Record<string, number>;
-  // imageBase64 removed from steady state; fetch via fetchFdcPng when needed
   subdistrictCode?: string | number;
 };
 
@@ -23,14 +22,13 @@ type StreamFlowContextValue = {
   refresh: () => void;
   fetchData: (subdistrictIds?: number[]) => void;
   clearData: () => void;
-  // New: fetch PNG for a given vlcode
   fetchFdcPng: (vlcode: string | number) => Promise<string | null>;
 };
 
 const StreamFlowContext = createContext<StreamFlowContextValue | undefined>(undefined);
 
 export const StreamFlowProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { selectionConfirmed, getConfirmedSubdistrictIds } = useLocationContext();
+  const { selectionConfirmed, getConfirmedSubdistrictIds, registerResetCallback } = useLocationContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [series, setSeries] = useState<FDCSeries[]>([]);
@@ -61,16 +59,6 @@ export const StreamFlowProvider: React.FC<React.PropsWithChildren> = ({ children
           throw new Error(`Village FDC request failed (${res.status}) ${text}`);
         }
 
-        // {
-        //   subdistrict_codes: number[],
-        //   results: { [subdistrict_code: string]: {
-        //     [vlcode: string]: {
-        //       village: string; n: number; exceed_prob: number[]; sorted_flows: number[];
-        //       quantiles: Record<string, number>;
-        //     }
-        //   }},
-        //   errors: { [key: string]: string } | null
-        // }
         const data: {
           subdistrict_codes: Array<string | number>;
           results: Record<
@@ -177,6 +165,7 @@ export const StreamFlowProvider: React.FC<React.PropsWithChildren> = ({ children
   }, [selectionConfirmed, getConfirmedSubdistrictIds, fetchFDCBulk]);
 
   const clearData = useCallback(() => {
+    console.log('StreamFlowContext: Clearing all data');
     if (controllerRef.current) controllerRef.current.abort();
     setSeries([]);
     setError(null);
@@ -184,7 +173,18 @@ export const StreamFlowProvider: React.FC<React.PropsWithChildren> = ({ children
     setLoading(false);
   }, []);
 
-  // New: POST only vlcode to get image_base64
+  // NEW: Register reset callback with LocationContext
+  useEffect(() => {
+    console.log('StreamFlowContext: Registering reset callback with LocationContext');
+    const unregister = registerResetCallback(clearData);
+    
+    // Cleanup: unregister when component unmounts
+    return () => {
+      console.log('StreamFlowContext: Unregistering reset callback');
+      unregister();
+    };
+  }, [registerResetCallback, clearData]);
+
   const fetchFdcPng = useCallback(
     async (vlcode: string | number): Promise<string | null> => {
       try {

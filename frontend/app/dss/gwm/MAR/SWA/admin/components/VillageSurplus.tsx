@@ -379,7 +379,7 @@ export default function VillageSurplus() {
                 />
                 <YAxis
                   tickFormatter={(v) => `${Number(v).toFixed(1)}`}
-                  label={{ value: 'Flow (m³)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                  label={{ value: 'Flow (m³)', angle: -90, position: 'insideLeft', offset: -30, style: { textAnchor: 'middle' } }}
                 />
                 <Tooltip
                   content={<CustomTooltip />}

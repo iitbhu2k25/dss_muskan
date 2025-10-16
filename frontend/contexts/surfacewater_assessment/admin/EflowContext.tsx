@@ -18,7 +18,6 @@ export type AdminCurve = {
   days: number[];
   flows: number[];
   threshold: number;
-  // image_base64 removed from curves to keep payload light; images fetched via separate API on demand
 };
 
 export type AdminSummary = Record<MethodKey, number>;
@@ -31,7 +30,6 @@ export type VillageEflowResult = {
   curves: Record<MethodKey, AdminCurve>;
 };
 
-// Stress data type
 export type VillageStressData = {
   vlcode: number;
   [key: string]: any;
@@ -55,14 +53,13 @@ type EflowContextValue = {
   refresh: () => void;
   clearData: () => void;
   stressColumns: string[];
-  // New: fetch PNG for a specific village+method
   fetchMethodPng: (vlcode: number, methodKey: MethodKey) => Promise<string | null>;
 };
 
 const EflowContext = createContext<EflowContextValue | undefined>(undefined);
 
 export const EflowProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { selectionConfirmed, getConfirmedSubdistrictIds } = useLocationContext();
+  const { selectionConfirmed, getConfirmedSubdistrictIds, registerResetCallback } = useLocationContext();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +167,7 @@ export const EflowProvider: React.FC<React.PropsWithChildren> = ({ children }) =
           village: r.village,
           subdistrict_code: r.subdistrict_code,
           summary: r.summary,
-          curves: r.curves, // no image_base64 inside; images fetched separately
+          curves: r.curves,
         }));
         setItems(parsed);
         setLastFetchedSubdistricts(ids);
@@ -198,6 +195,7 @@ export const EflowProvider: React.FC<React.PropsWithChildren> = ({ children }) =
   }, [selectionConfirmed, getConfirmedSubdistrictIds, fetchData]);
 
   const clearData = useCallback(() => {
+    console.log('EflowContext: Clearing all data');
     if (controllerRef.current) controllerRef.current.abort();
     setItems([]);
     setError(null);
@@ -208,6 +206,18 @@ export const EflowProvider: React.FC<React.PropsWithChildren> = ({ children }) =
     localStorage.removeItem('gwa_stress_data');
     sessionStorage.removeItem('stress_column_mapping');
   }, []);
+
+  // NEW: Register reset callback with LocationContext
+  useEffect(() => {
+    console.log('EflowContext: Registering reset callback with LocationContext');
+    const unregister = registerResetCallback(clearData);
+    
+    // Cleanup: unregister when component unmounts
+    return () => {
+      console.log('EflowContext: Unregistering reset callback');
+      unregister();
+    };
+  }, [registerResetCallback, clearData]);
 
   const hasData = items.length > 0;
   const hasStressData = stressDataMap.size > 0;
@@ -220,7 +230,6 @@ export const EflowProvider: React.FC<React.PropsWithChildren> = ({ children }) =
     });
   }, [items, stressDataMap]);
 
-  // New: fetch PNG for given village + method from dedicated endpoint
   const fetchMethodPng = useCallback(
     async (vlcode: number, methodKey: MethodKey): Promise<string | null> => {
       try {

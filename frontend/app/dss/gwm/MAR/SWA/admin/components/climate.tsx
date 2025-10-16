@@ -576,14 +576,19 @@ export default function ClimateAdmin() {
           Annual Runoff Summary (m³)
         </h4>
         {tableRows.length > 0 ? (
-          <div className="overflow-auto rounded-lg border border-gray-200 max-h-[60vh]">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <div className="rounded-lg border border-gray-200 max-h-[60vh] overflow-y-auto overflow-x-hidden relative">
+  <table className="min-w-full divide-y divide-gray-200 text-sm">
+
               <thead className="bg-gray-50">
                 <tr>
                   {tableHeaders.map((header) => (
-                    <th key={header} className="sticky top-0 z-10 whitespace-nowrap bg-gray-100 px-4 py-2 text-left font-medium text-gray-900">
-                      {header}
-                    </th>
+                    <th
+  key={header}
+  className="sticky top-0 z-20 bg-gray-100 px-4 py-2 text-left font-medium text-gray-900 shadow-sm"
+>
+  {header}
+</th>
+
                   ))}
                 </tr>
               </thead>

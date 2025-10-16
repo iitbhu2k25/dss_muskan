@@ -173,6 +173,10 @@ const DrainLocationsSelector: React.FC<DrainLocationsSelectorProps> = ({
   const [drainError, setDrainError] = useState<string | null>(null);
   const [stretchSearch, setStretchSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [stretchDropdownOpen, setStretchDropdownOpen] = useState(false);
+  const stretchDropdownRef = useRef<HTMLDivElement>(null);
+
+
   // Sync dropdown updating flag with ref
   useEffect(() => {
     isDropdownUpdatingRef.current = isDropdownUpdating;
@@ -522,6 +526,16 @@ const DrainLocationsSelector: React.FC<DrainLocationsSelectorProps> = ({
       }
     }
   }, [selectedVillages]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (stretchDropdownRef.current && !stretchDropdownRef.current.contains(event.target as Node)) {
+        setStretchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const updateSelectionsLocked = (locked: boolean) => {
     setSelectionsLocked(locked);
@@ -987,34 +1001,48 @@ const DrainLocationsSelector: React.FC<DrainLocationsSelectorProps> = ({
 
           {/* Stretch Dropdown */}
           <div>
-            <label htmlFor="stretch-dropdown" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Stretch:
             </label>
-            <input
-              type="number"
-              placeholder="Search stretch..."
-              className="w-full p-2 mb-2 text-sm border border-gray-300 rounded-md"
-              value={stretchSearch}
-              onChange={e => setStretchSearch(e.target.value)}
-              disabled={!selectedRiver || selectionsLocked || loadingStretches}
-              autoComplete="off"
-              min="0"
-            />
-            <div className="relative">
-              <select
-                id="stretch-dropdown"
-                className={`w-full p-2 text-sm border ${stretchError ? 'border-red-500' : 'border-blue-500'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${loadingStretches ? 'bg-gray-100' : ''}`}
-                value={selectedStretch}
-                onChange={handleStretchChange}
+            <div className="relative" ref={stretchDropdownRef}>
+              <button
+                type="button"
+                className={`w-full p-2 text-sm text-left border ${stretchError ? 'border-red-500' : 'border-blue-500'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${loadingStretches ? 'bg-gray-100' : ''}`}
+                onClick={() => !selectionsLocked && !loadingStretches && selectedRiver && setStretchDropdownOpen(!stretchDropdownOpen)}
                 disabled={!selectedRiver || selectionsLocked || loadingStretches}
               >
-                <option value="">--Choose a Stretch--</option>
-                {filteredStretches.map(stretch => (
-                  <option key={stretch.id} value={stretch.id}>
-                    {stretch.id}
-                  </option>
-                ))}
-              </select>
+                {selectedStretch ? stretches.find(s => s.id.toString() === selectedStretch)?.id : '--Choose a Stretch--'}
+              </button>
+
+              {stretchDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                  <input
+                    type="number"
+                    placeholder="Search stretch..."
+                    className="w-full p-2 text-sm border-b border-gray-200 focus:outline-none"
+                    value={stretchSearch}
+                    onChange={e => setStretchSearch(e.target.value)}
+                    autoFocus
+                    min="0"
+                  />
+                  <div className="max-h-48 overflow-y-auto">
+                    {filteredStretches.map(stretch => (
+                      <div
+                        key={stretch.id}
+                        className="p-2 text-sm hover:bg-blue-50 cursor-pointer"
+                        onClick={() => {
+                          handleStretchChange({ target: { value: stretch.id.toString() } } as any);
+                          setStretchDropdownOpen(false);
+                          setStretchSearch('');
+                        }}
+                      >
+                        {stretch.id}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {loadingStretches && (
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <div className="w-4 h-4 border-2 border-t-blue-500 border-r-blue-500 border-b-blue-500 border-l-transparent rounded-full animate-spin"></div>
@@ -1061,7 +1089,7 @@ const DrainLocationsSelector: React.FC<DrainLocationsSelectorProps> = ({
           </div>
 
 
-          
+
         </div>
 
 

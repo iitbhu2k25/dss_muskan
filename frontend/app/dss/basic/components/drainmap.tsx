@@ -434,39 +434,150 @@ const DrainMap: React.FC<DrainMapProps> = ({
 
 
 
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange as any);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange as any);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange as any);
-        return () => {
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange as any);
-            document.removeEventListener('mozfullscreenchange', handleFullscreenChange as any);
-            document.removeEventListener('MSFullscreenChange', handleFullscreenChange as any);
-        };
-    }, []);
-
-
-    const toggleFullscreen = useCallback(() => {
-        const el = mapContainerRef.current;
-        if (!document.fullscreenElement) {
-            if (el?.requestFullscreen) {
-                el.requestFullscreen()
-                    .then(() => setIsFullscreen(true))
-                    .catch((err) => console.log('Error entering fullscreen:', err));
-            }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen()
-                    .then(() => setIsFullscreen(false))
-                    .catch((err) => console.log('Error exiting fullscreen:', err));
-            }
+useEffect(() => {
+    const handleFullscreenChange = () => {
+        const isNowFullscreen = !!document.fullscreenElement;
+        
+        setIsFullscreen(isNowFullscreen);
+        
+        if (mapRef.current) {
+          
+            mapRef.current.invalidateSize({ pan: false });
+            
+            // Force complete repaint for all layers
+            setTimeout(() => {
+                
+                if (mapRef.current) {
+                    mapRef.current.invalidateSize({ pan: false });
+                    
+                    // Force layers to redraw
+                    if (basinLayerRef.current) basinLayerRef.current.bringToBack();
+                    if (riverLayerRef.current) riverLayerRef.current.bringToFront();
+                    if (stretchLayerRef.current) stretchLayerRef.current.bringToFront();
+                    if (drainLayerRef.current) drainLayerRef.current.bringToFront();
+                    if (catchmentLayerRef.current) catchmentLayerRef.current.bringToFront();
+                    if (villageLayerRef.current) villageLayerRef.current.bringToFront();
+                    
+                    const size = mapRef.current.getSize();
+                 
+                }
+            }, 50);
+            
+            setTimeout(() => {
+               
+                mapRef.current?.invalidateSize({ pan: false });
+            }, 300);
         }
-    }, []);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange as any);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange as any);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange as any);
+    
+    return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange as any);
+        document.removeEventListener('mozfullscreenchange', handleFullscreenChange as any);
+        document.removeEventListener('MSFullscreenChange', handleFullscreenChange as any);
+    };
+}, []);
+
+
+const toggleFullscreen = useCallback(() => {
+    const el = mapContainerRef.current;
+   
+    
+    if (!document.fullscreenElement) {
+      
+        if (el?.requestFullscreen) {
+            el.requestFullscreen()
+                .then(() => {
+                   
+                    setIsFullscreen(true);
+                    
+                    setTimeout(() => {
+                      
+                        mapRef.current?.invalidateSize({ pan: false });
+                    }, 50);
+                    setTimeout(() => {
+                  
+                        mapRef.current?.invalidateSize({ pan: false });
+                    }, 200);
+                    setTimeout(() => {
+                  
+                        mapRef.current?.invalidateSize({ pan: false });
+                    }, 500);
+                })
+                .catch((err) => console.log('Error entering fullscreen:', err));
+        }
+    } else {
+        console.log('EXITING FULLSCREEN');
+        if (document.exitFullscreen) {
+            document.exitFullscreen()
+                .then(() => {
+                   
+                    setIsFullscreen(false);
+                    
+                    setTimeout(() => {
+                      
+                        if (mapRef.current) {
+                            mapRef.current.invalidateSize({ pan: false });
+                            const size = mapRef.current.getSize();
+                           
+                        }
+                    }, 50);
+                    setTimeout(() => {
+                        
+                        if (mapRef.current) {
+                            mapRef.current.invalidateSize({ pan: false });
+                            const size = mapRef.current.getSize();
+                          
+                        }
+                    }, 200);
+                    setTimeout(() => {
+                      
+                        if (mapRef.current) {
+                            mapRef.current.invalidateSize({ pan: false });
+                            const size = mapRef.current.getSize();
+                           
+                        }
+                    }, 500);
+                })
+                .catch((err) => console.log('Error exiting fullscreen:', err));
+        }
+    }
+}, [isFullscreen]);
+
+// Add this new useEffect
+useEffect(() => {
+  
+    
+    if (mapRef.current) {
+        const resizeMap = () => {
+         
+            mapRef.current?.invalidateSize({ pan: false });
+            if (mapRef.current) {
+                const size = mapRef.current.getSize();
+               
+            }
+        };
+        
+        resizeMap();
+        setTimeout(() => {
+         
+            resizeMap();
+        }, 100);
+        setTimeout(() => {
+            
+            resizeMap();
+        }, 300);
+        setTimeout(() => {
+      
+            resizeMap();
+        }, 600);
+    }
+}, [isFullscreen]);
 
 
     // Toggle catchment layer visibility
@@ -1858,10 +1969,13 @@ const DrainMap: React.FC<DrainMapProps> = ({
     return (
         <div className={`map-container ${className || ''} h-full`} style={{ background: 'rgb(255, 255, 255)' }}>
             <div
-                ref={mapContainerRef}
-                className={`drain-map border-4 z-[100] border-blue-500 rounded-xl shadow-lg hover:border-green-500 hover:shadow-2xl transition-all duration-300 w-full ${isFullscreen ? 'h-screen rounded-none border-0' : 'h-full'} relative`}
-                style={{ background: 'rgb(255, 255, 255)' }}
-            >
+    ref={mapContainerRef}
+    className={`drain-map border-4 z-[100] border-blue-500 rounded-xl shadow-lg hover:border-green-500 hover:shadow-2xl transition-all duration-300 w-full ${isFullscreen ? 'h-screen rounded-none border-0' : 'h-full'} relative`}
+    style={{ 
+        background: 'rgb(255, 255, 255)',
+        overflow: 'hidden' // ADD THIS - prevents layers from rendering outside
+    }}
+>
 
                 {/* Legend moved inside map as overlay */}
                 <div className="absolute top-2 left-15 z-[1000] bg-white bg-opacity-90 p-2 rounded-lg shadow-lg border border-gray-300">
@@ -1905,7 +2019,7 @@ const DrainMap: React.FC<DrainMapProps> = ({
 
                 {/* Controls moved to top-right inside map */}
                 {selectedDrains.length > 0 && (
-                    <div className="absolute top-2 right-2 flex flex-col gap-1 z-[1000]">
+                    <div className="absolute bottom-5 right-2 flex flex-col gap-1 z-[1000]">
                         <div className="flex items-center bg-white bg-opacity-90 p-2 rounded border border-gray-300 shadow-lg">
                             <input
                                 type="checkbox"

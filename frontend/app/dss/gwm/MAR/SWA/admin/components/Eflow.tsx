@@ -537,7 +537,7 @@ export default function Eflow() {
               <LineChart key={chartKey} data={chartData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" type="number" domain={[1, 12]} label={{ value: 'Month', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle' } }} />
-                <YAxis label={{ value: 'Flow (cms)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }} />
+                <YAxis label={{ value: 'Flow (cms)', angle: -90, position: 'insideLeft', offset: -10, style: { textAnchor: 'middle' } }} />
                 <Tooltip content={<CustomTooltip />} position={{ x: 0, y: 0 }} cursor={{ stroke: '#cbd5e1', strokeDasharray: '3 3' }} />
                 {threshold !== null && (
                   <ReferenceLine
@@ -545,7 +545,7 @@ export default function Eflow() {
                     stroke="#7c3aed"
                     strokeDasharray="5 5"
                     strokeWidth={2}
-                    label={{ value: `${selectedMethod} threshold`, position: 'left', fill: '#7c3aed', fontSize: 12 }}
+                    label={{ value: `${selectedMethod} `, position: 'left', offset: 20, fill: '#7c3aed', fontSize: 12 }}
                   />
                 )}
                 <Line type="monotone" dataKey="flow" name="Monthly flow" stroke={BLUE} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />

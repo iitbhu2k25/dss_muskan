@@ -365,7 +365,7 @@ export default function StreamFlow() {
               />
               <YAxis
                 tickFormatter={(v) => `${Number(v).toFixed(1)}`}
-                label={{ value: 'Runoff (m³/s)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                label={{ value: 'Runoff (m³/s)', angle: -90, position: 'insideLeft', offset: -30, style: { textAnchor: 'middle' } }}
               />
               <Tooltip content={<CustomTooltip />} position={{ x: 0, y: 0 }} cursor={{ stroke: '#cbd5e1', strokeDasharray: '3 3' }} />
               <ReferenceLine

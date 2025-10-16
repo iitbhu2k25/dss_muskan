@@ -590,6 +590,20 @@ const WaterDemandForm: React.FC<WaterDemandFormProps> = ({
       calculateFirefightingDemand();
     }
   };
+{/* Eye SVG Icons */}
+const EyeIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" className="inline h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
+
+const EyeOffIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" className="inline h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.022-3.434M6.059 6.06A9.969 9.969 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.967 9.967 0 01-1.96 3.332M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <line x1="3" y1="3" x2="21" y2="21" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+  </svg>
+);
 
   return (
     <div className="p-6 border rounded-lg bg-gradient-to-br from-white to-gray-50 shadow-lg">
@@ -626,7 +640,7 @@ const WaterDemandForm: React.FC<WaterDemandFormProps> = ({
         </div>
       </div>
 
-      {/* Domestic Fields */}
+
       {/* Domestic Fields */}
       {domesticChecked && (
         <div className="mb-6 p-4 border rounded-lg bg-blue-50/50 shadow-sm">
@@ -1659,17 +1673,21 @@ const WaterDemandForm: React.FC<WaterDemandFormProps> = ({
               </tbody>
             </table>
           </div>
+
+          
           {/* Show Seasonal Breakdown Button */}
           {domesticDemand && domesticDemand.seasonal_demands && (
             <div className="mt-4">
               <button
                 onClick={() => setShowSeasonalBreakdown(!showSeasonalBreakdown)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
               >
+                {showSeasonalBreakdown ? EyeOffIcon : EyeIcon}
                 {showSeasonalBreakdown ? 'Hide' : 'Show'} Seasonal Domestic Water Demand
               </button>
             </div>
           )}
+
           {/* Seasonal Breakdown Table */}
           {showSeasonalBreakdown && domesticDemand?.seasonal_demands && forecastData && (
             <div className="mt-4 p-3 bg-white rounded-lg border">
@@ -1710,15 +1728,17 @@ const WaterDemandForm: React.FC<WaterDemandFormProps> = ({
           )}
           {/* Show Floating Seasonal Breakdown Button */}
           {floatingDemand && floatingDemand.seasonal_demands && (
-            <div className="mt-4">
-              <button
-                onClick={() => setShowFloatingSeasonalBreakdown(!showFloatingSeasonalBreakdown)}
-                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                {showFloatingSeasonalBreakdown ? 'Hide' : 'Show'} Seasonal Floating Water Demand
-              </button>
-            </div>
-          )}
+  <div className="mt-4">
+    <button
+      onClick={() => setShowFloatingSeasonalBreakdown(!showFloatingSeasonalBreakdown)}
+      className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center"
+    >
+      {showFloatingSeasonalBreakdown ? EyeOffIcon : EyeIcon}
+      {showFloatingSeasonalBreakdown ? 'Hide' : 'Show'} Seasonal Floating Water Demand
+    </button>
+  </div>
+)}
+
 
           {/* Floating Seasonal Breakdown Table */}
           {showFloatingSeasonalBreakdown && floatingDemand?.seasonal_demands && forecastData && (
@@ -1758,6 +1778,9 @@ const WaterDemandForm: React.FC<WaterDemandFormProps> = ({
               </div>
             </div>
           )}
+
+
+
           {/* Add a summary message below the table */}
           <div className="mt-4 p-4 border rounded-lg bg-blue-50/50 shadow-sm">
             <h5 className="font-semibold text-lg text-blue-700 mb-2">Water Demand Summary:</h5>
