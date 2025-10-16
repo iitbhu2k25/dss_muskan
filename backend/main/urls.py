@@ -9,5 +9,6 @@ urlpatterns = [
     path("django/swa/", include("swa.urls")),
     path("django/drain-water-quality/", include("dashboard.urls")),
     path("django/wqa/", include("wqa.urls")),
+    path("django/datahub/", include("datahub.urls")),
 
 ]

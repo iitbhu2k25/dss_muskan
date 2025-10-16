@@ -33,7 +33,8 @@ INSTALLED_APPS = [
     "gwa",
     "swa",
     "dashboard",
-    "wqa"
+    "wqa",
+    "datahub"
 ]
 
 MIDDLEWARE = [
