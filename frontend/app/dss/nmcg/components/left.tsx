@@ -13,7 +13,6 @@ const Left = () => {
     const [featureAttributes, setFeatureAttributes] = useState<any[]>([]);
     const [showRows, setShowRows] = useState(10);
 
-    // Filter states
     const [filterMode, setFilterMode] = useState(false);
     const [filters, setFilters] = useState<Record<string, string[]>>({});
     const [uniqueColumnValues, setUniqueColumnValues] = useState<Record<string, string[]>>({});
@@ -28,7 +27,6 @@ const Left = () => {
         setFeatureAttributes([]);
         setAllFeatureAttributes([]);
         setUniqueColumnValues({});
-        // Reset map filters
         if (mapInstance) {
             applyFilterToWMS({});
         }
@@ -43,7 +41,6 @@ const Left = () => {
         }
     };
 
-    // Fetch attributes when shapefile changes
     useEffect(() => {
         if (!selectedShapefile) {
             setFeatureAttributes([]);
@@ -60,8 +57,6 @@ const Left = () => {
                     selectedShapefile.shapefile_name;
                 const url = `http://localhost:9090/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:${baseName}&outputFormat=application/json`;
 
-                console.log('📊 Fetching attributes from:', url);
-
                 const res = await fetch(url);
                 const data = await res.json();
 
@@ -71,7 +66,6 @@ const Left = () => {
                     setFeatureAttributes(attributes);
                     setShowRows(10);
 
-                    // Calculate unique values for each column
                     const uniqueValues: Record<string, string[]> = {};
                     Object.keys(attributes[0]).forEach((key) => {
                         const values = attributes.map((row: any) => {
@@ -81,16 +75,7 @@ const Left = () => {
                         uniqueValues[key] = Array.from(new Set(values)) as string[];
                     });
                     setUniqueColumnValues(uniqueValues);
-
-                    console.log(
-                        '✓ Loaded',
-                        attributes.length,
-                        'features with',
-                        Object.keys(attributes[0]).length,
-                        'attributes'
-                    );
                 } else {
-                    console.warn('No features found for shapefile');
                     setFeatureAttributes([]);
                     setAllFeatureAttributes([]);
                     setUniqueColumnValues({});
@@ -107,41 +92,27 @@ const Left = () => {
         fetchAttributes();
     }, [selectedShapefile]);
 
-    // Toggle checkbox values and apply filters immediately (optional real-time filtering)
     const toggleValue = (key: string, value: string) => {
         setFilters((prev) => {
             const selected = prev[key] || [];
-            let newFilters;
             if (selected.includes(value)) {
-                newFilters = { ...prev, [key]: selected.filter((v) => v !== value) };
+                return { ...prev, [key]: selected.filter((v) => v !== value) };
             } else {
-                newFilters = { ...prev, [key]: [...selected, value] };
+                return { ...prev, [key]: [...selected, value] };
             }
-            // Optional: Apply filters immediately on checkbox toggle
-            // applyFilters(newFilters);
-            return newFilters;
         });
     };
 
     const toggleSelectAll = (key: string) => {
         if (!uniqueColumnValues[key]) return;
         const allSelected = filters[key]?.length === uniqueColumnValues[key].length;
-        setFilters((prev) => {
-            const newFilters = {
-                ...prev,
-                [key]: allSelected ? [] : [...uniqueColumnValues[key]],
-            };
-            // Optional: Apply filters immediately on select all
-            // applyFilters(newFilters);
-            return newFilters;
-        });
+        setFilters((prev) => ({
+            ...prev,
+            [key]: allSelected ? [] : [...uniqueColumnValues[key]],
+        }));
     };
 
-    // Apply filter to both table and map
     const applyFilters = (filtersToApply = filters) => {
-        console.log('🎯 Applying filters:', filtersToApply);
-
-        // Filter table data
         const filteredData = allFeatureAttributes.filter((row) =>
             Object.keys(filtersToApply).every((key) => {
                 const selectedValues = filtersToApply[key];
@@ -154,103 +125,114 @@ const Left = () => {
         setFeatureAttributes(filteredData);
         setShowRows(10);
 
-        console.log(`✓ Table filtered: ${filteredData.length}/${allFeatureAttributes.length} features`);
-
-        // Apply CQL Filter to map
         if (mapInstance) {
             applyFilterToWMS(filtersToApply);
-        } else {
-            console.warn('⚠️ Map not ready for filtering');
         }
     };
 
-    // Reset filters
     const resetFilters = () => {
-        console.log('🔄 Resetting filters');
-
         setFilters({});
         setFilterMode(false);
         setOpenFilterDropdown(null);
         setFeatureAttributes(allFeatureAttributes);
         setShowRows(10);
 
-        // Reset WMS filter on map
         if (mapInstance) {
             applyFilterToWMS({});
         }
-
-        console.log('✓ Filters reset');
     };
 
     return (
-        <div className="h-full bg-gray-200 text-black p-6 overflow-y-auto">
-            <h1 className="text-2xl font-bold mb-4">Select Data</h1>
+        <div className="h-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 overflow-y-auto shadow-2xl">
+            <div className="mb-6">
+                <h1 className="text-3xl font-black text-gray-900 mb-2 flex items-center gap-3">
+                    <span className="text-4xl"></span>
+                    <span>Data Explorer</span>
+                </h1>
+               
+            </div>
 
             {/* Shapefile Dropdown */}
-            <div className="relative mb-4">
+            <div className="relative mb-5">
+                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                    Select File
+                </label>
                 <button
                     onClick={handleDropdownToggle}
-                    className="w-full bg-white text-gray-800 font-semibold py-2 px-4 rounded-lg shadow hover:bg-gray-100 transition flex items-center justify-between"
+                    className="w-full bg-white text-gray-800 font-bold py-4 px-5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 flex items-center justify-between border-2 border-gray-200 hover:border-blue-400"
                     disabled={isLoading}
                 >
-                    <span>{selectedShapefile ? selectedShapefile.shapefile_name : 'Choose Shapefile'}</span>
+                    <span className="flex items-center gap-3">
+                        <span className="text-xl">{selectedShapefile ? '' : '📁'}</span>
+                        <span>{selectedShapefile ? selectedShapefile.shapefile_name : 'Choose Shapefile'}</span>
+                    </span>
                     <svg
-                        className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                     >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
 
                 {isOpen && (
-                    <ul className="absolute z-10 bg-white w-full mt-2 rounded-lg shadow-lg border max-h-60 overflow-y-auto">
+                    <ul className="absolute z-50 bg-white w-full mt-2 rounded-xl shadow-2xl border-2 border-gray-200 max-h-72 overflow-y-auto custom-scrollbar animate-scale-in">
                         {isLoading ? (
-                            <li className="px-4 py-2 text-gray-500">Loading...</li>
+                            <li className="px-5 py-4 text-gray-500 flex items-center gap-3">
+                                <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                                <span>Loading...</span>
+                            </li>
                         ) : shapefiles.length > 0 ? (
                             shapefiles.map((file) => (
                                 <li
                                     key={file.fid}
                                     onClick={() => handleSelect(file)}
-                                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-800 ${
-                                        selectedShapefile?.fid === file.fid ? 'bg-blue-50 font-semibold' : ''
+                                    className={`px-5 py-4 hover:bg-blue-50 cursor-pointer text-gray-800 font-semibold transition-all duration-200 flex items-center gap-3 ${
+                                        selectedShapefile?.fid === file.fid ? 'bg-blue-100 text-blue-700' : ''
                                     }`}
                                 >
-                                    {file.shapefile_name}
+                                   
+                                    <span>{file.shapefile_name}</span>
+                                    {selectedShapefile?.fid === file.fid && <span className="ml-auto text-blue-600">✓</span>}
                                 </li>
                             ))
                         ) : (
-                            <li className="px-4 py-2 text-gray-500">No shapefiles found</li>
+                            <li className="px-5 py-4 text-gray-500 text-center">No shapefiles found</li>
                         )}
                     </ul>
                 )}
             </div>
 
-            {/* Filter Button + Apply */}
+            {/* Filter Controls */}
             {selectedShapefile && featureAttributes.length > 0 && (
-                <div className="flex gap-2 mb-2">
+                <div className="flex flex-wrap gap-3 mb-4">
                     <button
                         onClick={() => setFilterMode(!filterMode)}
-                        className={`px-3 py-1 rounded transition ${
-                            filterMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white hover:bg-blue-600'
+                        className={`px-5 py-2.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-2 ${
+                            filterMode 
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+                                : 'bg-white text-gray-800 border-2 border-gray-300 hover:border-blue-400 hover:shadow-lg'
                         }`}
                     >
-                        {filterMode ? '✓ Filter Mode' : 'Filter'}
+                        <span>{filterMode ? '' : '🔍'}</span>
+                        <span>{filterMode ? 'Filter Active' : 'Enable Filter'}</span>
                     </button>
                     {filterMode && (
                         <>
                             <button
                                 onClick={() => applyFilters()}
-                                className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition font-semibold"
+                                className="px-5 py-2.5 rounded-xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
                             >
-                                Apply Filter
+                               
+                                <span>Apply Filter</span>
                             </button>
                             <button
                                 onClick={resetFilters}
-                                className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition"
+                                className="px-5 py-2.5 rounded-xl font-bold bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
                             >
-                                Reset
+                                <span>↺</span>
+                                <span>Reset</span>
                             </button>
                         </>
                     )}
@@ -259,42 +241,57 @@ const Left = () => {
 
             {/* Active Filters Display */}
             {Object.keys(filters).some((key) => filters[key]?.length > 0) && (
-                <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                    <strong>Active Filters:</strong>
-                    {Object.keys(filters).map((key) => {
-                        const vals = filters[key];
-                        if (!vals || vals.length === 0) return null;
-                        return (
-                            <div key={key} className="ml-2">
-                                <span className="font-semibold">{key}:</span> {vals.join(', ')}
-                            </div>
-                        );
-                    })}
+                <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl text-sm animate-fade-in">
+                    <strong className="text-blue-900 font-bold flex items-center gap-2 mb-2">
+                        <span className="text-lg">🔍</span>
+                        <span>Active Filters:</span>
+                    </strong>
+                    <div className="space-y-1">
+                        {Object.keys(filters).map((key) => {
+                            const vals = filters[key];
+                            if (!vals || vals.length === 0) return null;
+                            return (
+                                <div key={key} className="ml-4">
+                                    <span className="font-bold text-blue-700">{key}:</span>{' '}
+                                    <span className="text-blue-900">{vals.join(', ')}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
             {/* Feature Count */}
             {selectedShapefile && allFeatureAttributes.length > 0 && (
-                <div className="mb-2 text-sm font-medium">
-                    Showing {featureAttributes.length} of {allFeatureAttributes.length} features
+                <div className="mb-3 p-3 bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl border-2 border-gray-300 flex items-center justify-between">
+                    <span className="text-sm font-bold text-gray-700">Showing Features:</span>
+                    <span className="text-lg font-black text-gray-900">
+                        {featureAttributes.length} / {allFeatureAttributes.length}
+                    </span>
                 </div>
             )}
 
             {/* Feature Table */}
             {selectedShapefile && (
-                <div className="overflow-x-auto mt-2 relative">
+                <div className="overflow-x-auto mt-4 rounded-xl border-2 border-gray-300 shadow-xl">
                     {isLoading ? (
-                        <p>Loading attributes...</p>
+                        <div className="p-10 text-center">
+                            <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                            <p className="text-gray-600 font-semibold">Loading attributes...</p>
+                        </div>
                     ) : featureAttributes.length === 0 ? (
-                        <p>No attributes found</p>
+                        <div className="p-10 text-center text-gray-500 font-semibold">
+                           
+                            <span>No attributes found</span>
+                        </div>
                     ) : (
-                        <table className="min-w-full bg-white border rounded-lg shadow relative">
-                            <thead className="bg-gray-300 sticky top-0">
+                        <table className="min-w-full bg-white rounded-xl overflow-hidden">
+                            <thead className="bg-gradient-to-r from-gray-700 to-gray-800 text-white sticky top-0 z-10">
                                 <tr>
                                     {Object.keys(featureAttributes[0]).map((key) => (
-                                        <th key={key} className="text-left px-2 py-1 border relative">
-                                            <div className="flex justify-between items-center">
-                                                <span className="font-semibold">{key}</span>
+                                        <th key={key} className="text-left px-4 py-4 font-bold relative">
+                                            <div className="flex justify-between items-center gap-2">
+                                                <span>{key}</span>
                                                 {filterMode && (
                                                     <button
                                                         onClick={() =>
@@ -302,19 +299,19 @@ const Left = () => {
                                                                 openFilterDropdown === key ? null : key
                                                             )
                                                         }
-                                                        className="ml-1 px-1 py-0.5 text-xs bg-gray-200 rounded hover:bg-gray-300"
+                                                        className="px-2 py-1 text-xs bg-white/20 rounded-lg hover:bg-white/30 transition-all duration-200"
                                                     >
-                                                        ▾
+                                                       ▼
                                                     </button>
                                                 )}
                                             </div>
 
                                             {filterMode && openFilterDropdown === key && (
-                                                <div className="absolute bg-white border shadow-lg z-20 p-2 max-h-60 overflow-y-auto mt-1 min-w-[200px]">
-                                                    <div className="flex justify-between items-center mb-2 pb-2 border-b">
-                                                        <span className="text-sm font-semibold">Select Values</span>
+                                                <div className="absolute bg-white border-2 border-gray-300 shadow-2xl z-50 p-4 max-h-64 overflow-y-auto mt-2 min-w-[240px] rounded-xl animate-scale-in">
+                                                    <div className="flex justify-between items-center mb-3 pb-3 border-b-2 border-gray-200">
+                                                        <span className="text-sm font-bold text-gray-900">Select Values</span>
                                                         <button
-                                                            className="text-sm text-blue-500 hover:text-blue-700"
+                                                            className="text-sm text-blue-600 hover:text-blue-800 font-bold"
                                                             onClick={() => toggleSelectAll(key)}
                                                         >
                                                             {filters[key]?.length === uniqueColumnValues[key]?.length
@@ -322,17 +319,17 @@ const Left = () => {
                                                                 : 'Select All'}
                                                         </button>
                                                     </div>
-                                                    <div className="max-h-48 overflow-y-auto">
+                                                    <div className="max-h-48 overflow-y-auto custom-scrollbar">
                                                         {uniqueColumnValues[key]?.map((val) => (
                                                             <label
                                                                 key={val}
-                                                                className="block text-sm py-1 hover:bg-gray-50 cursor-pointer"
+                                                                className="block text-sm py-2 px-2 hover:bg-blue-50 cursor-pointer rounded-lg transition-all duration-200 font-medium text-gray-800"
                                                             >
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={filters[key]?.includes(val) || false}
                                                                     onChange={() => toggleValue(key, val)}
-                                                                    className="mr-2"
+                                                                    className="mr-3 w-4 h-4 accent-blue-600"
                                                                 />
                                                                 {val}
                                                             </label>
@@ -346,9 +343,9 @@ const Left = () => {
                             </thead>
                             <tbody>
                                 {featureAttributes.slice(0, showRows).map((attr, idx) => (
-                                    <tr key={idx} className="border-b hover:bg-gray-50">
+                                    <tr key={idx} className="border-b border-gray-200 hover:bg-blue-50 transition-all duration-200">
                                         {Object.values(attr).map((val, i) => (
-                                            <td key={i} className="px-2 py-1 border break-words text-sm">
+                                            <td key={i} className="px-4 py-3 text-sm text-gray-800 font-medium">
                                                 {val?.toString() || 'N/A'}
                                             </td>
                                         ))}
@@ -362,13 +359,31 @@ const Left = () => {
                             onClick={() =>
                                 setShowRows((prev) => Math.min(prev + 10, featureAttributes.length))
                             }
-                            className="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                            className="w-full mt-0 px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-b-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
                         >
-                            Show More ({featureAttributes.length - showRows} remaining)
+                            
+                            <span>Show More ({featureAttributes.length - showRows} remaining)</span>
                         </button>
                     )}
                 </div>
             )}
+
+            <style jsx>{`
+                @keyframes scale-in {
+                    from { transform: scale(0.95); opacity: 0; }
+                    to { transform: scale(1); opacity: 1; }
+                }
+                @keyframes fade-in {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .animate-scale-in {
+                    animation: scale-in 0.2s ease-out;
+                }
+                .animate-fade-in {
+                    animation: fade-in 0.3s ease-out;
+                }
+            `}</style>
         </div>
     );
 };
