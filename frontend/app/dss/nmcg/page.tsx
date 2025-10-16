@@ -10,14 +10,14 @@ const Page = () => {
   return (
     <ShapefileProvider>
       <MapProvider>
-        <div className="h-screen w-full flex overflow-hidden bg-gray-100">
+        <div className="h-[80vh] w-full flex overflow-hidden bg-gray-100">
           {/* Left panel - 40% */}
-          <div className="w-1/2 h-full p-2 overflow-y-auto">
+          <div className="w-1/2 h-[80vh] p-2 overflow-y-auto">
             <Left />
           </div>
 
           {/* Map panel - 60% */}
-          <div className="w-1/2 h-full p-2">
+          <div className="w-1/2 h-[80vh] p-2">
             <MapComponent />
           </div>
         </div>
