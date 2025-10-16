@@ -1,13 +1,5 @@
 'use client';
-import React, {
-    createContext,
-    useContext,
-    useRef,
-    useEffect,
-    ReactNode,
-    useState,
-    useMemo,
-} from 'react';
+import React, { createContext, useContext, useRef, useEffect, ReactNode, useState, useMemo } from 'react';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
@@ -45,22 +37,22 @@ interface MapContextType {
     mapInstance: Map | null;
     selectedBaseMap: string;
     changeBaseMap: (key: string) => void;
-    mapContainerRef: React.RefObject<HTMLDivElement>;
-    popupRef: React.RefObject<HTMLDivElement>;
+    mapContainerRef: React.RefObject<HTMLDivElement | null>;
+    popupRef: React.RefObject<HTMLDivElement | null>;
     featureInfo: FeatureInfo | null;
     setFeatureInfo: (info: FeatureInfo | null) => void;
     isLoading: boolean;
     error: string | null;
     showLabels: boolean;
     toggleLabels: () => void;
-
     filteredFeatures: any[];
     setFilteredFeatures: (features: any[]) => void;
-
     applyFilterToWMS: (filters: Record<string, string[]>) => void;
 }
 
-interface MapProviderProps { children: ReactNode; }
+interface MapProviderProps {
+    children: ReactNode;
+}
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
 
@@ -80,31 +72,38 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showLabels, setShowLabels] = useState(false);
-
     const [filteredFeatures, setFilteredFeatures] = useState<any[]>([]);
+    const [currentFilters, setCurrentFilters] = useState<Record<string, string[]>>({});
 
-    const toggleLabels = () => setShowLabels(s => !s);
+    const toggleLabels = () => setShowLabels((s) => !s);
 
     // Initialize map
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return;
         setIsLoading(true);
         try {
-            const baseLayer = new TileLayer({ source: baseMaps[selectedBaseMap].source(), zIndex: 0 });
+            const baseLayer = new TileLayer({
+                source: baseMaps[selectedBaseMap].source(),
+                zIndex: 0,
+            });
             baseLayer.set('name', 'basemap');
             baseLayerRef.current = baseLayer;
 
             const map = new Map({
                 target: mapContainerRef.current,
                 layers: [baseLayer],
-                view: new View({ center: fromLonLat([78.9629, 20.5937]), zoom: 5 }),
+                view: new View({
+                    center: fromLonLat([78.9629, 20.5937]),
+                    zoom: 5,
+                }),
             });
 
             mapRef.current = map;
             setMapInstance(map);
             setIsLoading(false);
+            console.log('✓ Map initialized');
         } catch (err) {
-            console.error(err);
+            console.error('Map initialization error:', err);
             setError('Failed to initialize map');
             setIsLoading(false);
         }
@@ -122,6 +121,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         });
         mapInstance.addOverlay(overlay);
         overlayRef.current = overlay;
+        console.log('✓ Popup overlay added');
     }, [mapInstance]);
 
     // Click handler for GetFeatureInfo
@@ -133,20 +133,28 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         const handleClick = async (evt: any) => {
             const resolution = mapInstance.getView().getResolution();
             if (!resolution) return;
-            const url = wmsSource.getFeatureInfoUrl(evt.coordinate, resolution, 'EPSG:3857', { INFO_FORMAT: 'application/json' });
+
+            const url = wmsSource.getFeatureInfoUrl(evt.coordinate, resolution, 'EPSG:3857', {
+                INFO_FORMAT: 'application/json',
+            });
             if (!url) return;
 
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 if (data.features && data.features.length > 0) {
-                    setFeatureInfo({ properties: data.features[0].properties, layerName: selectedShapefile?.shapefile_name || 'Layer' });
+                    setFeatureInfo({
+                        properties: data.features[0].properties,
+                        layerName: selectedShapefile?.shapefile_name || 'Layer',
+                    });
                     overlayRef.current?.setPosition(evt.coordinate);
                 } else {
                     setFeatureInfo(null);
                     overlayRef.current?.setPosition(undefined);
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error('GetFeatureInfo error:', err);
+            }
         };
 
         mapInstance.on('singleclick', handleClick);
@@ -156,18 +164,25 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     // Change basemap
     const changeBaseMap = (key: string) => {
         if (!mapInstance || key === selectedBaseMap) return;
-        if (baseLayerRef.current) mapInstance.removeLayer(baseLayerRef.current);
-        const newLayer = new TileLayer({ source: baseMaps[key].source(), zIndex: 0 });
+        if (baseLayerRef.current) {
+            mapInstance.removeLayer(baseLayerRef.current);
+        }
+        const newLayer = new TileLayer({
+            source: baseMaps[key].source(),
+            zIndex: 0,
+        });
         newLayer.set('name', 'basemap');
         baseLayerRef.current = newLayer;
         mapInstance.getLayers().insertAt(0, newLayer);
         setSelectedBaseMap(key);
+        console.log(`✓ Basemap changed to: ${key}`);
     };
 
     // Add WMS layer based on selected shapefile
     useEffect(() => {
         if (!mapInstance || !selectedShapefile) return;
 
+        // Remove existing WMS layer
         if (wmsLayerRef.current) {
             mapInstance.removeLayer(wmsLayerRef.current);
             wmsLayerRef.current = null;
@@ -175,74 +190,136 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             overlayRef.current?.setPosition(undefined);
         }
 
+        // Reset filters when shapefile changes
+        setCurrentFilters({});
+        setFilteredFeatures([]);
+
         try {
-            const layerName = selectedShapefile.shapefile_path.split('/').pop()?.replace('.shp', '') || selectedShapefile.shapefile_name;
+            const layerName = selectedShapefile.shapefile_path
+                .split('/')
+                .pop()
+                ?.replace('.shp', '') || selectedShapefile.shapefile_name;
+
+            console.log(`🗺️ Loading WMS layer: ${WORKSPACE}:${layerName}`);
+
             const wmsSource = new TileWMS({
                 url: GEOSERVER_URL,
-                params: { LAYERS: `${WORKSPACE}:${layerName}`, TILED: true, VERSION: '1.1.0' },
+                params: {
+                    LAYERS: `${WORKSPACE}:${layerName}`,
+                    TILED: true,
+                    VERSION: '1.1.0',
+                    STYLES: '',
+                },
                 serverType: 'geoserver',
                 crossOrigin: 'anonymous',
             });
 
-            const wmsLayer = new TileLayer({ source: wmsSource, zIndex: 5, opacity: 0.8 });
+            const wmsLayer = new TileLayer({
+                source: wmsSource,
+                zIndex: 5,
+                opacity: 0.8,
+            });
             wmsLayer.set('name', 'wms-layer');
             mapInstance.addLayer(wmsLayer);
             wmsLayerRef.current = wmsLayer;
 
+            // Apply any existing filters (in case they persist)
+            if (Object.keys(currentFilters).length > 0) {
+                applyFilterToWMS(currentFilters);
+            }
+
+            console.log('✓ WMS layer added to map');
             setError(null);
-        } catch (err) { console.error(err); setError('Failed to load WMS layer'); }
+        } catch (err) {
+            console.error('WMS layer error:', err);
+            setError('Failed to load WMS layer');
+        }
     }, [mapInstance, selectedShapefile]);
 
-    // Apply filters to WMS
-    // Apply filters to WMS
+    // Apply filters to WMS layer
     const applyFilterToWMS = (filters: Record<string, string[]>) => {
-        if (!wmsLayerRef.current || !selectedShapefile) return;
+        if (!wmsLayerRef.current || !selectedShapefile) {
+            console.warn('⚠️ Cannot apply filter: no WMS layer or shapefile');
+            return;
+        }
 
-        const layerName =
-            selectedShapefile.shapefile_path.split('/').pop()?.replace('.shp', '') ||
-            selectedShapefile.shapefile_name;
+        const layerName = selectedShapefile.shapefile_path
+            .split('/')
+            .pop()
+            ?.replace('.shp', '') || selectedShapefile.shapefile_name;
+
         const wmsSource = wmsLayerRef.current.getSource() as TileWMS;
 
-        // Build CQL filter string
+        // Build CQL filter
         const cqlArray: string[] = [];
         Object.keys(filters).forEach((key) => {
             const values = filters[key];
             if (values && values.length > 0) {
-                const valStr = values.map((v) => `'${v}'`).join(',');
-                cqlArray.push(`${key} IN (${valStr})`);
+                // Handle numeric and string values appropriately
+                const formattedValues = values.map((v) => {
+                    const isNumeric = !isNaN(Number(v)) && v !== 'N/A' && v !== '';
+                    return isNumeric ? v : `'${String(v).replace(/'/g, "''")}'`;
+                });
+                const valStr = formattedValues.join(',');
+                cqlArray.push(`"${key}" IN (${valStr})`);
             }
         });
-        const cqlFilter = cqlArray.join(' AND ') || undefined;
 
-        // ✅ Update WMS parameters + cache-busting param
-        wmsSource.updateParams({
+        const cqlFilter = cqlArray.length > 0 ? cqlArray.join(' AND ') : null;
+
+        console.log('🔍 Applying CQL Filter:', cqlFilter || 'NONE (showing all features)');
+
+        // Store current filters
+        setCurrentFilters(filters);
+
+        // Build new parameters
+        const newParams: any = {
             LAYERS: `${WORKSPACE}:${layerName}`,
             TILED: true,
             VERSION: '1.1.0',
-            CQL_FILTER: cqlFilter,
-            TIME: Date.now(), // cache-buster to force reload
-        });
+            STYLES: '',
+            timestamp: Date.now(), // Force cache refresh
+        };
 
-        // ✅ Force source refresh
+        // Only add CQL_FILTER if there are actual filters
+        if (cqlFilter) {
+            newParams.CQL_FILTER = cqlFilter;
+        } else {
+            newParams.CQL_FILTER = null; // Explicitly clear filter
+        }
+
+        // Update WMS source parameters
+        wmsSource.updateParams(newParams);
+
+        // Force immediate refresh
         wmsSource.refresh();
+        if (mapInstance) {
+            mapInstance.renderSync(); // Ensure map redraws immediately
+            console.log('✅ Map rendered with new filter');
+        }
+
+        console.log('✅ WMS layer updated with new filter');
     };
 
-    const value = useMemo(() => ({
-        mapInstance,
-        selectedBaseMap,
-        changeBaseMap,
-        mapContainerRef,
-        popupRef,
-        featureInfo,
-        setFeatureInfo,
-        isLoading,
-        error,
-        showLabels,
-        toggleLabels,
-        filteredFeatures,
-        setFilteredFeatures,
-        applyFilterToWMS,
-    }), [mapInstance, selectedBaseMap, featureInfo, isLoading, error, showLabels, filteredFeatures]);
+    const value = useMemo(
+        () => ({
+            mapInstance,
+            selectedBaseMap,
+            changeBaseMap,
+            mapContainerRef,
+            popupRef,
+            featureInfo,
+            setFeatureInfo,
+            isLoading,
+            error,
+            showLabels,
+            toggleLabels,
+            filteredFeatures,
+            setFilteredFeatures,
+            applyFilterToWMS,
+        }),
+        [mapInstance, selectedBaseMap, featureInfo, isLoading, error, showLabels, filteredFeatures]
+    );
 
     return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 };

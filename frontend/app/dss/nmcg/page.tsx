@@ -1,3 +1,4 @@
+// frontend/app/dss/nmcg/page.tsx
 'use client';
 import React from 'react';
 import Left from './components/left';
