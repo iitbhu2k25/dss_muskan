@@ -159,11 +159,11 @@ const Left = () => {
                 </label>
                 <button
                     onClick={handleDropdownToggle}
-                    className="w-full bg-white text-gray-800 font-bold py-4 px-5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 flex items-center justify-between border-2 border-gray-200 hover:border-blue-400"
+                    className="w-full bg-white text-gray-800 font-bold py-3 px-5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 flex items-center justify-between border-2 border-gray-200 hover:border-blue-400"
                     disabled={isLoading}
                 >
                     <span className="flex items-center gap-3">
-                        <span className="text-xl">{selectedShapefile ? '' : '📁'}</span>
+                        <span className="text-l">{selectedShapefile ? '' : '📁'}</span>
                         <span>{selectedShapefile ? selectedShapefile.shapefile_name : 'Choose Shapefile'}</span>
                     </span>
                     <svg
@@ -209,7 +209,7 @@ const Left = () => {
                 <div className="flex flex-wrap gap-3 mb-4">
                     <button
                         onClick={() => setFilterMode(!filterMode)}
-                        className={`px-5 py-2.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-2 ${
+                        className={`px-5 py-1.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-2 ${
                             filterMode 
                                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
                                 : 'bg-white text-gray-800 border-2 border-gray-300 hover:border-blue-400 hover:shadow-lg'
