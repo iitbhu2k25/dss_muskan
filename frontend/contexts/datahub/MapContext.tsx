@@ -83,7 +83,6 @@ interface FeatureInfo {
     coordinate: number[];
 }
 
-
 interface MapContextType {
     mapInstance: Map | null;
     selectedBaseMap: string;
@@ -98,7 +97,7 @@ interface MapContextType {
     toggleLabels: () => void;
     filteredFeatures: any[];
     setFilteredFeatures: (features: any[]) => void;
-    applyFilterToWMS: (filters: Record<string, string[]>) => void;
+   applyFilterToWMS: (filters: Record<string, string[]>, targetFid?: number) => void;
     baseMaps: Record<string, BaseMapDefinition>;
     layerStyle: LayerStyle;
     updateLayerStyle: (style: LayerStyle) => void;
@@ -120,8 +119,8 @@ interface MapContextType {
     drawingLayerVisible: boolean;
     toggleDrawingLayer: () => void;
     updateFeatureProperties: (feature: Feature, properties: Record<string, any>) => void;
+    
 }
-
 
 interface MapProviderProps {
     children: ReactNode;
@@ -336,22 +335,25 @@ const createLineStyle = (styleConfig: LayerStyle, isHovered: boolean = false): S
 };
 
 export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
-    const { selectedShapefile } = useShapefile();
+    const { selectedShapefiles } = useShapefile();
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<Map | null>(null);
     const baseLayerRef = useRef<TileLayer<any> | null>(null);
-    const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-    const basinLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-    const drawingLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-    const bufferLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+    // Change to use Record type:
+    const vectorLayersRef = useRef<Record<number, any>>({});
+    const basinLayerRef = useRef<any>(null);
+    const drawingLayerRef = useRef<any>(null);
+    const bufferLayerRef = useRef<any>(null);
     const overlayRef = useRef<Overlay | null>(null);
     const hoveredFeatureRef = useRef<any>(null);
     const drawInteractionRef = useRef<Draw | null>(null);
     const modifyInteractionRef = useRef<Modify | null>(null);
     const snapInteractionRef = useRef<Snap | null>(null);
     const selectInteractionRef = useRef<Select | null>(null);
+    const basinLoadedRef = useRef<boolean>(false);
+
 
 
     const [mapInstance, setMapInstance] = useState<Map | null>(null);
@@ -407,14 +409,14 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             setError('Failed to initialize map');
             setIsLoading(false);
         }
-    }, []);
+    }, [selectedBaseMap]);
 
     // Initialize popup overlay
     useEffect(() => {
         if (!mapInstance || !popupRef.current || overlayRef.current) return;
         const overlay = new Overlay({
             element: popupRef.current,
-            autoPan: false, // <-- THIS IS THE FIX: Set to false to prevent map from shifting
+            autoPan: false,
             positioning: 'bottom-center',
             stopEvent: false,
             offset: [0, -10],
@@ -463,6 +465,68 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
+    // Load basin_boundary layer - ONLY ONCE
+    useEffect(() => {
+        if (!mapInstance || basinLoadedRef.current) return;
+        basinLoadedRef.current = true;
+
+        try {
+            const wfsUrl = `${GEOSERVER_WFS_URL}?service=WFS&version=1.1.0&request=GetFeature&typename=${WORKSPACE}:${BASIN_BOUNDARY_LAYER}&outputFormat=application/json&srsname=EPSG:3857`;
+
+            const basinSource = new VectorSource({
+                format: new GeoJSON(),
+                url: wfsUrl,
+            });
+
+            const basinLayer = new VectorLayer({
+                source: basinSource,
+                zIndex: 1,
+                visible: basinBoundaryVisible,
+                style: () => createPolygonStyle(basinLayerStyle, false)
+            });
+
+            basinLayer.set('name', 'basin-boundary-layer');
+            mapInstance.addLayer(basinLayer);
+            basinLayerRef.current = basinLayer;
+
+            basinSource.once('change', () => {
+                if (basinSource.getState() === 'ready') {
+                    const features = basinSource.getFeatures();
+                    if (features.length > 0) {
+                        const extent = basinSource.getExtent();
+                        mapInstance.getView().fit(extent, {
+                            padding: [50, 50, 50, 50],
+                            maxZoom: 16,
+                            duration: 1000
+                        });
+                        console.log('✓ Basin boundary layer loaded and zoomed');
+                    }
+                }
+            });
+
+            console.log('✓ Basin boundary layer added');
+        } catch (err) {
+            console.error('Basin boundary layer error:', err);
+        }
+    }, [mapInstance]);
+
+    // Toggle basin boundary visibility
+    useEffect(() => {
+        if (basinLayerRef.current) {
+            basinLayerRef.current.setVisible(basinBoundaryVisible);
+        }
+    }, [basinBoundaryVisible]);
+
+    // Update basin boundary style
+    const updateBasinLayerStyle = (newStyle: LayerStyle) => {
+        setBasinLayerStyle(newStyle);
+        if (basinLayerRef.current) {
+            basinLayerRef.current.setStyle(() => createPolygonStyle(newStyle, false));
+            basinLayerRef.current.changed();
+            console.log('✓ Basin boundary style updated');
+        }
+    };
+
     // Initialize Drawing, Buffer, and Selection Layers
     useEffect(() => {
         if (!mapInstance) return;
@@ -510,7 +574,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
                 const selectedFeatures = e.target.getFeatures().getArray();
 
                 if (selectedFeatures.length > 0) {
-                    const feature = selectedFeatures[0]; // Show popup for the first selected feature
+                    const feature = selectedFeatures[0];
                     const props = feature.getProperties();
                     delete props.geometry;
 
@@ -525,12 +589,13 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
                     let layerName = 'Unknown Layer';
                     if (layerOfFeature?.get('name') === 'basin-boundary-layer') {
                         layerName = 'Basin Boundary';
-                    } else if (layerOfFeature?.get('name') === 'vector-layer') {
-                        layerName = selectedShapefile?.shapefile_name || 'Vector LayeR';
+                    } else if (layerOfFeature?.get('name')?.startsWith('vector-layer-')) {
+                        const fid = layerOfFeature.get('fid');
+                        const shapefile = selectedShapefiles.find(sf => sf.fid === fid);
+                        layerName = shapefile?.shapefile_name || 'Vector Layer';
                     } else if (layerOfFeature?.get('name') === 'drawing-layer') {
                         layerName = 'Drawn Feature';
                     }
-
 
                     const coordinate = e.mapBrowserEvent.coordinate;
                     setFeatureInfo({
@@ -548,7 +613,6 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             console.log('✓ Select interaction added');
         }
 
-
         // Modify and Snap Interactions
         const drawingSource = drawingLayerRef.current?.getSource();
         if (drawingSource && !modifyInteractionRef.current) {
@@ -561,8 +625,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             snapInteractionRef.current = snap;
         }
 
-    }, [mapInstance, selectedShapefile]);
-
+    }, [mapInstance, selectedShapefiles]);
 
     // Toggle drawing layer visibility
     useEffect(() => {
@@ -575,7 +638,6 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     useEffect(() => {
         if (!mapInstance || !drawingLayerRef.current) return;
 
-        // Deactivate selection while drawing
         if (selectInteractionRef.current) {
             selectInteractionRef.current.setActive(!drawingType);
         }
@@ -684,18 +746,36 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
         // Collect features from all layers
         if (basinLayerRef.current && basinBoundaryVisible) {
-            features.push(...basinLayerRef.current.getSource()!.getFeatures());
-        }
-        if (vectorLayerRef.current) {
-            features.push(...vectorLayerRef.current.getSource()!.getFeatures());
-        }
-        if (drawingLayerRef.current && drawingLayerVisible) {
-            features.push(...drawingLayerRef.current.getSource()!.getFeatures());
-        }
-        if (bufferLayerRef.current) {
-            features.push(...bufferLayerRef.current.getSource()!.getFeatures());
+            const basinSource = basinLayerRef.current.getSource();
+            if (basinSource) {
+                features.push(...basinSource.getFeatures());
+            }
         }
 
+        if (vectorLayersRef.current) {
+            Object.values(vectorLayersRef.current).forEach((vectorLayer: any) => {
+                if (vectorLayer) {
+                    vectorLayer.setStyle((feature: any) => {
+                        // ... rest of code
+                    });
+                    vectorLayer.changed();
+                }
+            });
+        }
+
+        if (drawingLayerRef.current && drawingLayerVisible) {
+            const drawingSource = drawingLayerRef.current.getSource();
+            if (drawingSource) {
+                features.push(...drawingSource.getFeatures());
+            }
+        }
+
+        if (bufferLayerRef.current) {
+            const bufferSource = bufferLayerRef.current.getSource();
+            if (bufferSource) {
+                features.push(...bufferSource.getFeatures());
+            }
+        }
 
         if (features.length === 0) {
             alert('No features to export');
@@ -718,67 +798,6 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         console.log('✓ GeoJSON exported');
     };
 
-    // Load basin_boundary layer
-    useEffect(() => {
-        if (!mapInstance) return;
-
-        try {
-            const wfsUrl = `${GEOSERVER_WFS_URL}?service=WFS&version=1.1.0&request=GetFeature&typename=${WORKSPACE}:${BASIN_BOUNDARY_LAYER}&outputFormat=application/json&srsname=EPSG:3857`;
-
-            const basinSource = new VectorSource({
-                format: new GeoJSON(),
-                url: wfsUrl,
-            });
-
-            const basinLayer = new VectorLayer({
-                source: basinSource,
-                zIndex: 1,
-                visible: basinBoundaryVisible,
-                style: () => createPolygonStyle(basinLayerStyle, false)
-            });
-
-            basinLayer.set('name', 'basin-boundary-layer');
-            mapInstance.addLayer(basinLayer);
-            basinLayerRef.current = basinLayer;
-
-            basinSource.once('change', () => {
-                if (basinSource.getState() === 'ready') {
-                    const features = basinSource.getFeatures();
-                    if (features.length > 0) {
-                        const extent = basinSource.getExtent();
-                        mapInstance.getView().fit(extent, {
-                            padding: [50, 50, 50, 50],
-                            maxZoom: 16,
-                            duration: 1000
-                        });
-                        console.log('✓ Basin boundary layer loaded and zoomed');
-                    }
-                }
-            });
-
-            console.log('✓ Basin boundary layer added');
-        } catch (err) {
-            console.error('Basin boundary layer error:', err);
-        }
-    }, [mapInstance]);
-
-    // Toggle basin boundary visibility
-    useEffect(() => {
-        if (basinLayerRef.current) {
-            basinLayerRef.current.setVisible(basinBoundaryVisible);
-        }
-    }, [basinBoundaryVisible]);
-
-    // Update basin boundary style
-    const updateBasinLayerStyle = (newStyle: LayerStyle) => {
-        setBasinLayerStyle(newStyle);
-        if (basinLayerRef.current) {
-            basinLayerRef.current.setStyle(() => createPolygonStyle(newStyle, false));
-            basinLayerRef.current.changed();
-            console.log('✓ Basin boundary style updated');
-        }
-    };
-
     const changeBaseMap = (key: string) => {
         if (!mapInstance || key === selectedBaseMap) return;
         if (baseLayerRef.current) {
@@ -794,34 +813,179 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         setSelectedBaseMap(key);
         console.log(`✓ Basemap changed to: ${key}`);
     };
-
     const updateLayerStyle = (newStyle: LayerStyle) => {
         setLayerStyle(newStyle);
 
-        if (vectorLayerRef.current) {
-            vectorLayerRef.current.setStyle((feature) => {
-                const geomType = feature.getGeometry()?.getType();
-                if (geomType === 'Point' || geomType === 'MultiPoint') {
-                    return createOLStyle(newStyle, hoveredFeatureRef.current === feature);
-                } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-                    return createPolygonStyle(newStyle, hoveredFeatureRef.current === feature);
-                } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-                    return createLineStyle(newStyle, hoveredFeatureRef.current === feature);
+        // Apply style to all vector layers
+        if (vectorLayersRef.current) {
+            Object.values(vectorLayersRef.current).forEach((vectorLayer: any) => {
+                if (vectorLayer) {
+                    vectorLayer.setStyle((feature: any) => {
+                        const geomType = feature.getGeometry()?.getType();
+                        if (geomType === 'Point' || geomType === 'MultiPoint') {
+                            return createOLStyle(newStyle, hoveredFeatureRef.current === feature);
+                        } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+                            return createPolygonStyle(newStyle, hoveredFeatureRef.current === feature);
+                        } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+                            return createLineStyle(newStyle, hoveredFeatureRef.current === feature);
+                        }
+                        return createOLStyle(newStyle, false);
+                    });
+                    vectorLayer.changed();
                 }
-                return createOLStyle(newStyle, false);
             });
-            vectorLayerRef.current.changed();
-            console.log('✓ Layer style updated');
         }
+        console.log('✓ Layer styles updated for all layers');
     };
 
-    // Load selected shapefile
-    useEffect(() => {
-        if (!mapInstance || !selectedShapefile) return;
+    // Load selected shapefiles
+    // Generate a unique color for each shapefile based on its fid
+    // Generate a unique color for each shapefile based on its fid
+    // Generate a unique color for each shapefile based on its fid
+const getColorForShapefile = (fid: number): LayerStyle => {
+  const colors: LayerStyle[] = [
+    { color: '#E6194B', opacity: 0.6, strokeColor: '#E6194B', strokeWidth: 2 }, // Red
+    { color: '#3CB44B', opacity: 0.6, strokeColor: '#3CB44B', strokeWidth: 2 }, // Green
+    { color: '#0082C8', opacity: 0.6, strokeColor: '#0082C8', strokeWidth: 2 }, // Blue
+    { color: '#F58231', opacity: 0.6, strokeColor: '#F58231', strokeWidth: 2 }, // Orange
+    { color: '#911EB4', opacity: 0.6, strokeColor: '#911EB4', strokeWidth: 2 }, // Purple
+    { color: '#46F0F0', opacity: 0.6, strokeColor: '#46F0F0', strokeWidth: 2 }, // Cyan
+    { color: '#F032E6', opacity: 0.6, strokeColor: '#F032E6', strokeWidth: 2 }, // Magenta
+    { color: '#D2F53C', opacity: 0.6, strokeColor: '#D2F53C', strokeWidth: 2 }, // Lime
+    { color: '#008080', opacity: 0.6, strokeColor: '#008080', strokeWidth: 2 }, // Teal
+    { color: '#AA6E28', opacity: 0.6, strokeColor: '#AA6E28', strokeWidth: 2 }, // Brown
+    { color: '#800000', opacity: 0.6, strokeColor: '#800000', strokeWidth: 2 }, // Maroon
+    { color: '#808000', opacity: 0.6, strokeColor: '#808000', strokeWidth: 2 }, // Olive
+    { color: '#FFD700', opacity: 0.6, strokeColor: '#FFD700', strokeWidth: 2 }, // Gold
+    { color: '#9A6324', opacity: 0.6, strokeColor: '#9A6324', strokeWidth: 2 }, // Rust
+    { color: '#469990', opacity: 0.6, strokeColor: '#469990', strokeWidth: 2 }, // Sea Green
+    { color: '#DCBEFF', opacity: 0.6, strokeColor: '#DCBEFF', strokeWidth: 2 }, // Lavender
+    { color: '#FABEBE', opacity: 0.6, strokeColor: '#FABEBE', strokeWidth: 2 }, // Pink
+    { color: '#A9A9A9', opacity: 0.6, strokeColor: '#A9A9A9', strokeWidth: 2 }, // Gray
+    { color: '#BFEF45', opacity: 0.6, strokeColor: '#BFEF45', strokeWidth: 2 }, // Light Green
+    { color: '#000075', opacity: 0.6, strokeColor: '#000075', strokeWidth: 2 }, // Navy Blue
+  ];
 
-        if (vectorLayerRef.current) {
-            mapInstance.removeLayer(vectorLayerRef.current);
-            vectorLayerRef.current = null;
+  // Cycle through colors based on fid
+  return colors[fid % colors.length];
+};
+
+    useEffect(() => {
+        if (!mapInstance || !vectorLayersRef.current) return;
+
+        const currentFids = new Set(selectedShapefiles.map(sf => sf.fid));
+        const existingFids = new Set(Object.keys(vectorLayersRef.current).map(Number));
+
+        // Remove layers that are no longer selected
+        existingFids.forEach(fid => {
+            if (!currentFids.has(fid) && vectorLayersRef.current) {
+                const layer = vectorLayersRef.current[fid];
+                if (layer) {
+                    mapInstance.removeLayer(layer);
+                    delete vectorLayersRef.current[fid];
+                    console.log(`✓ Removed layer for shapefile fid: ${fid}`);
+                }
+            }
+        });
+
+        // Add new layers for newly selected shapefiles
+        selectedShapefiles.forEach(shapefile => {
+            if (!existingFids.has(shapefile.fid) && vectorLayersRef.current) {
+                try {
+                    const layerName = shapefile.shapefile_path
+                        .split('/')
+                        .pop()
+                        ?.replace('.shp', '') || shapefile.shapefile_name;
+
+                    console.log(`🗺️ Loading WFS layer: ${WORKSPACE}:${layerName}`);
+
+                    const wfsUrl = `${GEOSERVER_WFS_URL}?service=WFS&version=1.1.0&request=GetFeature&typename=${WORKSPACE}:${layerName}&outputFormat=application/json&srsname=EPSG:3857`;
+
+                    const vectorSource = new VectorSource({
+                        format: new GeoJSON(),
+                        url: wfsUrl,
+                    });
+
+                    // Get unique color for this shapefile
+                    const shapefileColor = getColorForShapefile(shapefile.fid);
+
+                    const vectorLayer = new VectorLayer({
+                        source: vectorSource,
+                        zIndex: 5,
+                        style: (feature) => {
+                            const geomType = feature.getGeometry()?.getType();
+                            const isHovered = hoveredFeatureRef.current === feature;
+
+                            if (geomType === 'Point' || geomType === 'MultiPoint') {
+                                return createOLStyle(shapefileColor, isHovered);
+                            } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+                                return createPolygonStyle(shapefileColor, isHovered);
+                            } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+                                return createLineStyle(shapefileColor, isHovered);
+                            }
+                            return createOLStyle(shapefileColor, false);
+                        }
+                    });
+
+                    vectorLayer.set('name', `vector-layer-${shapefile.fid}`);
+                    vectorLayer.set('fid', shapefile.fid);
+                    mapInstance.addLayer(vectorLayer);
+                    if (vectorLayersRef.current) {
+                        vectorLayersRef.current[shapefile.fid] = vectorLayer;
+                    }
+
+                    vectorSource.once('change', () => {
+                        if (vectorSource.getState() === 'ready') {
+                            const features = vectorSource.getFeatures();
+                            if (features.length > 0) {
+                                const geom = features[0].getGeometry();
+                                const geomType = geom?.getType();
+                                setGeometryType(geomType || null);
+                                console.log(`✓ Geometry type detected for ${shapefile.shapefile_name}: ${geomType}`);
+
+                                // Fit map to show all selected layers
+                                const allExtents: any[] = [];
+                                if (vectorLayersRef.current) {
+                                    Object.values(vectorLayersRef.current).forEach((layer: any) => {
+                                        const source = layer.getSource();
+                                        if (source && source.getFeatures().length > 0) {
+                                            allExtents.push(source.getExtent());
+                                        }
+                                    });
+                                }
+
+                                if (allExtents.length > 0) {
+                                    const combinedExtent = allExtents.reduce((acc, extent) => {
+                                        if (!acc) return extent;
+                                        return [
+                                            Math.min(acc[0], extent[0]),
+                                            Math.min(acc[1], extent[1]),
+                                            Math.max(acc[2], extent[2]),
+                                            Math.max(acc[3], extent[3])
+                                        ];
+                                    });
+
+                                    mapInstance.getView().fit(combinedExtent, {
+                                        padding: [50, 50, 50, 50],
+                                        maxZoom: 16,
+                                        duration: 1000
+                                    });
+                                }
+                            }
+                        }
+                    });
+
+                    console.log(`✓ Vector layer added for: ${shapefile.shapefile_name}`);
+                    setError(null);
+                } catch (err) {
+                    console.error('Vector layer error:', err);
+                    setError('Failed to load vector layer');
+                }
+            }
+        });
+
+        // Clear feature info if no shapefiles are selected
+        if (selectedShapefiles.length === 0) {
             setFeatureInfo(null);
             overlayRef.current?.setPosition(undefined);
             setGeometryType(null);
@@ -829,88 +993,15 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             setHoveredFeature(null);
         }
 
-        setCurrentFilters({});
-        setFilteredFeatures([]);
-
-        try {
-            const layerName = selectedShapefile.shapefile_path
-                .split('/')
-                .pop()
-                ?.replace('.shp', '') || selectedShapefile.shapefile_name;
-
-            console.log(`🗺️ Loading WFS layer: ${WORKSPACE}:${layerName}`);
-
-            const wfsUrl = `${GEOSERVER_WFS_URL}?service=WFS&version=1.1.0&request=GetFeature&typename=${WORKSPACE}:${layerName}&outputFormat=application/json&srsname=EPSG:3857`;
-
-            const vectorSource = new VectorSource({
-                format: new GeoJSON(),
-                url: wfsUrl,
-            });
-
-            const vectorLayer = new VectorLayer({
-                source: vectorSource,
-                zIndex: 5,
-                style: (feature) => {
-                    const geomType = feature.getGeometry()?.getType();
-                    if (geomType === 'Point' || geomType === 'MultiPoint') {
-                        return createOLStyle(layerStyle, hoveredFeatureRef.current === feature);
-                    } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-                        return createPolygonStyle(layerStyle, hoveredFeatureRef.current === feature);
-                    } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-                        return createLineStyle(layerStyle, hoveredFeatureRef.current === feature);
-                    }
-                    return createOLStyle(layerStyle, false);
-                }
-            });
-
-            vectorLayer.set('name', 'vector-layer');
-            mapInstance.addLayer(vectorLayer);
-            vectorLayerRef.current = vectorLayer;
-
-            vectorSource.once('change', () => {
-                if (vectorSource.getState() === 'ready') {
-                    const features = vectorSource.getFeatures();
-                    if (features.length > 0) {
-                        const geom = features[0].getGeometry();
-                        const geomType = geom?.getType();
-                        setGeometryType(geomType || null);
-                        console.log(`✓ Geometry type detected: ${geomType}`);
-
-                        if (geomType === 'Point' || geomType === 'MultiPoint') {
-                            setLayerStyle(DEFAULT_POINT_STYLE);
-                        } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-                            setLayerStyle(DEFAULT_POLYGON_STYLE);
-                        } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-                            setLayerStyle(DEFAULT_LINE_STYLE);
-                        }
-
-                        const extent = vectorSource.getExtent();
-                        mapInstance.getView().fit(extent, {
-                            padding: [50, 50, 50, 50],
-                            maxZoom: 16,
-                            duration: 1000
-                        });
-                    }
-                }
-            });
-
-            console.log('✓ Vector layer added to map');
-            setError(null);
-        } catch (err) {
-            console.error('Vector layer error:', err);
-            setError('Failed to load vector layer');
-        }
-    }, [mapInstance, selectedShapefile]);
-
-
+    }, [mapInstance, selectedShapefiles, layerStyle]);
     // Handle hover effects
     useEffect(() => {
-        if (!mapInstance) return;
+        if (!mapInstance || !vectorLayersRef.current) return;
 
         const handlePointerMove = (evt: any) => {
             const pixel = mapInstance.getEventPixel(evt.originalEvent);
             const features = mapInstance.getFeaturesAtPixel(pixel, {
-                layerFilter: (layer) => layer.get('name') !== 'buffer-layer' // Don't hover on buffer layer
+                layerFilter: (layer) => layer.get('name') !== 'buffer-layer' && layer.get('name') !== 'basemap'
             });
 
             if (features && features.length > 0) {
@@ -921,8 +1012,11 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
                     setHoveredFeature(feature);
                     mapInstance.getTargetElement().style.cursor = 'pointer';
 
-                    if (vectorLayerRef.current) {
-                        vectorLayerRef.current.changed();
+                    // Update all vector layers
+                    if (vectorLayersRef.current) {
+                        Object.values(vectorLayersRef.current).forEach((layer: any) => {
+                            layer.changed();
+                        });
                     }
                 }
             } else {
@@ -931,8 +1025,11 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
                     setHoveredFeature(null);
                     mapInstance.getTargetElement().style.cursor = '';
 
-                    if (vectorLayerRef.current) {
-                        vectorLayerRef.current.changed();
+                    // Update all vector layers
+                    if (vectorLayersRef.current) {
+                        Object.values(vectorLayersRef.current).forEach((layer: any) => {
+                            layer.changed();
+                        });
                     }
                 }
             }
@@ -942,48 +1039,65 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         return () => mapInstance.un('pointermove', handlePointerMove);
     }, [mapInstance, layerStyle]);
 
-    const applyFilterToWMS = (filters: Record<string, string[]>) => {
-        if (!vectorLayerRef.current || !selectedShapefile) {
-            console.warn('⚠️ Cannot apply filter: no vector layer or shapefile');
-            return;
-        }
+    const applyFilterToWMS = (filters: Record<string, string[]>, targetFid?: number) => {
+    if (!vectorLayersRef.current || Object.keys(vectorLayersRef.current).length === 0) {
+        console.warn('⚠️ Cannot apply filter: no vector layers');
+        return;
+    }
 
-        const vectorSource = vectorLayerRef.current.getSource();
-        if (!vectorSource) return;
+    setCurrentFilters(filters);
 
-        setCurrentFilters(filters);
+    // If no targetFid is provided, do nothing (or you can apply to all layers like before)
+    if (targetFid === undefined) {
+        console.warn('⚠️ No target shapefile specified for filtering');
+        return;
+    }
 
-        const allFeatures = vectorSource.getFeatures();
+    // Get the specific layer for the target shapefile
+    const targetLayer = vectorLayersRef.current[targetFid];
+    
+    if (!targetLayer) {
+        console.warn(`⚠️ Layer with fid ${targetFid} not found`);
+        return;
+    }
 
-        if (Object.keys(filters).length === 0) {
-            allFeatures.forEach(f => f.setStyle(undefined));
-            console.log('✓ All filters cleared, showing all features');
-        } else {
-            allFeatures.forEach(feature => {
-                const props = feature.getProperties();
-                let matches = true;
+    const vectorSource = targetLayer.getSource();
+    if (!vectorSource) return;
 
-                for (const [key, values] of Object.entries(filters)) {
-                    if (values && values.length > 0) {
-                        const propValue = String(props[key]);
-                        if (!values.includes(propValue)) {
-                            matches = false;
-                            break;
-                        }
+    const allFeatures = vectorSource.getFeatures();
+
+    if (Object.keys(filters).length === 0) {
+        // Reset all features to default style
+        allFeatures.forEach((f: any) => f.setStyle(undefined));
+    } else {
+        // Apply filter only to this layer
+        allFeatures.forEach((feature: any) => {
+            const props = feature.getProperties();
+            let matches = true;
+
+            for (const [key, values] of Object.entries(filters)) {
+                if (values && values.length > 0) {
+                    const propValue = String(props[key]);
+                    if (!values.includes(propValue)) {
+                        matches = false;
+                        break;
                     }
                 }
+            }
 
-                if (!matches) {
-                    feature.setStyle(new Style({}));
-                }
-            });
+            if (!matches) {
+                // Hide non-matching features
+                feature.setStyle(new Style({}));
+            } else {
+                // Reset to default style for matching features
+                feature.setStyle(undefined);
+            }
+        });
+    }
 
-            console.log('✓ Client-side filter applied');
-        }
-
-        vectorLayerRef.current.changed();
-    };
-
+    targetLayer.changed();
+    console.log(`✓ Client-side filter applied to layer with fid: ${targetFid}`);
+};
     const value = useMemo(
         () => ({
             mapInstance,

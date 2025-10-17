@@ -9,18 +9,22 @@ export interface Shapefile {
 
 interface ShapefileContextType {
   shapefiles: Shapefile[];
-  selectedShapefile: Shapefile | null;
-  setSelectedShapefile: (file: Shapefile | null) => void;
+  selectedShapefiles: Shapefile[];
+  toggleShapefile: (file: Shapefile) => void;
+  isSelected: (file: Shapefile) => boolean;
   fetchShapefiles: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const ShapefileContext = createContext<ShapefileContextType | undefined>(undefined);
 
 export const ShapefileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [shapefiles, setShapefiles] = useState<Shapefile[]>([]);
-  const [selectedShapefile, setSelectedShapefile] = useState<Shapefile | null>(null);
+  const [selectedShapefiles, setSelectedShapefiles] = useState<Shapefile[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchShapefiles = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch('/django/datahub/shapefiles');
       if (!response.ok) throw new Error('Failed to fetch shapefiles');
@@ -28,7 +32,24 @@ export const ShapefileProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setShapefiles(data);
     } catch (error) {
       console.error('Error fetching shapefiles:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const toggleShapefile = (file: Shapefile) => {
+    setSelectedShapefiles((prev) => {
+      const isAlreadySelected = prev.some((f) => f.fid === file.fid);
+      if (isAlreadySelected) {
+        return prev.filter((f) => f.fid !== file.fid);
+      } else {
+        return [...prev, file];
+      }
+    });
+  };
+
+  const isSelected = (file: Shapefile) => {
+    return selectedShapefiles.some((f) => f.fid === file.fid);
   };
 
   useEffect(() => {
@@ -36,7 +57,16 @@ export const ShapefileProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   return (
-    <ShapefileContext.Provider value={{ shapefiles, selectedShapefile, setSelectedShapefile, fetchShapefiles }}>
+    <ShapefileContext.Provider 
+      value={{ 
+        shapefiles, 
+        selectedShapefiles, 
+        toggleShapefile, 
+        isSelected, 
+        fetchShapefiles,
+        isLoading 
+      }}
+    >
       {children}
     </ShapefileContext.Provider>
   );

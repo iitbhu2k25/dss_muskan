@@ -56,7 +56,6 @@ const EditablePopupContent = ({ featureInfo, onSave, onCancel }: any) => {
     );
 }
 
-
 const MapComponent = () => {
     const {
         mapInstance,
@@ -90,7 +89,7 @@ const MapComponent = () => {
         updateFeatureProperties,
     } = useMap();
 
-    const { selectedShapefile } = useShapefile();
+    const { selectedShapefiles } = useShapefile();
     const [isBasemapOpen, setIsBasemapOpen] = useState(false);
     const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
     const [activeStyleEditor, setActiveStyleEditor] = useState<'main' | 'basin' | null>(null);
@@ -128,6 +127,7 @@ const MapComponent = () => {
     const getActiveLayers = () => {
         const layers = [];
 
+        // Basin boundary layer
         layers.push({
             id: 'basin',
             name: 'Basin Boundary',
@@ -136,13 +136,17 @@ const MapComponent = () => {
             visible: basinBoundaryVisible
         });
 
-        if (selectedShapefile && geometryType) {
-            layers.push({
-                id: 'main',
-                name: selectedShapefile.shapefile_name,
-                geometryType: geometryType,
-                style: layerStyle,
-                visible: true
+        // Add all selected shapefiles as separate layers
+        if (selectedShapefiles && selectedShapefiles.length > 0) {
+            selectedShapefiles.forEach((shapefile) => {
+                layers.push({
+                    id: `shapefile-${shapefile.fid}`,
+                    name: shapefile.shapefile_name,
+                    geometryType: geometryType || 'Unknown',
+                    style: layerStyle,
+                    visible: true,
+                    fid: shapefile.fid
+                });
             });
         }
 
@@ -154,7 +158,6 @@ const MapComponent = () => {
     const handleBufferCreate = () => {
         const distanceInMeters = bufferUnit === 'kilometers' ? bufferDistance * 1000 : bufferDistance;
         createBuffer(distanceInMeters);
-        // setIsBufferPanelOpen(false); // Optional: close panel after creating buffer
     };
 
     const handleSavePopup = (newProperties: Record<string, any>) => {
@@ -163,7 +166,6 @@ const MapComponent = () => {
             closePopup();
         }
     };
-
 
     return (
         <div className="h-full relative">
@@ -294,6 +296,7 @@ const MapComponent = () => {
                                 <span className="group-hover:scale-110 transition-transform duration-200">−</span>
                             </button>
                         </div>
+
                         {/* Buffer Tool */}
                         <div className="relative">
                             <button
@@ -401,58 +404,70 @@ const MapComponent = () => {
                     <div className="absolute top-6 left-6 z-20">
                         <button
                             onClick={() => setIsLayersPanelOpen(!isLayersPanelOpen)}
-                            className={`bg-white/90 backdrop-blur-sm hover:bg-white font-bold py-2 px-5 rounded-xl shadow-2xl border transition-all duration-200 text-sm flex items-center gap-2 hover:scale-105 ${isLayersPanelOpen ? 'border-blue-500 text-blue-700' : 'border-gray-200 text-gray-800'
-                                }`}
+                            className={`bg-white/90 backdrop-blur-sm hover:bg-white font-bold py-2 px-5 rounded-xl shadow-2xl border transition-all duration-200 text-sm flex items-center gap-2 hover:scale-105 ${isLayersPanelOpen ? 'border-blue-500 text-blue-700' : 'border-gray-200 text-gray-800'}`}
                             title="Layers"
                         >
-                            <span>Layers</span>
+                            <span>🗺️</span>
+                            <span>Layers ({activeLayers.length})</span>
                         </button>
                         {isLayersPanelOpen && (
                             <div className="absolute top-full left-0 mt-2 w-80 bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-scale-in">
-                                <div className="p-2 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-                                    <h3 className="font-bold text-gray-800 text-sm">Active Layers</h3>
+                                <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+                                    <h3 className="font-bold text-gray-800 text-sm">Active Layers ({activeLayers.length})</h3>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                        {selectedShapefiles.length} shapefile{selectedShapefiles.length !== 1 ? 's' : ''} selected
+                                    </p>
                                 </div>
                                 <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                                    {activeLayers.map((layer) => (
-                                        <div
-                                            key={layer.id}
-                                            className={`p-2 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200 ${!layer.visible ? 'opacity-60' : ''}`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex-1">
-                                                    <p className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-                                                        {layer.name}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        Type: {layer.geometryType}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {layer.id === 'basin' && (
+                                    {activeLayers.length === 1 ? (
+                                        <div className="p-8 text-center text-gray-500">
+                                            <p className="text-sm">No shapefiles selected</p>
+                                            <p className="text-xs mt-2">Select shapefiles from the left panel</p>
+                                        </div>
+                                    ) : (
+                                        activeLayers.map((layer) => (
+                                            <div
+                                                key={layer.id}
+                                                className={`p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200 ${!layer.visible ? 'opacity-60' : ''}`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1">
+                                                        <p className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+                                                            {layer.id === 'basin' ? '🗺️' : '📄'}
+                                                            {layer.name}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Type: {layer.geometryType}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {layer.id === 'basin' && (
+                                                            <button
+                                                                onClick={() => toggleBasinBoundary()}
+                                                                className="p-2 rounded-lg hover:bg-gray-200 transition-all duration-200"
+                                                                title={layer.visible ? "Hide Layer" : "Show Layer"}
+                                                            >
+                                                                <span className="text-lg">
+                                                                    {layer.visible ? '👁️' : '👁️‍🗨️'}
+                                                                </span>
+                                                            </button>
+                                                        )}
                                                         <button
-                                                            onClick={() => toggleBasinBoundary()}
-                                                            className="p-2 rounded-lg hover:bg-gray-200 transition-all duration-200"
-                                                            title={layer.visible ? "Hide Layer" : "Show Layer"}
+                                                            onClick={() => setActiveStyleEditor(layer.id === 'basin' ? 'basin' : 'main')}
+                                                            className={`px-3 py-2 rounded-lg font-semibold text-xs transition-all duration-200 flex items-center gap-1 ${activeStyleEditor === (layer.id === 'basin' ? 'basin' : 'main')
+                                                                    ? 'bg-purple-600 text-white shadow-md'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                                }`}
+                                                            title="Edit Style"
                                                         >
-                                                            <span className="text-lg">
-                                                                {layer.visible ? '👁️' : '👁️‍🗨️'}
-                                                            </span>
+                                                            <span>🎨</span>
+                                                            <span>Style</span>
                                                         </button>
-                                                    )}
-                                                    <button
-                                                        onClick={() => setActiveStyleEditor(layer.id as 'main' | 'basin')}
-                                                        className={`px-3 py-2 rounded-lg font-semibold text-xs transition-all duration-200 flex items-center gap-1 ${activeStyleEditor === layer.id
-                                                                ? 'bg-purple-600 text-white shadow-md'
-                                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
-                                                            }`}
-                                                        title="Edit Style"
-                                                    >
-                                                        <span>Style</span>
-                                                    </button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -467,6 +482,7 @@ const MapComponent = () => {
                             className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-800 font-bold py-2 px-4 rounded-xl shadow-2xl border border-gray-200 transition-all duration-200 text-xs flex items-center gap-2 hover:scale-105"
                             title="Export All Layers as GeoJSON"
                         >
+                            <span>💾</span>
                             <span>Export GeoJSON</span>
                         </button>
                         <div className="relative">
@@ -488,8 +504,7 @@ const MapComponent = () => {
                                                 changeBaseMap(key);
                                                 setIsBasemapOpen(false);
                                             }}
-                                            className={`w-full hover:bg-blue-50 text-gray-800 font-semibold py-3 px-4 transition-all duration-200 text-sm text-left flex items-center gap-3 ${selectedBaseMap === key ? 'bg-blue-100 text-blue-700' : ''
-                                                }`}
+                                            className={`w-full hover:bg-blue-50 text-gray-800 font-semibold py-3 px-4 transition-all duration-200 text-sm text-left flex items-center gap-3 ${selectedBaseMap === key ? 'bg-blue-100 text-blue-700' : ''}`}
                                             title={name}
                                         >
                                             <span className="text-lg">{icon}</span>
@@ -539,7 +554,7 @@ const MapComponent = () => {
                     <StyleEditor
                         onStyleChange={handleStyleChange}
                         currentStyle={activeStyleEditor === 'basin' ? basinLayerStyle : layerStyle}
-                        layerName={activeStyleEditor === 'basin' ? 'Basin Boundary' : (selectedShapefile?.shapefile_name || 'Layer')}
+                        layerName={activeStyleEditor === 'basin' ? 'Basin Boundary' : 'All Selected Layers'}
                         geometryType={activeStyleEditor === 'basin' ? 'Polygon' : geometryType}
                         onClose={closeStyleEditor}
                     />
