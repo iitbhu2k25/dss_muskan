@@ -99,8 +99,8 @@ interface MapContextType {
     setFilteredFeatures: (features: any[]) => void;
    applyFilterToWMS: (filters: Record<string, string[]>, targetFid?: number) => void;
     baseMaps: Record<string, BaseMapDefinition>;
-    layerStyle: LayerStyle;
-    updateLayerStyle: (style: LayerStyle) => void;
+    layerStyles: Record<number, LayerStyle>;
+    updateLayerStyle: (style: LayerStyle, targetFid: number) => void;
     geometryType: string | null;
     hoveredFeature: any;
     basinBoundaryVisible: boolean;
@@ -334,6 +334,34 @@ const createLineStyle = (styleConfig: LayerStyle, isHovered: boolean = false): S
     });
 };
 
+const getColorForShapefile = (fid: number): LayerStyle => {
+  const colors: LayerStyle[] = [
+    { color: '#E6194B', opacity: 0.6, strokeColor: '#E6194B', strokeWidth: 2 }, // Red
+    { color: '#3CB44B', opacity: 0.6, strokeColor: '#3CB44B', strokeWidth: 2 }, // Green
+    { color: '#0082C8', opacity: 0.6, strokeColor: '#0082C8', strokeWidth: 2 }, // Blue
+    { color: '#F58231', opacity: 0.6, strokeColor: '#F58231', strokeWidth: 2 }, // Orange
+    { color: '#911EB4', opacity: 0.6, strokeColor: '#911EB4', strokeWidth: 2 }, // Purple
+    { color: '#46F0F0', opacity: 0.6, strokeColor: '#46F0F0', strokeWidth: 2 }, // Cyan
+    { color: '#F032E6', opacity: 0.6, strokeColor: '#F032E6', strokeWidth: 2 }, // Magenta
+    { color: '#D2F53C', opacity: 0.6, strokeColor: '#D2F53C', strokeWidth: 2 }, // Lime
+    { color: '#008080', opacity: 0.6, strokeColor: '#008080', strokeWidth: 2 }, // Teal
+    { color: '#AA6E28', opacity: 0.6, strokeColor: '#AA6E28', strokeWidth: 2 }, // Brown
+    { color: '#800000', opacity: 0.6, strokeColor: '#800000', strokeWidth: 2 }, // Maroon
+    { color: '#808000', opacity: 0.6, strokeColor: '#808000', strokeWidth: 2 }, // Olive
+    { color: '#FFD700', opacity: 0.6, strokeColor: '#FFD700', strokeWidth: 2 }, // Gold
+    { color: '#9A6324', opacity: 0.6, strokeColor: '#9A6324', strokeWidth: 2 }, // Rust
+    { color: '#469990', opacity: 0.6, strokeColor: '#469990', strokeWidth: 2 }, // Sea Green
+    { color: '#DCBEFF', opacity: 0.6, strokeColor: '#DCBEFF', strokeWidth: 2 }, // Lavender
+    { color: '#FABEBE', opacity: 0.6, strokeColor: '#FABEBE', strokeWidth: 2 }, // Pink
+    { color: '#A9A9A9', opacity: 0.6, strokeColor: '#A9A9A9', strokeWidth: 2 }, // Gray
+    { color: '#BFEF45', opacity: 0.6, strokeColor: '#BFEF45', strokeWidth: 2 }, // Light Green
+    { color: '#000075', opacity: 0.6, strokeColor: '#000075', strokeWidth: 2 }, // Navy Blue
+  ];
+
+  // Cycle through colors based on fid
+  return colors[fid % colors.length];
+};
+
 export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     const { selectedShapefiles } = useShapefile();
 
@@ -364,7 +392,8 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     const [showLabels, setShowLabels] = useState(false);
     const [filteredFeatures, setFilteredFeatures] = useState<any[]>([]);
     const [currentFilters, setCurrentFilters] = useState<Record<string, string[]>>({});
-    const [layerStyle, setLayerStyle] = useState<LayerStyle>(DEFAULT_POINT_STYLE);
+    // Store styles per layer (keyed by fid)
+    const [layerStyles, setLayerStyles] = useState<Record<number, LayerStyle>>({});
     const [geometryType, setGeometryType] = useState<string | null>(null);
     const [hoveredFeature, setHoveredFeature] = useState<any>(null);
     const [basinBoundaryVisible, setBasinBoundaryVisible] = useState(true);
@@ -813,62 +842,39 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         setSelectedBaseMap(key);
         console.log(`✓ Basemap changed to: ${key}`);
     };
-    const updateLayerStyle = (newStyle: LayerStyle) => {
-        setLayerStyle(newStyle);
+    const updateLayerStyle = (newStyle: LayerStyle, targetFid: number) => {
+    // Update the style for the specific layer
+    setLayerStyles(prev => ({
+        ...prev,
+        [targetFid]: newStyle
+    }));
 
-        // Apply style to all vector layers
-        if (vectorLayersRef.current) {
-            Object.values(vectorLayersRef.current).forEach((vectorLayer: any) => {
-                if (vectorLayer) {
-                    vectorLayer.setStyle((feature: any) => {
-                        const geomType = feature.getGeometry()?.getType();
-                        if (geomType === 'Point' || geomType === 'MultiPoint') {
-                            return createOLStyle(newStyle, hoveredFeatureRef.current === feature);
-                        } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-                            return createPolygonStyle(newStyle, hoveredFeatureRef.current === feature);
-                        } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-                            return createLineStyle(newStyle, hoveredFeatureRef.current === feature);
-                        }
-                        return createOLStyle(newStyle, false);
-                    });
-                    vectorLayer.changed();
-                }
-            });
-        }
-        console.log('✓ Layer styles updated for all layers');
-    };
+    // Apply style only to the target layer
+    if (vectorLayersRef.current && vectorLayersRef.current[targetFid]) {
+        const targetLayer = vectorLayersRef.current[targetFid];
+        
+        targetLayer.setStyle((feature: any) => {
+            const geomType = feature.getGeometry()?.getType();
+            if (geomType === 'Point' || geomType === 'MultiPoint') {
+                return createOLStyle(newStyle, hoveredFeatureRef.current === feature);
+            } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+                return createPolygonStyle(newStyle, hoveredFeatureRef.current === feature);
+            } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+                return createLineStyle(newStyle, hoveredFeatureRef.current === feature);
+            }
+            return createOLStyle(newStyle, false);
+        });
+        targetLayer.changed();
+        
+        console.log(`✓ Layer style updated for fid: ${targetFid}`);
+    }
+};
 
     // Load selected shapefiles
     // Generate a unique color for each shapefile based on its fid
     // Generate a unique color for each shapefile based on its fid
     // Generate a unique color for each shapefile based on its fid
-const getColorForShapefile = (fid: number): LayerStyle => {
-  const colors: LayerStyle[] = [
-    { color: '#E6194B', opacity: 0.6, strokeColor: '#E6194B', strokeWidth: 2 }, // Red
-    { color: '#3CB44B', opacity: 0.6, strokeColor: '#3CB44B', strokeWidth: 2 }, // Green
-    { color: '#0082C8', opacity: 0.6, strokeColor: '#0082C8', strokeWidth: 2 }, // Blue
-    { color: '#F58231', opacity: 0.6, strokeColor: '#F58231', strokeWidth: 2 }, // Orange
-    { color: '#911EB4', opacity: 0.6, strokeColor: '#911EB4', strokeWidth: 2 }, // Purple
-    { color: '#46F0F0', opacity: 0.6, strokeColor: '#46F0F0', strokeWidth: 2 }, // Cyan
-    { color: '#F032E6', opacity: 0.6, strokeColor: '#F032E6', strokeWidth: 2 }, // Magenta
-    { color: '#D2F53C', opacity: 0.6, strokeColor: '#D2F53C', strokeWidth: 2 }, // Lime
-    { color: '#008080', opacity: 0.6, strokeColor: '#008080', strokeWidth: 2 }, // Teal
-    { color: '#AA6E28', opacity: 0.6, strokeColor: '#AA6E28', strokeWidth: 2 }, // Brown
-    { color: '#800000', opacity: 0.6, strokeColor: '#800000', strokeWidth: 2 }, // Maroon
-    { color: '#808000', opacity: 0.6, strokeColor: '#808000', strokeWidth: 2 }, // Olive
-    { color: '#FFD700', opacity: 0.6, strokeColor: '#FFD700', strokeWidth: 2 }, // Gold
-    { color: '#9A6324', opacity: 0.6, strokeColor: '#9A6324', strokeWidth: 2 }, // Rust
-    { color: '#469990', opacity: 0.6, strokeColor: '#469990', strokeWidth: 2 }, // Sea Green
-    { color: '#DCBEFF', opacity: 0.6, strokeColor: '#DCBEFF', strokeWidth: 2 }, // Lavender
-    { color: '#FABEBE', opacity: 0.6, strokeColor: '#FABEBE', strokeWidth: 2 }, // Pink
-    { color: '#A9A9A9', opacity: 0.6, strokeColor: '#A9A9A9', strokeWidth: 2 }, // Gray
-    { color: '#BFEF45', opacity: 0.6, strokeColor: '#BFEF45', strokeWidth: 2 }, // Light Green
-    { color: '#000075', opacity: 0.6, strokeColor: '#000075', strokeWidth: 2 }, // Navy Blue
-  ];
 
-  // Cycle through colors based on fid
-  return colors[fid % colors.length];
-};
 
     useEffect(() => {
         if (!mapInstance || !vectorLayersRef.current) return;
@@ -910,22 +916,24 @@ const getColorForShapefile = (fid: number): LayerStyle => {
                     const shapefileColor = getColorForShapefile(shapefile.fid);
 
                     const vectorLayer = new VectorLayer({
-                        source: vectorSource,
-                        zIndex: 5,
-                        style: (feature) => {
-                            const geomType = feature.getGeometry()?.getType();
-                            const isHovered = hoveredFeatureRef.current === feature;
+    source: vectorSource,
+    zIndex: 5,
+    style: (feature) => {
+        // Use layer-specific style if available, otherwise use default color
+        const currentStyle = layerStyles[shapefile.fid] || shapefileColor;
+        const geomType = feature.getGeometry()?.getType();
+        const isHovered = hoveredFeatureRef.current === feature;
 
-                            if (geomType === 'Point' || geomType === 'MultiPoint') {
-                                return createOLStyle(shapefileColor, isHovered);
-                            } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-                                return createPolygonStyle(shapefileColor, isHovered);
-                            } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-                                return createLineStyle(shapefileColor, isHovered);
-                            }
-                            return createOLStyle(shapefileColor, false);
-                        }
-                    });
+        if (geomType === 'Point' || geomType === 'MultiPoint') {
+            return createOLStyle(currentStyle, isHovered);
+        } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+            return createPolygonStyle(currentStyle, isHovered);
+        } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+            return createLineStyle(currentStyle, isHovered);
+        }
+        return createOLStyle(currentStyle, false);
+    }
+});
 
                     vectorLayer.set('name', `vector-layer-${shapefile.fid}`);
                     vectorLayer.set('fid', shapefile.fid);
@@ -993,7 +1001,7 @@ const getColorForShapefile = (fid: number): LayerStyle => {
             setHoveredFeature(null);
         }
 
-    }, [mapInstance, selectedShapefiles, layerStyle]);
+    }, [mapInstance, selectedShapefiles, layerStyles]);
     // Handle hover effects
     useEffect(() => {
         if (!mapInstance || !vectorLayersRef.current) return;
@@ -1037,7 +1045,7 @@ const getColorForShapefile = (fid: number): LayerStyle => {
 
         mapInstance.on('pointermove', handlePointerMove);
         return () => mapInstance.un('pointermove', handlePointerMove);
-    }, [mapInstance, layerStyle]);
+    }, [mapInstance, layerStyles]);
 
     const applyFilterToWMS = (filters: Record<string, string[]>, targetFid?: number) => {
     if (!vectorLayersRef.current || Object.keys(vectorLayersRef.current).length === 0) {
@@ -1115,7 +1123,7 @@ const getColorForShapefile = (fid: number): LayerStyle => {
             setFilteredFeatures,
             applyFilterToWMS,
             baseMaps,
-            layerStyle,
+            layerStyles,
             updateLayerStyle,
             geometryType,
             hoveredFeature,
@@ -1144,7 +1152,7 @@ const getColorForShapefile = (fid: number): LayerStyle => {
             error,
             showLabels,
             filteredFeatures,
-            layerStyle,
+            layerStyles,
             geometryType,
             hoveredFeature,
             basinBoundaryVisible,
@@ -1164,3 +1172,4 @@ export const useMap = (): MapContextType => {
     if (!ctx) throw new Error('useMap must be used within MapProvider');
     return ctx;
 };
+export { getColorForShapefile };

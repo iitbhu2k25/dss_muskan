@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { LayerStyle, useMap } from '@/contexts/datahub/MapContext';
+import { LayerStyle, useMap, getColorForShapefile } from '@/contexts/datahub/MapContext';
 import { useShapefile } from '@/contexts/datahub/Section1Context';
 import StyleEditor from './StyleEditor';
 import { Pencil, Target, Trash2 } from 'lucide-react';
@@ -68,7 +68,7 @@ const MapComponent = () => {
         changeBaseMap,
         selectedBaseMap,
         baseMaps,
-        layerStyle,
+        layerStyles,
         updateLayerStyle,
         geometryType,
         basinBoundaryVisible,
@@ -97,7 +97,7 @@ const MapComponent = () => {
     const [isBufferPanelOpen, setIsBufferPanelOpen] = useState(false);
     const [bufferDistance, setBufferDistance] = useState<number>(100);
     const [bufferUnit, setBufferUnit] = useState<'meters' | 'kilometers'>('meters');
-
+    const [activeLayerFid, setActiveLayerFid] = useState<number | null>(null);
     useEffect(() => {
         if (mapInstance) {
             const timer = setTimeout(() => {
@@ -113,8 +113,8 @@ const MapComponent = () => {
     };
 
     const handleStyleChange = (newStyle: LayerStyle) => {
-        if (activeStyleEditor === 'main') {
-            updateLayerStyle(newStyle);
+        if (activeStyleEditor === 'main' && activeLayerFid !== null) {
+            updateLayerStyle(newStyle, activeLayerFid);
         } else if (activeStyleEditor === 'basin') {
             updateBasinLayerStyle(newStyle);
         }
@@ -125,7 +125,14 @@ const MapComponent = () => {
     };
 
     const getActiveLayers = () => {
-        const layers = [];
+        const layers: Array<{
+            id: string;
+            name: string;
+            geometryType: string;
+            style: LayerStyle;
+            visible: boolean;
+            fid?: number; // Make fid optional
+        }> = [];
 
         // Basin boundary layer
         layers.push({
@@ -143,9 +150,9 @@ const MapComponent = () => {
                     id: `shapefile-${shapefile.fid}`,
                     name: shapefile.shapefile_name,
                     geometryType: geometryType || 'Unknown',
-                    style: layerStyle,
+                    style: layerStyles[shapefile.fid] || { color: '#3B82F6', opacity: 0.6, strokeColor: '#3B82F6', strokeWidth: 2 },
                     visible: true,
-                    fid: shapefile.fid
+                    fid: shapefile.fid // Include fid here
                 });
             });
         }
@@ -155,6 +162,9 @@ const MapComponent = () => {
 
     const activeLayers = getActiveLayers();
 
+
+
+    
     const handleBufferCreate = () => {
         const distanceInMeters = bufferUnit === 'kilometers' ? bufferDistance * 1000 : bufferDistance;
         createBuffer(distanceInMeters);
@@ -167,6 +177,7 @@ const MapComponent = () => {
         }
     };
 
+  
     return (
         <div className="h-full relative">
             {/* Map Container */}
@@ -453,10 +464,18 @@ const MapComponent = () => {
                                                             </button>
                                                         )}
                                                         <button
-                                                            onClick={() => setActiveStyleEditor(layer.id === 'basin' ? 'basin' : 'main')}
+                                                            onClick={() => {
+                                                                if (layer.id === 'basin') {
+                                                                    setActiveStyleEditor('basin');
+                                                                    setActiveLayerFid(null);
+                                                                } else {
+                                                                    setActiveStyleEditor('main');
+                                                                    setActiveLayerFid(layer.fid || null); // Handle optional fid
+                                                                }
+                                                            }}
                                                             className={`px-3 py-2 rounded-lg font-semibold text-xs transition-all duration-200 flex items-center gap-1 ${activeStyleEditor === (layer.id === 'basin' ? 'basin' : 'main')
-                                                                    ? 'bg-purple-600 text-white shadow-md'
-                                                                    : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                                ? 'bg-purple-600 text-white shadow-md'
+                                                                : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
                                                                 }`}
                                                             title="Edit Style"
                                                         >
@@ -553,8 +572,18 @@ const MapComponent = () => {
                 <div className="absolute top-20 left-6 z-50" style={{ pointerEvents: 'auto' }}>
                     <StyleEditor
                         onStyleChange={handleStyleChange}
-                        currentStyle={activeStyleEditor === 'basin' ? basinLayerStyle : layerStyle}
-                        layerName={activeStyleEditor === 'basin' ? 'Basin Boundary' : 'All Selected Layers'}
+                        currentStyle={
+                            activeStyleEditor === 'basin'
+                                ? basinLayerStyle
+                                : (activeLayerFid !== null && layerStyles[activeLayerFid])
+                                    ? layerStyles[activeLayerFid]
+                                    : getColorForShapefile(activeLayerFid || 0)
+                        }
+                        layerName={
+                            activeStyleEditor === 'basin'
+                                ? 'Basin Boundary'
+                                : selectedShapefiles.find(sf => sf.fid === activeLayerFid)?.shapefile_name || 'Layer'
+                        }
                         geometryType={activeStyleEditor === 'basin' ? 'Polygon' : geometryType}
                         onClose={closeStyleEditor}
                     />
