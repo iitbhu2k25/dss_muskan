@@ -870,12 +870,6 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     }
 };
 
-    // Load selected shapefiles
-    // Generate a unique color for each shapefile based on its fid
-    // Generate a unique color for each shapefile based on its fid
-    // Generate a unique color for each shapefile based on its fid
-
-
     useEffect(() => {
         if (!mapInstance || !vectorLayersRef.current) return;
 

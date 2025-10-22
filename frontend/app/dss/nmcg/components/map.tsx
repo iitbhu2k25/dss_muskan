@@ -236,7 +236,27 @@ const MapComponent = () => {
                         </>
                     )}
                 </div>
-
+                 {activeStyleEditor && mapInstance && (
+                <div className="absolute top-20 left-6 z-50" style={{ pointerEvents: 'auto' }}>
+                    <StyleEditor
+                        onStyleChange={handleStyleChange}
+                        currentStyle={
+                            activeStyleEditor === 'basin'
+                                ? basinLayerStyle
+                                : (activeLayerFid !== null && layerStyles[activeLayerFid])
+                                    ? layerStyles[activeLayerFid]
+                                    : getColorForShapefile(activeLayerFid || 0)
+                        }
+                        layerName={
+                            activeStyleEditor === 'basin'
+                                ? 'Basin Boundary'
+                                : selectedShapefiles.find(sf => sf.fid === activeLayerFid)?.shapefile_name || 'Layer'
+                        }
+                        geometryType={activeStyleEditor === 'basin' ? 'Polygon' : geometryType}
+                        onClose={closeStyleEditor}
+                    />
+                </div>
+            )}
                 {/* Loading State */}
                 {!mapInstance && isLoading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 z-50 rounded-xl">
@@ -418,7 +438,7 @@ const MapComponent = () => {
                             className={`bg-white/90 backdrop-blur-sm hover:bg-white font-bold py-2 px-5 rounded-xl shadow-2xl border transition-all duration-200 text-sm flex items-center gap-2 hover:scale-105 ${isLayersPanelOpen ? 'border-blue-500 text-blue-700' : 'border-gray-200 text-gray-800'}`}
                             title="Layers"
                         >
-                            <span>🗺️</span>
+                           
                             <span>Layers ({activeLayers.length})</span>
                         </button>
                         {isLayersPanelOpen && (
@@ -444,7 +464,7 @@ const MapComponent = () => {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex-1">
                                                         <p className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-                                                            {layer.id === 'basin' ? '🗺️' : '📄'}
+                                                            {layer.id === 'basin' ? '' : ''}
                                                             {layer.name}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-1">
@@ -479,7 +499,7 @@ const MapComponent = () => {
                                                                 }`}
                                                             title="Edit Style"
                                                         >
-                                                            <span>🎨</span>
+                                                            
                                                             <span>Style</span>
                                                         </button>
                                                     </div>
@@ -568,27 +588,7 @@ const MapComponent = () => {
             </div>
 
             {/* Style Editor */}
-            {activeStyleEditor && mapInstance && (
-                <div className="absolute top-20 left-6 z-50" style={{ pointerEvents: 'auto' }}>
-                    <StyleEditor
-                        onStyleChange={handleStyleChange}
-                        currentStyle={
-                            activeStyleEditor === 'basin'
-                                ? basinLayerStyle
-                                : (activeLayerFid !== null && layerStyles[activeLayerFid])
-                                    ? layerStyles[activeLayerFid]
-                                    : getColorForShapefile(activeLayerFid || 0)
-                        }
-                        layerName={
-                            activeStyleEditor === 'basin'
-                                ? 'Basin Boundary'
-                                : selectedShapefiles.find(sf => sf.fid === activeLayerFid)?.shapefile_name || 'Layer'
-                        }
-                        geometryType={activeStyleEditor === 'basin' ? 'Polygon' : geometryType}
-                        onClose={closeStyleEditor}
-                    />
-                </div>
-            )}
+           
         </div>
     );
 };

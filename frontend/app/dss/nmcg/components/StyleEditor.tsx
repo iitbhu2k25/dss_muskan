@@ -100,7 +100,7 @@ const StyleEditor: React.FC<StyleEditorProps> = ({ onStyleChange, currentStyle, 
             {/* Header with Layer Name and Close Button */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
                 <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                    <span className="text-purple-600">🎨</span>
+                    
                     {layerName}
                 </h3>
                 <button
