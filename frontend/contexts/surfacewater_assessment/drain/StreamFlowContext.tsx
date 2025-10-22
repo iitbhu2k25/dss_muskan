@@ -13,6 +13,8 @@ import { useLocationContext } from '@/contexts/surfacewater_assessment/drain/Loc
 
 export type FDCPoint = { p: number; q: number };
 export type FDCSeries = {
+  name: any;
+  id: any;
   sub: number;
   n: number;
   curve: FDCPoint[];
