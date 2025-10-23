@@ -1,11 +1,10 @@
 import re
 import json
+import requests
 from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 
 CACHE_KEY = "imd_rainfall_geojson"
 CACHE_TIMEOUT = 60 * 15  # cache for 15 minutes
@@ -14,15 +13,16 @@ class RainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
     def extract_js_object(self, html_content, var_name):
-        # (same as your existing extraction implementation)
         start_pattern = f'var {var_name} ='
         start_index = html_content.find(start_pattern)
         if start_index == -1:
+            print("Var not found")
             return None
         start_index += len(start_pattern)
 
         brace_start = html_content.find('{', start_index)
         if brace_start == -1:
+            print("Brace not found")
             return None
 
         brace_count = 0
@@ -38,27 +38,47 @@ class RainfallGeoJSONAPIView(APIView):
                     break
             i += 1
         else:
+            print("End of file without closing brace")
             return None
 
+        # Remove trailing ; and whitespace
+        js_str = js_str.rstrip('; \n\t ')
+
+        # Remove JS single line comments
+        js_str = re.sub(r'//.*?$', '', js_str, flags=re.MULTILINE)
+
+        # Remove trailing commas before } or ]
+        js_str = re.sub(r',\s*([}\]])', r'\1', js_str)
+
+        # Handle unquoted keys if any
         js_str = re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', js_str)
+
+        # Replace single quotes with double
         js_str = js_str.replace("'", '"')
+
+        # Replace escaped slashes
         js_str = js_str.replace("\\/", "/")
 
+        # Strip whitespace
+        js_str = js_str.strip()
+
         try:
-            return json.loads(js_str)
+            parsed = json.loads(js_str)
+            print("Parsed successfully")
+            return parsed
         except Exception as e:
             print(f"JSON parse failed: {e}")
+            print("JS str preview:", repr(js_str[:500]))  # For debugging
             return None
 
     def get_rainfall_category(self, departure_str):
-        # (same as before)
         try:
             if not departure_str or departure_str == "-100%":
                 return "No Rain"
             value = int(departure_str.replace("%", ""))
-            if value <= -99:
+            if value <= -100:
                 return "No Rain"
-            elif -99 < value <= -60:
+            elif -99 <= value <= -60:
                 return "Large Deficient"
             elif -59 <= value <= -20:
                 return "Deficient"
@@ -72,28 +92,24 @@ class RainfallGeoJSONAPIView(APIView):
             return "No Data"
 
     def get(self, request):
-        # Check cache first
+        # Serve from cache if available
         cached_geojson = cache.get(CACHE_KEY)
         if cached_geojson:
             return Response(cached_geojson)
 
         url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=D"
 
-        options = Options()
-        options.headless = True
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        # Optionally disable images/scripts via Chrome preferences (further speedup)
-        prefs = {"profile.managed_default_content_settings.images": 2}
-        options.add_experimental_option("prefs", prefs)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
 
         try:
-            driver = webdriver.Chrome(options=options)
-            driver.get(url)
-            html_content = driver.page_source
-            driver.quit()
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            html_content = response.text
+            print("Fetched HTML length:", len(html_content))  # Debug
         except Exception as e:
-            return Response({"error": f"Selenium fetch failed: {str(e)}"}, status=500)
+            return Response({"error": f"Fetch failed: {str(e)}"}, status=500)
 
         js_data = self.extract_js_object(html_content, "countrydataprovider")
         if not js_data:
@@ -113,16 +129,20 @@ class RainfallGeoJSONAPIView(APIView):
             if "REGION" in state_name or "COUNTRY" in state_name:
                 continue
 
+            # Clean state name for matching
+            state_clean = state_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
+
             coords = None
             for key, coord in coord_map.items():
-                if key in state_name or state_name in key:
+                key_clean = key.replace(" AND ", " & ").strip()
+                if key_clean in state_clean or state_clean in key_clean:
                     coords = coord
                     break
             if not coords:
                 print(f"No coordinates found for {state_name}")
                 continue
 
-            balloon = area.get("balloonText", "")
+            balloon = area.get("balloonText", "") or ""
             actual_match = re.search(r'Actual\s*:\s*([\d.]+)', balloon)
             normal_match = re.search(r'Normal\s*:\s*([\d.]+)', balloon)
             departure_match = re.search(r'Departure\s*:\s*([-+0-9.%]+)', balloon)
@@ -168,7 +188,6 @@ class RainfallGeoJSONAPIView(APIView):
             }
         }
 
-        # Cache the geojson for next requests
         cache.set(CACHE_KEY, geojson, CACHE_TIMEOUT)
 
         return Response(geojson)
