@@ -1,3 +1,4 @@
+// frontend/app/dss/gwm/MAR/SWA/drain/components/Export/page.tsx
 'use client';
 
 import React from 'react';
@@ -7,8 +8,9 @@ import AreaSection from './components/area';
 import FDCCurveSection from './components/stream';
 import ConclusionSection from './components/Conclusion';
 import ReferenceSection from './components/Reference';
-import SurfaceWaterSection from './components/surfacewater'; // Adjust path as necessary
-
+import SurfaceWaterSection from './components/surfacewater';
+import EFlowSection from './components/eflow';
+import ClimateSection from './components/climate';
 
 const styles = StyleSheet.create({
   page: {
@@ -32,10 +34,41 @@ interface ExportPDFProps {
   series: any[];
   hasData: boolean;
   selectedSubbasins: { sub: number; area?: number }[];
-  surfaceWaterResults: { mergedSeries: { day: number; flow: number; surplus: number }[]; q25: number | null } | null;
+  surfaceWaterResults: { 
+    mergedSeries: { day: number; flow: number; surplus: number }[]; 
+    q25: number | null;
+    subbasinResults?: Array<{
+      subbasin: number;
+      years: number[];
+      Q25_cms?: number;
+      image_base64?: string;
+      timeseries: { day: number; flow: number }[];
+    }>;
+  } | null;
+  eflowResults?: Record<number, {
+    summary: Record<string, number>;
+    curves: Record<string, {
+      days: number[];
+      flows: number[];
+      threshold: number;
+      image_base64?: string;
+    }>;
+  }>;
+  climateResults?: Record<string, {
+    subbasin_id: number;
+    scenario: number;
+    start_year: number;
+    end_year: number;
+    image_base64?: string;
+    data?: {
+      points: Array<{
+        year: number;
+        mon: number;
+        flow_out: number;
+      }>;
+    };
+  }>;
 }
-
-
 
 interface PDFPageProps {
   children: React.ReactNode;
@@ -52,40 +85,85 @@ const PDFPage: React.FC<PDFPageProps> = ({ children }) => (
   </Page>
 );
 
-const ExportPDF: React.FC<ExportPDFProps> = ({ series, hasData, selectedSubbasins, surfaceWaterResults }) => (
-  <Document title="Surface Water Assessment Report" author="DSS Muskan">
-    <PDFPage>
-      <HeaderSection />
-    </PDFPage>
-
-    <PDFPage>
-      <AreaSection selectedSubbasins={selectedSubbasins} />
-    </PDFPage>
-
-    <PDFPage>
-      <FDCCurveSection series={series} hasData={hasData} />
-    </PDFPage>
+const ExportPDF: React.FC<ExportPDFProps> = ({ 
+  series, 
+  hasData, 
+  selectedSubbasins, 
+  surfaceWaterResults,
+  eflowResults,
+  climateResults
+}) => {
+  // Further optimize data if needed
+  const optimizedSurfaceWaterResults = React.useMemo(() => {
+    if (!surfaceWaterResults) return null;
     
-    {/* New Surface Water Section Page */}
-    {surfaceWaterResults && (
-  <PDFPage>
-    <SurfaceWaterSection
-      mergedSeries={surfaceWaterResults.mergedSeries}
-      q25={surfaceWaterResults.q25}
-    />
-  </PDFPage>
-)}
+    const { mergedSeries, q25, subbasinResults } = surfaceWaterResults;
+    
+    // If data is too large, sample it more aggressively
+    let sampledSeries = mergedSeries;
+    if (mergedSeries.length > 365) {
+      // Keep every nth point to reduce to ~365 points max
+      const step = Math.ceil(mergedSeries.length / 365);
+      sampledSeries = mergedSeries.filter((_, index) => index % step === 0);
+    }
+    
+    // Keep subbasin results as-is since they contain pre-rendered images
+    return {
+      mergedSeries: sampledSeries,
+      q25,
+      subbasinResults
+    };
+  }, [surfaceWaterResults]);
 
+  return (
+    <Document title="Surface Water Assessment Report" author="DSS Muskan">
+      <PDFPage>
+        <HeaderSection />
+      </PDFPage>
 
-    <PDFPage>
-      <ConclusionSection />
-    </PDFPage>
+      <PDFPage>
+        <AreaSection selectedSubbasins={selectedSubbasins} />
+      </PDFPage>
 
-    <PDFPage>
-      <ReferenceSection />
-    </PDFPage>
-  </Document>
-);
+      <PDFPage>
+        <FDCCurveSection series={series} hasData={hasData} />
+      </PDFPage>
 
+      {/* Surface Water Section Page - Only if data exists */}
+      {optimizedSurfaceWaterResults && (
+        <PDFPage>
+          <SurfaceWaterSection
+            mergedSeries={optimizedSurfaceWaterResults.mergedSeries}
+            q25={optimizedSurfaceWaterResults.q25}
+            subbasinResults={optimizedSurfaceWaterResults.subbasinResults}
+          />
+        </PDFPage>
+      )}
+
+      {/* E-Flow Section Page - Only if data exists */}
+      {eflowResults && Object.keys(eflowResults).length > 0 && (
+        <PDFPage>
+          <EFlowSection eflowResults={eflowResults} />
+        </PDFPage>
+      )}
+
+      {/* Climate Section Page - Only if data exists*/}
+      {climateResults && Object.keys(climateResults).length > 0 && (
+        <PDFPage>
+          <ClimateSection climateResults={climateResults} />
+        </PDFPage>
+      )}
+      
+
+      <PDFPage>
+        <ConclusionSection />
+      </PDFPage>
+
+      <PDFPage>
+        <ReferenceSection />
+      </PDFPage>
+    </Document>
+  );
+};
 
 export default ExportPDF;
