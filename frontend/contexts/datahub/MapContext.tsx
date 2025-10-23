@@ -16,6 +16,13 @@ import { buffer as turfBuffer } from '@turf/buffer';
 import { useShapefile } from './Section1Context';
 import { Feature } from 'ol';
 import { click } from 'ol/events/condition';
+import { getLength, getArea } from 'ol/sphere';
+import { LineString, Polygon } from 'ol/geom';
+import Text from 'ol/style/Text';
+import { unByKey } from 'ol/Observable';
+import { Polygon as OLPolygon } from 'ol/geom';
+
+
 
 export interface LayerStyle {
     shape?: 'circle' | 'square' | 'triangle' | 'star' | 'cross' | 'flag' | 'diamond';
@@ -97,7 +104,7 @@ interface MapContextType {
     toggleLabels: () => void;
     filteredFeatures: any[];
     setFilteredFeatures: (features: any[]) => void;
-   applyFilterToWMS: (filters: Record<string, string[]>, targetFid?: number) => void;
+    applyFilterToWMS: (filters: Record<string, string[]>, targetFid?: number) => void;
     baseMaps: Record<string, BaseMapDefinition>;
     layerStyles: Record<number, LayerStyle>;
     updateLayerStyle: (style: LayerStyle, targetFid: number) => void;
@@ -119,7 +126,7 @@ interface MapContextType {
     drawingLayerVisible: boolean;
     toggleDrawingLayer: () => void;
     updateFeatureProperties: (feature: Feature, properties: Record<string, any>) => void;
-    
+
 }
 
 interface MapProviderProps {
@@ -335,31 +342,31 @@ const createLineStyle = (styleConfig: LayerStyle, isHovered: boolean = false): S
 };
 
 const getColorForShapefile = (fid: number): LayerStyle => {
-  const colors: LayerStyle[] = [
-    { color: '#E6194B', opacity: 0.6, strokeColor: '#E6194B', strokeWidth: 2 }, // Red
-    { color: '#3CB44B', opacity: 0.6, strokeColor: '#3CB44B', strokeWidth: 2 }, // Green
-    { color: '#0082C8', opacity: 0.6, strokeColor: '#0082C8', strokeWidth: 2 }, // Blue
-    { color: '#F58231', opacity: 0.6, strokeColor: '#F58231', strokeWidth: 2 }, // Orange
-    { color: '#911EB4', opacity: 0.6, strokeColor: '#911EB4', strokeWidth: 2 }, // Purple
-    { color: '#46F0F0', opacity: 0.6, strokeColor: '#46F0F0', strokeWidth: 2 }, // Cyan
-    { color: '#F032E6', opacity: 0.6, strokeColor: '#F032E6', strokeWidth: 2 }, // Magenta
-    { color: '#D2F53C', opacity: 0.6, strokeColor: '#D2F53C', strokeWidth: 2 }, // Lime
-    { color: '#008080', opacity: 0.6, strokeColor: '#008080', strokeWidth: 2 }, // Teal
-    { color: '#AA6E28', opacity: 0.6, strokeColor: '#AA6E28', strokeWidth: 2 }, // Brown
-    { color: '#800000', opacity: 0.6, strokeColor: '#800000', strokeWidth: 2 }, // Maroon
-    { color: '#808000', opacity: 0.6, strokeColor: '#808000', strokeWidth: 2 }, // Olive
-    { color: '#FFD700', opacity: 0.6, strokeColor: '#FFD700', strokeWidth: 2 }, // Gold
-    { color: '#9A6324', opacity: 0.6, strokeColor: '#9A6324', strokeWidth: 2 }, // Rust
-    { color: '#469990', opacity: 0.6, strokeColor: '#469990', strokeWidth: 2 }, // Sea Green
-    { color: '#DCBEFF', opacity: 0.6, strokeColor: '#DCBEFF', strokeWidth: 2 }, // Lavender
-    { color: '#FABEBE', opacity: 0.6, strokeColor: '#FABEBE', strokeWidth: 2 }, // Pink
-    { color: '#A9A9A9', opacity: 0.6, strokeColor: '#A9A9A9', strokeWidth: 2 }, // Gray
-    { color: '#BFEF45', opacity: 0.6, strokeColor: '#BFEF45', strokeWidth: 2 }, // Light Green
-    { color: '#000075', opacity: 0.6, strokeColor: '#000075', strokeWidth: 2 }, // Navy Blue
-  ];
+    const colors: LayerStyle[] = [
+        { color: '#E6194B', opacity: 0.6, strokeColor: '#E6194B', strokeWidth: 2 }, // Red
+        { color: '#3CB44B', opacity: 0.6, strokeColor: '#3CB44B', strokeWidth: 2 }, // Green
+        { color: '#0082C8', opacity: 0.6, strokeColor: '#0082C8', strokeWidth: 2 }, // Blue
+        { color: '#F58231', opacity: 0.6, strokeColor: '#F58231', strokeWidth: 2 }, // Orange
+        { color: '#911EB4', opacity: 0.6, strokeColor: '#911EB4', strokeWidth: 2 }, // Purple
+        { color: '#46F0F0', opacity: 0.6, strokeColor: '#46F0F0', strokeWidth: 2 }, // Cyan
+        { color: '#F032E6', opacity: 0.6, strokeColor: '#F032E6', strokeWidth: 2 }, // Magenta
+        { color: '#D2F53C', opacity: 0.6, strokeColor: '#D2F53C', strokeWidth: 2 }, // Lime
+        { color: '#008080', opacity: 0.6, strokeColor: '#008080', strokeWidth: 2 }, // Teal
+        { color: '#AA6E28', opacity: 0.6, strokeColor: '#AA6E28', strokeWidth: 2 }, // Brown
+        { color: '#800000', opacity: 0.6, strokeColor: '#800000', strokeWidth: 2 }, // Maroon
+        { color: '#808000', opacity: 0.6, strokeColor: '#808000', strokeWidth: 2 }, // Olive
+        { color: '#FFD700', opacity: 0.6, strokeColor: '#FFD700', strokeWidth: 2 }, // Gold
+        { color: '#9A6324', opacity: 0.6, strokeColor: '#9A6324', strokeWidth: 2 }, // Rust
+        { color: '#469990', opacity: 0.6, strokeColor: '#469990', strokeWidth: 2 }, // Sea Green
+        { color: '#DCBEFF', opacity: 0.6, strokeColor: '#DCBEFF', strokeWidth: 2 }, // Lavender
+        { color: '#FABEBE', opacity: 0.6, strokeColor: '#FABEBE', strokeWidth: 2 }, // Pink
+        { color: '#A9A9A9', opacity: 0.6, strokeColor: '#A9A9A9', strokeWidth: 2 }, // Gray
+        { color: '#BFEF45', opacity: 0.6, strokeColor: '#BFEF45', strokeWidth: 2 }, // Light Green
+        { color: '#000075', opacity: 0.6, strokeColor: '#000075', strokeWidth: 2 }, // Navy Blue
+    ];
 
-  // Cycle through colors based on fid
-  return colors[fid % colors.length];
+    // Cycle through colors based on fid
+    return colors[fid % colors.length];
 };
 
 export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
@@ -406,6 +413,66 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     const toggleLabels = () => setShowLabels((s) => !s);
     const toggleBasinBoundary = () => setBasinBoundaryVisible((v) => !v);
     const toggleDrawingLayer = () => setDrawingLayerVisible((v) => !v);
+    const measurementOverlayRef = useRef<Overlay | null>(null);
+
+    // Helper function to format distance
+    const formatLength = (length: number): string => {
+        if (length > 1000) {
+            return `${(length / 1000).toFixed(2)} km`;
+        }
+        return `${length.toFixed(2)} m`;
+    };
+
+    // Helper function to format area
+    const formatArea = (area: number): string => {
+        if (area > 1000000) {
+            return `${(area / 1000000).toFixed(2)} km²`;
+        }
+        return `${area.toFixed(2)} m²`;
+    };
+
+    // Helper function to format coordinates
+    const formatCoordinates = (coord: number[]): string => {
+        const lonLat = toLonLat(coord);
+        return `Lat: ${lonLat[1].toFixed(6)}, Lon: ${lonLat[0].toFixed(6)}`;
+    };
+
+    // Helper function to format radius
+    const formatRadius = (radius: number): string => {
+        if (radius > 1000) {
+            return `Radius: ${(radius / 1000).toFixed(2)} km`;
+        }
+        return `Radius: ${radius.toFixed(2)} m`;
+    };
+
+    // Initialize measurement overlay (add this after the popup overlay useEffect)
+    useEffect(() => {
+        if (!mapInstance || measurementOverlayRef.current) return;
+
+        if (typeof window !== 'undefined') {
+            const measurementDiv = document.createElement('div');
+            measurementDiv.style.cssText = `
+            background-color: rgba(255, 255, 255, 0);
+            color: blue;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+        `;
+
+            const measurementOverlay = new Overlay({
+                element: measurementDiv,
+                offset: [0, -15],
+                positioning: 'bottom-center',
+                stopEvent: false,
+            });
+
+            mapInstance.addOverlay(measurementOverlay);
+            measurementOverlayRef.current = measurementOverlay;
+            console.log('✓ Measurement overlay added');
+        }
+    }, [mapInstance]);
 
     // Initialize map
     useEffect(() => {
@@ -593,7 +660,21 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             const select = new Select({
                 condition: click,
                 style: SELECTION_STYLE,
-                layers: (layer) => layer.get('name') !== 'basemap',
+                // 🔧 FIX: Only select from vector layers and drawing layer, NOT individual points
+                layers: (layer) => {
+                    const name = layer.get('name');
+                    return name && (
+                        name.startsWith('vector-layer-') ||
+                        name === 'drawing-layer' ||
+                        name === 'basin-boundary-layer'
+                    );
+                },
+                hitTolerance: 25, // Increased for easier line selection
+                // 🔧 ADD THIS: Filter to select only Line/Polygon features, not points
+                filter: (feature, layer) => {
+                    const geomType = feature.getGeometry()?.getType();
+                    return geomType !== 'Point'; // Exclude point selections
+                }
             });
 
             mapInstance.addInteraction(select);
@@ -663,7 +744,9 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         }
     }, [drawingLayerVisible]);
 
-    // Handle drawing type changes
+
+
+    // Handle drawing type changes with measurements
     useEffect(() => {
         if (!mapInstance || !drawingLayerRef.current) return;
 
@@ -676,11 +759,17 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
             drawInteractionRef.current = null;
         }
 
+        // Hide measurement overlay when not drawing
+        if (!drawingType && measurementOverlayRef.current) {
+            measurementOverlayRef.current.setPosition(undefined);
+        }
+
         if (!drawingType) return;
 
         const source = drawingLayerRef.current.getSource();
         if (!source) return;
 
+        // Create custom style that doesn't add tooltips
         const draw = new Draw({
             source: source,
             type: drawingType as any,
@@ -690,23 +779,105 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         mapInstance.addInteraction(draw);
         drawInteractionRef.current = draw;
 
+        let measurementListener: any = null;
+
+        // Handle drawing start
+        draw.on('drawstart', (evt) => {
+            const sketch = evt.feature;
+
+            if (!measurementOverlayRef.current) return;
+
+            const geom = sketch.getGeometry();
+            if (!geom) return;
+
+            // Add listener ONCE for geometry changes
+            measurementListener = geom.on('change', (evt: any) => {
+                const geom = evt.target;
+                let tooltipCoord: number[] | undefined;
+                let measurementText = '';
+
+                if (drawingType === 'Point') {
+                    const coords = geom.getCoordinates();
+                    tooltipCoord = coords;
+                    measurementText = formatCoordinates(coords);
+                } else if (drawingType === 'LineString') {
+                    const length = getLength(geom);
+                    tooltipCoord = geom.getLastCoordinate();
+                    measurementText = formatLength(length);
+                } else if (drawingType === 'Polygon') {
+                    const area = getArea(geom);
+                    tooltipCoord = geom.getInteriorPoint().getCoordinates();
+                    measurementText = formatArea(area);
+                } else if (drawingType === 'Circle') {
+                    const radius = geom.getRadius();
+                    tooltipCoord = geom.getCenter();
+                    measurementText = formatRadius(radius);
+                }
+
+                // Update ONLY the content of the existing overlay
+                if (measurementOverlayRef.current && tooltipCoord) {
+                    const element = measurementOverlayRef.current.getElement();
+                    if (element) {
+                        // Just update text, don't modify DOM structure
+                        element.innerHTML = measurementText;
+                        measurementOverlayRef.current.setPosition(tooltipCoord);
+                    }
+                }
+            });
+        });
+
+        // Handle drawing end
         draw.on('drawend', (e) => {
-            if (drawingType === 'Point') {
-                e.feature.setProperties({
-                    isEditable: true,
-                    name: 'New Point',
-                    description: 'A user-added point.'
-                });
+            // Remove listener
+            if (measurementListener) {
+                unByKey(measurementListener);
+                measurementListener = null;
             }
+
+            // Hide overlay immediately
+            if (measurementOverlayRef.current) {
+                measurementOverlayRef.current.setPosition(undefined);
+            }
+
+            // Set properties based on drawing type
+            const geom = e.feature.getGeometry();
+            let properties: Record<string, any> = {
+                isEditable: true,
+                name: `New ${drawingType}`,
+                description: `A user-added ${drawingType.toLowerCase()}.`
+            };
+
+            if (drawingType === 'Point' && geom) {
+                const coords = (geom as any).getCoordinates();
+                properties.coordinates = formatCoordinates(coords);
+            } else if (drawingType === 'LineString' && geom) {
+                const length = getLength(geom as LineString);
+                properties.length = formatLength(length);
+            } else if (drawingType === 'Polygon' && geom) {
+                const area = getArea(geom as Polygon);
+                properties.area = formatArea(area);
+            } else if (drawingType === 'Circle' && geom) {
+                const radius = (geom as any).getRadius();
+                properties.radius = formatRadius(radius);
+            }
+
+            e.feature.setProperties(properties);
             setDrawingType(null);
         });
 
-        console.log(`✓ Drawing ${drawingType} enabled`);
+        console.log(`✓ Drawing ${drawingType} with measurements enabled`);
 
         return () => {
             if (drawInteractionRef.current) {
                 mapInstance.removeInteraction(drawInteractionRef.current);
                 drawInteractionRef.current = null;
+            }
+            if (measurementListener) {
+                unByKey(measurementListener);
+                measurementListener = null;
+            }
+            if (measurementOverlayRef.current) {
+                measurementOverlayRef.current.setPosition(undefined);
             }
         };
     }, [drawingType, mapInstance]);
@@ -735,26 +906,63 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
         const format = new GeoJSON();
         selectedFeatures.forEach(feature => {
-            const geoJSONFeature = format.writeFeatureObject(feature, {
+            let geom = feature.getGeometry();
+            if (!geom) return;
+
+            const geomType = geom.getType();
+
+            // Convert Circle to Polygon (OpenLayers Circle is not standard GeoJSON)
+            if (geomType === 'Circle') {
+                const circle = geom as any;
+                const center = circle.getCenter();
+                const radius = circle.getRadius();
+                const sides = 64; // Number of sides for smooth circle
+
+                const coordinates: number[][] = [];
+                for (let i = 0; i <= sides; i++) {
+                    const angle = (i * 2 * Math.PI) / sides;
+                    const x = center[0] + radius * Math.cos(angle);
+                    const y = center[1] + radius * Math.sin(angle);
+                    coordinates.push([x, y]);
+                }
+
+                geom = new OLPolygon([coordinates]);
+            }
+
+            // Write geometry as GeoJSON
+            const geojson = format.writeGeometryObject(geom, {
                 featureProjection: 'EPSG:3857',
                 dataProjection: 'EPSG:4326'
             });
 
             const distanceInKm = distanceInMeters / 1000;
-            const buffered = turfBuffer(geoJSONFeature, distanceInKm, { units: 'kilometers' });
 
-            if (buffered) {
-                const bufferFeature = format.readFeature(buffered, {
-                    dataProjection: 'EPSG:4326',
-                    featureProjection: 'EPSG:3857'
-                });
-                bufferSource.addFeature(bufferFeature);
+            // Create proper GeoJSON feature for turf
+            const turfFeature = {
+                type: 'Feature',
+                geometry: geojson,
+                properties: {}
+            };
+
+            try {
+                const buffered = turfBuffer(turfFeature, distanceInKm, { units: 'kilometers' });
+
+                if (buffered && buffered.geometry) {
+                    const bufferFeature = format.readFeature(buffered, {
+                        dataProjection: 'EPSG:4326',
+                        featureProjection: 'EPSG:3857'
+                    });
+                    bufferSource.addFeature(bufferFeature);
+                    console.log(`✓ Buffer created for ${geomType}`);
+                }
+            } catch (error) {
+                console.error(`Buffer error for ${geomType}:`, error);
+                alert(`Failed to create buffer for ${geomType}`);
             }
         });
 
-        console.log(`✓ Buffer created for ${selectedFeatures.length} features: ${distanceInMeters}m`);
+        console.log(`✓ Buffer completed for ${selectedFeatures.length} features: ${distanceInMeters}m`);
     };
-
     // Reset all buffers
     const resetBuffer = () => {
         if (bufferLayerRef.current) {
@@ -842,33 +1050,34 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         setSelectedBaseMap(key);
         console.log(`✓ Basemap changed to: ${key}`);
     };
-    const updateLayerStyle = (newStyle: LayerStyle, targetFid: number) => {
-    // Update the style for the specific layer
-    setLayerStyles(prev => ({
-        ...prev,
-        [targetFid]: newStyle
-    }));
 
-    // Apply style only to the target layer
-    if (vectorLayersRef.current && vectorLayersRef.current[targetFid]) {
-        const targetLayer = vectorLayersRef.current[targetFid];
-        
-        targetLayer.setStyle((feature: any) => {
-            const geomType = feature.getGeometry()?.getType();
-            if (geomType === 'Point' || geomType === 'MultiPoint') {
-                return createOLStyle(newStyle, hoveredFeatureRef.current === feature);
-            } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-                return createPolygonStyle(newStyle, hoveredFeatureRef.current === feature);
-            } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-                return createLineStyle(newStyle, hoveredFeatureRef.current === feature);
-            }
-            return createOLStyle(newStyle, false);
-        });
-        targetLayer.changed();
-        
-        console.log(`✓ Layer style updated for fid: ${targetFid}`);
-    }
-};
+    const updateLayerStyle = (newStyle: LayerStyle, targetFid: number) => {
+        // Update the style for the specific layer
+        setLayerStyles(prev => ({
+            ...prev,
+            [targetFid]: newStyle
+        }));
+
+        // Apply style only to the target layer
+        if (vectorLayersRef.current && vectorLayersRef.current[targetFid]) {
+            const targetLayer = vectorLayersRef.current[targetFid];
+
+            targetLayer.setStyle((feature: any) => {
+                const geomType = feature.getGeometry()?.getType();
+                if (geomType === 'Point' || geomType === 'MultiPoint') {
+                    return createOLStyle(newStyle, hoveredFeatureRef.current === feature);
+                } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+                    return createPolygonStyle(newStyle, hoveredFeatureRef.current === feature);
+                } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+                    return createLineStyle(newStyle, hoveredFeatureRef.current === feature);
+                }
+                return createOLStyle(newStyle, false);
+            });
+            targetLayer.changed();
+
+            console.log(`✓ Layer style updated for fid: ${targetFid}`);
+        }
+    };
 
     useEffect(() => {
         if (!mapInstance || !vectorLayersRef.current) return;
@@ -910,24 +1119,24 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
                     const shapefileColor = getColorForShapefile(shapefile.fid);
 
                     const vectorLayer = new VectorLayer({
-    source: vectorSource,
-    zIndex: 5,
-    style: (feature) => {
-        // Use layer-specific style if available, otherwise use default color
-        const currentStyle = layerStyles[shapefile.fid] || shapefileColor;
-        const geomType = feature.getGeometry()?.getType();
-        const isHovered = hoveredFeatureRef.current === feature;
+                        source: vectorSource,
+                        zIndex: 5,
+                        style: (feature) => {
+                            // Use layer-specific style if available, otherwise use default color
+                            const currentStyle = layerStyles[shapefile.fid] || shapefileColor;
+                            const geomType = feature.getGeometry()?.getType();
+                            const isHovered = hoveredFeatureRef.current === feature;
 
-        if (geomType === 'Point' || geomType === 'MultiPoint') {
-            return createOLStyle(currentStyle, isHovered);
-        } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-            return createPolygonStyle(currentStyle, isHovered);
-        } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-            return createLineStyle(currentStyle, isHovered);
-        }
-        return createOLStyle(currentStyle, false);
-    }
-});
+                            if (geomType === 'Point' || geomType === 'MultiPoint') {
+                                return createOLStyle(currentStyle, isHovered);
+                            } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+                                return createPolygonStyle(currentStyle, isHovered);
+                            } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
+                                return createLineStyle(currentStyle, isHovered);
+                            }
+                            return createOLStyle(currentStyle, false);
+                        }
+                    });
 
                     vectorLayer.set('name', `vector-layer-${shapefile.fid}`);
                     vectorLayer.set('fid', shapefile.fid);
@@ -996,7 +1205,9 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         }
 
     }, [mapInstance, selectedShapefiles, layerStyles]);
-    // Handle hover effects
+
+
+    // Handle hover effects with measurement tooltips for drawn features
     useEffect(() => {
         if (!mapInstance || !vectorLayersRef.current) return;
 
@@ -1020,12 +1231,57 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
                             layer.changed();
                         });
                     }
+
+                    // Show measurement tooltip for drawn features
+                    const geom = feature.getGeometry();
+                    if (geom && measurementOverlayRef.current) {
+                        const geomType = geom.getType();
+                        let tooltipCoord: number[] | undefined;
+                        let measurementText = '';
+
+                        // Check if feature is from drawing layer
+                        const drawingSource = drawingLayerRef.current?.getSource();
+                        const isDrawnFeature = drawingSource?.getFeatures().includes(feature);
+
+                        if (isDrawnFeature) {
+                            if (geomType === 'Point') {
+                                const coords = (geom as any).getCoordinates();
+                                tooltipCoord = coords;
+                                measurementText = formatCoordinates(coords);
+                            } else if (geomType === 'LineString') {
+                                const length = getLength(geom as LineString);
+                                tooltipCoord = (geom as LineString).getLastCoordinate();
+                                measurementText = formatLength(length);
+                            } else if (geomType === 'Polygon') {
+                                const area = getArea(geom as Polygon);
+                                tooltipCoord = (geom as Polygon).getInteriorPoint().getCoordinates();
+                                measurementText = formatArea(area);
+                            } else if (geomType === 'Circle') {
+                                const radius = (geom as any).getRadius();
+                                tooltipCoord = (geom as any).getCenter();
+                                measurementText = formatRadius(radius);
+                            }
+
+                            if (tooltipCoord && measurementText) {
+                                const element = measurementOverlayRef.current.getElement();
+                                if (element) {
+                                    element.innerHTML = measurementText;
+                                    measurementOverlayRef.current.setPosition(tooltipCoord);
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 if (hoveredFeatureRef.current !== null) {
                     hoveredFeatureRef.current = null;
                     setHoveredFeature(null);
                     mapInstance.getTargetElement().style.cursor = '';
+
+                    // Hide measurement tooltip when not hovering
+                    if (measurementOverlayRef.current) {
+                        measurementOverlayRef.current.setPosition(undefined);
+                    }
 
                     // Update all vector layers
                     if (vectorLayersRef.current) {
@@ -1042,64 +1298,65 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     }, [mapInstance, layerStyles]);
 
     const applyFilterToWMS = (filters: Record<string, string[]>, targetFid?: number) => {
-    if (!vectorLayersRef.current || Object.keys(vectorLayersRef.current).length === 0) {
-        console.warn('⚠️ Cannot apply filter: no vector layers');
-        return;
-    }
+        if (!vectorLayersRef.current || Object.keys(vectorLayersRef.current).length === 0) {
+            console.warn('⚠️ Cannot apply filter: no vector layers');
+            return;
+        }
 
-    setCurrentFilters(filters);
+        setCurrentFilters(filters);
 
-    // If no targetFid is provided, do nothing (or you can apply to all layers like before)
-    if (targetFid === undefined) {
-        console.warn('⚠️ No target shapefile specified for filtering');
-        return;
-    }
+        // If no targetFid is provided, do nothing (or you can apply to all layers like before)
+        if (targetFid === undefined) {
+            console.warn('⚠️ No target shapefile specified for filtering');
+            return;
+        }
 
-    // Get the specific layer for the target shapefile
-    const targetLayer = vectorLayersRef.current[targetFid];
-    
-    if (!targetLayer) {
-        console.warn(`⚠️ Layer with fid ${targetFid} not found`);
-        return;
-    }
+        // Get the specific layer for the target shapefile
+        const targetLayer = vectorLayersRef.current[targetFid];
 
-    const vectorSource = targetLayer.getSource();
-    if (!vectorSource) return;
+        if (!targetLayer) {
+            console.warn(`⚠️ Layer with fid ${targetFid} not found`);
+            return;
+        }
 
-    const allFeatures = vectorSource.getFeatures();
+        const vectorSource = targetLayer.getSource();
+        if (!vectorSource) return;
 
-    if (Object.keys(filters).length === 0) {
-        // Reset all features to default style
-        allFeatures.forEach((f: any) => f.setStyle(undefined));
-    } else {
-        // Apply filter only to this layer
-        allFeatures.forEach((feature: any) => {
-            const props = feature.getProperties();
-            let matches = true;
+        const allFeatures = vectorSource.getFeatures();
 
-            for (const [key, values] of Object.entries(filters)) {
-                if (values && values.length > 0) {
-                    const propValue = String(props[key]);
-                    if (!values.includes(propValue)) {
-                        matches = false;
-                        break;
+        if (Object.keys(filters).length === 0) {
+            // Reset all features to default style
+            allFeatures.forEach((f: any) => f.setStyle(undefined));
+        } else {
+            // Apply filter only to this layer
+            allFeatures.forEach((feature: any) => {
+                const props = feature.getProperties();
+                let matches = true;
+
+                for (const [key, values] of Object.entries(filters)) {
+                    if (values && values.length > 0) {
+                        const propValue = String(props[key]);
+                        if (!values.includes(propValue)) {
+                            matches = false;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (!matches) {
-                // Hide non-matching features
-                feature.setStyle(new Style({}));
-            } else {
-                // Reset to default style for matching features
-                feature.setStyle(undefined);
-            }
-        });
-    }
+                if (!matches) {
+                    // Hide non-matching features
+                    feature.setStyle(new Style({}));
+                } else {
+                    // Reset to default style for matching features
+                    feature.setStyle(undefined);
+                }
+            });
+        }
 
-    targetLayer.changed();
-    console.log(`✓ Client-side filter applied to layer with fid: ${targetFid}`);
-};
+        targetLayer.changed();
+        console.log(`✓ Client-side filter applied to layer with fid: ${targetFid}`);
+    };
+
     const value = useMemo(
         () => ({
             mapInstance,
