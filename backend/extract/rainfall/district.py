@@ -9,8 +9,7 @@ from rest_framework.permissions import AllowAny
 CACHE_KEY = "imd_rainfall_geojson"
 CACHE_TIMEOUT = 60 * 15  # cache for 15 minutes
 
-class RainfallGeoJSONAPIView(APIView):
-
+class DistrictDailyRainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
     def extract_js_object(self, html_content, var_name):
@@ -42,25 +41,12 @@ class RainfallGeoJSONAPIView(APIView):
             print("End of file without closing brace")
             return None
 
-        # Remove trailing ; and whitespace
         js_str = js_str.rstrip('; \n\t ')
-
-        # Remove JS single line comments
         js_str = re.sub(r'//.*?$', '', js_str, flags=re.MULTILINE)
-
-        # Remove trailing commas before } or ]
         js_str = re.sub(r',\s*([}\]])', r'\1', js_str)
-
-        # Handle unquoted keys if any
         js_str = re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', js_str)
-
-        # Replace single quotes with double
         js_str = js_str.replace("'", '"')
-
-        # Replace escaped slashes
         js_str = js_str.replace("\\/", "/")
-
-        # Strip whitespace
         js_str = js_str.strip()
 
         try:
@@ -69,7 +55,7 @@ class RainfallGeoJSONAPIView(APIView):
             return parsed
         except Exception as e:
             print(f"JSON parse failed: {e}")
-            print("JS str preview:", repr(js_str[:500]))  # For debugging
+            print("JS str preview:", repr(js_str[:500]))
             return None
 
     def get_rainfall_category(self, departure_str):
@@ -93,12 +79,13 @@ class RainfallGeoJSONAPIView(APIView):
             return "No Data"
 
     def get(self, request):
-        # Serve from cache if available
-        cached_geojson = cache.get(CACHE_KEY)
+        cache_key_district = CACHE_KEY + "_district_daily"
+        cached_geojson = cache.get(cache_key_district)
         if cached_geojson:
             return Response(cached_geojson)
 
-        url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=D"
+        # Replace the url below with your actual district level daily rainfall data URL
+        url = "https://mausam.imd.gov.in/imd_latest/contents/rainfallinformation.php?msg=D"
 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -108,7 +95,7 @@ class RainfallGeoJSONAPIView(APIView):
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             html_content = response.text
-            print("Fetched HTML length:", len(html_content))  # Debug
+            print("Fetched HTML length:", len(html_content))
         except Exception as e:
             return Response({"error": f"Fetch failed: {str(e)}"}, status=500)
 
@@ -126,21 +113,20 @@ class RainfallGeoJSONAPIView(APIView):
 
         features = []
         for area in areas:
-            state_name = area["title"].strip().upper()
-            if "REGION" in state_name or "COUNTRY" in state_name:
+            district_name = area["title"].strip().upper()
+            if "REGION" in district_name or "COUNTRY" in district_name:
                 continue
 
-            # Clean state name for matching
-            state_clean = state_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
+            district_clean = district_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
 
             coords = None
             for key, coord in coord_map.items():
                 key_clean = key.replace(" AND ", " & ").strip()
-                if key_clean in state_clean or state_clean in key_clean:
+                if key_clean in district_clean or district_clean in key_clean:
                     coords = coord
                     break
             if not coords:
-                print(f"No coordinates found for {state_name}")
+                print(f"No coordinates found for {district_name}")
                 continue
 
             balloon = area.get("balloonText", "") or ""
@@ -159,8 +145,8 @@ class RainfallGeoJSONAPIView(APIView):
                     "coordinates": coords
                 },
                 "properties": {
-                    "state": state_name.title(),
-                    "state_id": area.get("id", ""),
+                    "district": district_name.title(),
+                    "district_id": area.get("id", ""),
                     "actual_rainfall": actual_val,
                     "normal_rainfall": normal_val,
                     "departure": dep_val,
@@ -175,9 +161,9 @@ class RainfallGeoJSONAPIView(APIView):
             "type": "FeatureCollection",
             "features": features,
             "metadata": {
-                "title": "India State-wise Rainfall Data",
+                "title": "India District-wise Daily Rainfall Data",
                 "source": "India Meteorological Department",
-                "total_states": len(features),
+                "total_districts": len(features),
                 "legend": {
                     "No Rain": {"range": "-100%", "color": "#FFFFFF"},
                     "Large Deficient": {"range": "-99% to -60%", "color": "#FFFF00"},
@@ -189,10 +175,11 @@ class RainfallGeoJSONAPIView(APIView):
             }
         }
 
-        cache.set(CACHE_KEY, geojson, CACHE_TIMEOUT)
+        cache.set(cache_key_district, geojson, CACHE_TIMEOUT)
+
         return Response(geojson)
     
-class WeeklyRainfallGeoJSONAPIView(APIView):
+class DistrictWeeklyRainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
     def extract_js_object(self, html_content, var_name):
@@ -262,11 +249,13 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
             return "No Data"
 
     def get(self, request):
-        cached_geojson = cache.get(CACHE_KEY + "_weekly")
+        cache_key_district_weekly = CACHE_KEY + "_district_weekly"
+        cached_geojson = cache.get(cache_key_district_weekly)
         if cached_geojson:
             return Response(cached_geojson)
 
-        url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=W"
+        # Replace with your actual district weekly rainfall data URL
+        url = "https://mausam.imd.gov.in/imd_latest/contents/rainfallinformation.php?msg=C"
 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -294,20 +283,20 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
 
         features = []
         for area in areas:
-            state_name = area["title"].strip().upper()
-            if "REGION" in state_name or "COUNTRY" in state_name:
+            district_name = area["title"].strip().upper()
+            if "REGION" in district_name or "COUNTRY" in district_name:
                 continue
 
-            state_clean = state_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
+            district_clean = district_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
 
             coords = None
             for key, coord in coord_map.items():
                 key_clean = key.replace(" AND ", " & ").strip()
-                if key_clean in state_clean or state_clean in key_clean:
+                if key_clean in district_clean or district_clean in key_clean:
                     coords = coord
                     break
             if not coords:
-                print(f"No coordinates found for {state_name}")
+                print(f"No coordinates found for {district_name}")
                 continue
 
             balloon = area.get("balloonText", "") or ""
@@ -326,8 +315,8 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
                     "coordinates": coords
                 },
                 "properties": {
-                    "state": state_name.title(),
-                    "state_id": area.get("id", ""),
+                    "district": district_name.title(),
+                    "district_id": area.get("id", ""),
                     "actual_rainfall": actual_val,
                     "normal_rainfall": normal_val,
                     "departure": dep_val,
@@ -342,9 +331,9 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
             "type": "FeatureCollection",
             "features": features,
             "metadata": {
-                "title": "India State-wise Weekly Rainfall Data",
+                "title": "India District-wise Weekly Rainfall Data",
                 "source": "India Meteorological Department",
-                "total_states": len(features),
+                "total_districts": len(features),
                 "legend": {
                     "No Rain": {"range": "-100%", "color": "#FFFFFF"},
                     "Large Deficient": {"range": "-99% to -60%", "color": "#FFFF00"},
@@ -356,10 +345,13 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
             }
         }
 
-        cache.set(CACHE_KEY + "_weekly", geojson, CACHE_TIMEOUT)
+        cache.set(cache_key_district_weekly, geojson, CACHE_TIMEOUT)
 
         return Response(geojson)
-class MonthlyRainfallGeoJSONAPIView(APIView):
+
+
+
+class DistrictMonthlyRainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
     def extract_js_object(self, html_content, var_name):
@@ -429,11 +421,13 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
             return "No Data"
 
     def get(self, request):
-        cached_geojson = cache.get(CACHE_KEY + "_monthly")
+        cache_key_district_monthly = CACHE_KEY + "_district_monthly"
+        cached_geojson = cache.get(cache_key_district_monthly)
         if cached_geojson:
             return Response(cached_geojson)
 
-        url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=M"
+        # Replace URL below with the actual district monthly rainfall data URL
+        url = "https://mausam.imd.gov.in/imd_latest/contents/rainfallinformation.php?msg=M"
 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -461,20 +455,20 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
 
         features = []
         for area in areas:
-            state_name = area["title"].strip().upper()
-            if "REGION" in state_name or "COUNTRY" in state_name:
+            district_name = area["title"].strip().upper()
+            if "REGION" in district_name or "COUNTRY" in district_name:
                 continue
 
-            state_clean = state_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
+            district_clean = district_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
 
             coords = None
             for key, coord in coord_map.items():
                 key_clean = key.replace(" AND ", " & ").strip()
-                if key_clean in state_clean or state_clean in key_clean:
+                if key_clean in district_clean or district_clean in key_clean:
                     coords = coord
                     break
             if not coords:
-                print(f"No coordinates found for {state_name}")
+                print(f"No coordinates found for {district_name}")
                 continue
 
             balloon = area.get("balloonText", "") or ""
@@ -493,8 +487,8 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
                     "coordinates": coords
                 },
                 "properties": {
-                    "state": state_name.title(),
-                    "state_id": area.get("id", ""),
+                    "district": district_name.title(),
+                    "district_id": area.get("id", ""),
                     "actual_rainfall": actual_val,
                     "normal_rainfall": normal_val,
                     "departure": dep_val,
@@ -509,9 +503,9 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
             "type": "FeatureCollection",
             "features": features,
             "metadata": {
-                "title": "India State-wise Monthly Rainfall Data",
+                "title": "India District-wise Monthly Rainfall Data",
                 "source": "India Meteorological Department",
-                "total_states": len(features),
+                "total_districts": len(features),
                 "legend": {
                     "No Rain": {"range": "-100%", "color": "#FFFFFF"},
                     "Large Deficient": {"range": "-99% to -60%", "color": "#FFFF00"},
@@ -523,10 +517,11 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
             }
         }
 
-        cache.set(CACHE_KEY + "_monthly", geojson, CACHE_TIMEOUT)
+        cache.set(cache_key_district_monthly, geojson, CACHE_TIMEOUT)
 
         return Response(geojson)
-class CumulativeRainfallGeoJSONAPIView(APIView):
+
+class DistrictCumulativeRainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
     def extract_js_object(self, html_content, var_name):
@@ -596,11 +591,13 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
             return "No Data"
 
     def get(self, request):
-        cached_geojson = cache.get(CACHE_KEY + "_cumulative")
+        cache_key_district_cumulative = CACHE_KEY + "_district_cumulative"
+        cached_geojson = cache.get(cache_key_district_cumulative)
         if cached_geojson:
             return Response(cached_geojson)
 
-        url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=C"
+        # Replace URL below with the actual district cumulative rainfall data URL
+        url = "https://mausam.imd.gov.in/imd_latest/contents/rainfallinformation.php?msg=C"
 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -628,20 +625,20 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
 
         features = []
         for area in areas:
-            state_name = area["title"].strip().upper()
-            if "REGION" in state_name or "COUNTRY" in state_name:
+            district_name = area["title"].strip().upper()
+            if "REGION" in district_name or "COUNTRY" in district_name:
                 continue
 
-            state_clean = state_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
+            district_clean = district_name.replace(" (UT)", "").replace(" & ", " AND ").strip()
 
             coords = None
             for key, coord in coord_map.items():
                 key_clean = key.replace(" AND ", " & ").strip()
-                if key_clean in state_clean or state_clean in key_clean:
+                if key_clean in district_clean or district_clean in key_clean:
                     coords = coord
                     break
             if not coords:
-                print(f"No coordinates found for {state_name}")
+                print(f"No coordinates found for {district_name}")
                 continue
 
             balloon = area.get("balloonText", "") or ""
@@ -660,8 +657,8 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
                     "coordinates": coords
                 },
                 "properties": {
-                    "state": state_name.title(),
-                    "state_id": area.get("id", ""),
+                    "district": district_name.title(),
+                    "district_id": area.get("id", ""),
                     "actual_rainfall": actual_val,
                     "normal_rainfall": normal_val,
                     "departure": dep_val,
@@ -676,9 +673,9 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
             "type": "FeatureCollection",
             "features": features,
             "metadata": {
-                "title": "India State-wise Cumulative Rainfall Data",
+                "title": "India District-wise Cumulative Rainfall Data",
                 "source": "India Meteorological Department",
-                "total_states": len(features),
+                "total_districts": len(features),
                 "legend": {
                     "No Rain": {"range": "-100%", "color": "#FFFFFF"},
                     "Large Deficient": {"range": "-99% to -60%", "color": "#FFFF00"},
@@ -690,6 +687,6 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
             }
         }
 
-        cache.set(CACHE_KEY + "_cumulative", geojson, CACHE_TIMEOUT)
+        cache.set(cache_key_district_cumulative, geojson, CACHE_TIMEOUT)
 
         return Response(geojson)
