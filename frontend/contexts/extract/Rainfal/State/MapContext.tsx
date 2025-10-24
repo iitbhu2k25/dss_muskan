@@ -12,7 +12,7 @@ import Overlay from "ol/Overlay";
 import { Feature } from "ol";
 import Point from "ol/geom/Point";
 import { Style, Fill, Stroke, Circle as CircleStyle } from "ol/style";
-import { RainfallFeature, RainfallData, DailyContext } from "./DailyContext";
+import { RainfallFeature, RainfallData, DailyContext } from "./RaifallContext";
 
 type MapContextType = {
   mapInstance: Map | null;

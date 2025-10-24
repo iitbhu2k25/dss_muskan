@@ -34,7 +34,7 @@ type DailyContextType = {
 export const DailyContext = createContext<DailyContextType | undefined>(undefined);
 
 export const DailyProvider = ({ children }: { children: ReactNode }) => {
-  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'cummulative'>('daily');
   const [rainfallData, setRainfallData] = useState<RainfallData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export const DailyProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`http://localhost:9000/django/extract/rainfall/${period}`)
+    fetch(`http://localhost:9000/django/extract/state/rainfall/${period}`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch rainfall data');
         return res.json();

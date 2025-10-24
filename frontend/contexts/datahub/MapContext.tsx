@@ -452,11 +452,11 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         if (typeof window !== 'undefined') {
             const measurementDiv = document.createElement('div');
             measurementDiv.style.cssText = `
-            background-color: rgba(255, 255, 255, 0);
-            color: blue;
+            background-color: rgba(0, 0, 0, 1);
+            color: white;
             padding: 4px 8px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 15px;
             white-space: nowrap;
             pointer-events: none;
         `;

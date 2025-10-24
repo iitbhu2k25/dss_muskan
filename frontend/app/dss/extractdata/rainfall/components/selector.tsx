@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { DailyContext } from "@/contexts/extract/Rainfal/State/DailyContext";
+import { DailyContext } from "@/contexts/extract/Rainfal/State/RaifallContext";
 import { useMapContext } from "@/contexts/extract/Rainfal/State/MapContext";
 import { motion } from "framer-motion";
 import { Droplets, MapPin, CalendarDays } from "lucide-react";
@@ -87,7 +87,7 @@ export const RainfallSelector = () => {
             value={period}
             onChange={(e) =>
               setPeriod(
-                e.target.value as "daily" | "weekly" | "monthly" | "cumulative"
+                e.target.value as "daily" | "weekly" | "monthly" | "cummulative"
               )
             }
             className="bg-white border border-blue-300 text-blue-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
@@ -95,7 +95,7 @@ export const RainfallSelector = () => {
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
-            <option value="cumulative">Cumulative</option>
+            <option value="cummulative">Cumulative</option>
           </select>
         </motion.div>
 

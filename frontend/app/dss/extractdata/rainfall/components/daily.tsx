@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useContext } from "react";
-import { DailyContext } from "@/contexts/extract/Rainfal/State/DailyContext";
+import { DailyContext } from "@/contexts/extract/Rainfal/State/RaifallContext";
 import { motion } from "framer-motion";
 import { Droplets, AlertTriangle, CalendarClock } from "lucide-react";
 
