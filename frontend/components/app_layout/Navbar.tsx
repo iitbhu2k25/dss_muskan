@@ -949,6 +949,14 @@ const Navbar = (): JSX.Element => {
                     NMCG
                   </Link>
                 </li>
+                      <li>
+                  <Link
+                    href="/dss/extractdata"
+                    className="block px-4 py-2 text-blue-600 font-semibold hover:bg-blue-50 hover:bg-opacity-10 rounded-md transition duration-200"
+                  >
+                    Extract Data
+                  </Link>
+                </li>
               </ul>
             </li>
 
