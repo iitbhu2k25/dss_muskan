@@ -1,8 +1,10 @@
+"use client";
+
 import React, { useContext, useEffect, useState } from "react";
-import { DailyContext } from "@/contexts/extract/Rainfal/State/RaifallContext";
-import { useMapContext } from "@/contexts/extract/Rainfal/State/MapContext";
+import { DailyContext } from "@/contexts/extract/Rainfal/RaifallContext";
+import { useMapContext } from "@/contexts/extract/Rainfal/MapContext";
 import { motion } from "framer-motion";
-import { Droplets, MapPin, CalendarDays } from "lucide-react";
+import { Droplets, MapPin, CalendarDays, Map } from "lucide-react";
 
 export const RainfallSelector = () => {
   const dailyCtx = useContext(DailyContext);
@@ -11,39 +13,29 @@ export const RainfallSelector = () => {
   if (!dailyCtx) throw new Error("RainfallSelector must be inside DailyProvider");
   if (!mapCtx) throw new Error("RainfallSelector must be inside MapProvider");
 
-  const { period, setPeriod, rainfallData } = dailyCtx;
-  const { setSelectedState: mapSetSelectedState } = mapCtx;
+  const { period, setPeriod, category, setCategory, rainfallData } = dailyCtx;
+  const { setSelectedDistrict } = mapCtx;
 
-  // New local state
-  const [selectedCategory, setSelectedCategory] = useState<"State" | "District">("State");
-  const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
-  const [selectedDistrict, setSelectedDistrict] = useState<string | undefined>(undefined);
+  const [selectedDistrictValue, setSelectedDistrictValue] = useState<string | undefined>(undefined);
 
-  const states = rainfallData
-    ? Array.from(new Set(rainfallData.features.map((f) => f.properties.state))).sort()
-    : [];
-
-  // You may need to extract districts similarly depending on your data structure:
+  // Extract unique districts from data
   const districts = rainfallData
-    ? Array.from(new Set(rainfallData.features.map((f) => f.properties.district))).sort()
+    ? Array.from(new Set(rainfallData.features.map((f) => f.properties.district).filter(Boolean))).sort()
     : [];
 
+  // Initialize district selection
   useEffect(() => {
-    if (states.length > 0 && !selectedState) {
-      setSelectedState(states[0]);
+    if (category === "district" && districts.length > 0 && !selectedDistrictValue) {
+      setSelectedDistrictValue(districts[0]);
     }
-    if (districts.length > 0 && !selectedDistrict) {
-      setSelectedDistrict(districts[0]);
-    }
-  }, [states, districts, selectedState, selectedDistrict]);
+  }, [districts, selectedDistrictValue, category]);
 
-  // Sync selected state/district to map context correspondingly
+  // Sync to map context for district only
   useEffect(() => {
-    if (selectedCategory === "State" && selectedState) {
-      mapSetSelectedState(selectedState);
+    if (category === "district" && selectedDistrictValue) {
+      setSelectedDistrict(selectedDistrictValue);
     }
-    // Optionally add map context for district if applicable
-  }, [selectedCategory, selectedState, selectedDistrict, mapSetSelectedState]);
+  }, [category, selectedDistrictValue, setSelectedDistrict]);
 
   return (
     <motion.div
@@ -58,83 +50,65 @@ export const RainfallSelector = () => {
       </h2>
 
       <div className="flex flex-col gap-4">
-        {/* Category Selector */}
+        {/* Category Selector (State/District) */}
         <motion.div
           whileHover={{ scale: 1.02 }}
           className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-purple-100 p-3 rounded-xl border border-purple-200 shadow-sm"
         >
-          <span className="text-purple-800 font-medium">Category</span>
+          <div className="flex items-center gap-2 text-purple-800 font-medium">
+            <Map size={18} />
+            <span>Category</span>
+          </div>
           <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as "State" | "District")}
+            value={category}
+            onChange={(e) => setCategory(e.target.value as "state" | "district")}
             className="bg-white border border-purple-300 text-purple-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-purple-400 focus:outline-none transition"
           >
-            <option value="State">State</option>
-            <option value="District">District</option>
+            <option value="state">State</option>
+            <option value="district">District</option>
           </select>
         </motion.div>
 
-        {/* Period Selector for selected category */}
+        {/* Period Selector */}
         <motion.div
           whileHover={{ scale: 1.02 }}
           className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 shadow-sm"
         >
           <div className="flex items-center gap-2 text-blue-800 font-medium">
             <CalendarDays size={18} />
-            <span>{selectedCategory} Rainfall Period</span>
+            <span>Rainfall Period</span>
           </div>
           <select
             value={period}
             onChange={(e) =>
-              setPeriod(
-                e.target.value as "daily" | "weekly" | "monthly" | "cummulative"
-              )
+              setPeriod(e.target.value as "daily" | "weekly" | "monthly" | "cumulative")
             }
             className="bg-white border border-blue-300 text-blue-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
-            <option value="cummulative">Cumulative</option>
+            <option value="cumulative">Cumulative</option>
           </select>
         </motion.div>
 
-        {/* Conditional State or District Selector */}
-        {selectedCategory === "State" && (
+        {/* District Selector (shown when category is 'district') */}
+        {category === "district" && districts.length > 0 && (
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-emerald-100 p-3 rounded-xl border border-emerald-200 shadow-sm"
+            className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-amber-100 p-3 rounded-xl border border-amber-200 shadow-sm"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
           >
-            <div className="flex items-center gap-2 text-emerald-800 font-medium">
-              <MapPin size={18} />
-              <span>State</span>
-            </div>
-            <select
-              value={selectedState || ""}
-              onChange={(e) => setSelectedState(e.target.value)}
-              className="bg-white border border-emerald-300 text-emerald-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-emerald-400 focus:outline-none transition"
-            >
-              {states.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-        )}
-        {selectedCategory === "District" && (
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-emerald-100 p-3 rounded-xl border border-emerald-200 shadow-sm"
-          >
-            <div className="flex items-center gap-2 text-emerald-800 font-medium">
+            <div className="flex items-center gap-2 text-amber-800 font-medium">
               <MapPin size={18} />
               <span>District</span>
             </div>
             <select
-              value={selectedDistrict || ""}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
-              className="bg-white border border-emerald-300 text-emerald-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-emerald-400 focus:outline-none transition"
+              value={selectedDistrictValue || ""}
+              onChange={(e) => setSelectedDistrictValue(e.target.value)}
+              className="bg-white border border-amber-300 text-amber-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-amber-400 focus:outline-none transition"
             >
               {districts.map((district) => (
                 <option key={district} value={district}>
