@@ -1,4 +1,6 @@
 // frontend/app/dss/gwm/MAR/SWA/drain/components/Export/components/climate.tsx
+'use client';
+
 import React from 'react';
 import { View, Text, StyleSheet, Image } from '@react-pdf/renderer';
 
@@ -32,6 +34,7 @@ const styles = StyleSheet.create({
   },
   scenarioSection: {
     marginBottom: 15,
+    pageBreakBefore: false,
   },
   scenarioHeader: {
     fontSize: 13,
@@ -55,15 +58,6 @@ const styles = StyleSheet.create({
     padding: 8,
     boxShadow: '0 1pt 2pt rgba(0,0,0,0.1)',
   },
-  fullWidthCard: {
-    width: '100%',
-    backgroundColor: 'white',
-    border: '0.7pt solid #d0d0d0',
-    borderRadius: 6,
-    marginBottom: 10,
-    padding: 10,
-    boxShadow: '0 1pt 2pt rgba(0,0,0,0.1)',
-  },
   subHeader: {
     fontSize: 12,
     fontWeight: 'bold',
@@ -82,12 +76,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginTop: 6,
   },
-  largeImage: {
-    width: '100%',
-    height: 160,
-    borderRadius: 4,
-    marginTop: 6,
-  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -101,13 +89,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     color: '#333',
-  },
-  footerNote: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 8,
-    fontStyle: 'italic',
-    textAlign: 'justify',
   },
   highlightBox: {
     backgroundColor: '#d1fae5',
@@ -133,6 +114,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#92400e',
     fontWeight: 'bold',
+  },
+  footerNote: {
+    fontSize: 10,
+    color: '#666',
+    marginTop: 8,
+    fontStyle: 'italic',
+    textAlign: 'justify',
   },
 });
 
@@ -167,7 +155,7 @@ const ClimateSection: React.FC<ClimateSectionProps> = ({ climateResults }) => {
     );
   }
 
-  // Organize results by scenario
+  // Group results by scenario
   const scenarioMap: Record<number, ClimateData[]> = {};
   Object.values(climateResults).forEach((data) => {
     if (!scenarioMap[data.scenario]) {
@@ -178,45 +166,39 @@ const ClimateSection: React.FC<ClimateSectionProps> = ({ climateResults }) => {
 
   // Scenario labels
   const scenarioLabels: Record<number, { name: string; description: string }> = {
-    585: { 
-      name: 'RCP 8.5 (High Emissions)', 
-      description: 'Business-as-usual scenario with continued high greenhouse gas emissions' 
+    585: {
+      name: 'RCP 8.5 (High Emissions)',
+      description: 'Business-as-usual scenario with continued high greenhouse gas emissions.',
     },
-    370: { 
-      name: 'RCP 6.0 (Moderate-High)', 
-      description: 'Stabilization scenario with emissions peaking around 2080' 
+    370: {
+      name: 'RCP 6.0 (Moderate-High)',
+      description: 'Stabilization scenario with emissions peaking around 2080.',
     },
-    245: { 
-      name: 'RCP 4.5 (Moderate)', 
-      description: 'Stabilization scenario with emissions peaking around 2040' 
+    245: {
+      name: 'RCP 4.5 (Moderate)',
+      description: 'Stabilization scenario with emissions peaking around 2040.',
     },
-    126: { 
-      name: 'RCP 2.6 (Low Emissions)', 
-      description: 'Aggressive mitigation scenario achieving net-zero by 2100' 
+    126: {
+      name: 'RCP 2.6 (Low Emissions)',
+      description: 'Aggressive mitigation scenario achieving net-zero by 2100.',
     },
   };
 
-  // Calculate statistics for each scenario
+  // Calculate flow stats per scenario
   const scenarioStats: Record<number, { avgFlow: number; minFlow: number; maxFlow: number; subbasins: number }> = {};
-  
-  Object.entries(scenarioMap).forEach(([scenario, dataArray]) => {
+
+  Object.entries(scenarioMap).forEach(([scenario, arr]) => {
     const allFlows: number[] = [];
-    dataArray.forEach((data) => {
-      if (data.data?.points) {
-        data.data.points.forEach((p) => {
-          if (Number.isFinite(p.flow_out)) {
-            allFlows.push(p.flow_out);
-          }
-        });
-      }
-    });
+    arr.forEach((data) =>
+      data.data?.points?.forEach((p) => Number.isFinite(p.flow_out) && allFlows.push(p.flow_out))
+    );
 
     if (allFlows.length > 0) {
       scenarioStats[Number(scenario)] = {
         avgFlow: allFlows.reduce((a, b) => a + b, 0) / allFlows.length,
         minFlow: Math.min(...allFlows),
         maxFlow: Math.max(...allFlows),
-        subbasins: dataArray.length,
+        subbasins: arr.length,
       };
     }
   });
@@ -228,70 +210,61 @@ const ClimateSection: React.FC<ClimateSectionProps> = ({ climateResults }) => {
       </View>
 
       <Text style={styles.introText}>
-        Climate change projections show how future flow patterns may evolve under different Representative 
-        Concentration Pathways (RCPs). These scenarios represent varying levels of greenhouse gas emissions 
-        and their impacts on hydrological cycles. Understanding these changes is critical for long-term 
-        water resource planning and managed aquifer recharge strategies.
+        Climate projections highlight potential shifts in flow under different greenhouse gas emission
+        scenarios. These insights are crucial for resilient aquifer recharge and long-term water planning.
       </Text>
 
-      {/* Scenario Comparison Summary */}
       <View style={styles.highlightBox}>
-        <Text style={styles.highlightText}>Analysis Period & Scenarios</Text>
-        {Object.entries(scenarioMap).map(([scenario, dataArray]) => {
-          const firstData = dataArray[0];
-          const stats = scenarioStats[Number(scenario)];
+        <Text style={styles.highlightText}>Scenario Overview</Text>
+        {Object.entries(scenarioMap).map(([scenario, arr]) => {
+          const first = arr[0];
+          const s = scenarioStats[Number(scenario)];
           return (
             <Text key={scenario} style={styles.text}>
-              • {scenarioLabels[Number(scenario)]?.name || `Scenario ${scenario}`}: 
-              {' '}{firstData.start_year}–{firstData.end_year}
-              {stats && ` | Avg Flow: ${stats.avgFlow.toFixed(2)} m³`}
+              • {scenarioLabels[Number(scenario)]?.name || `Scenario ${scenario}`}: {first.start_year}–{first.end_year}
+              {s && ` | Avg Flow: ${s.avgFlow.toFixed(2)} m³`}
             </Text>
           );
         })}
       </View>
 
-      {/* Scenario-wise Analysis */}
-      {Object.entries(scenarioMap).map(([scenario, dataArray]) => {
-        const scenarioInfo = scenarioLabels[Number(scenario)];
-        
+      {Object.entries(scenarioMap).map(([scenario, arr], index) => {
+        const info = scenarioLabels[Number(scenario)];
         return (
-          <View key={scenario} style={styles.scenarioSection} wrap={false}>
-            <Text style={styles.scenarioHeader}>
-              {scenarioInfo?.name || `Scenario ${scenario}`}
-            </Text>
-            
-            <Text style={[styles.text, { marginBottom: 8, fontSize: 10, fontStyle: 'italic' }]}>
-              {scenarioInfo?.description || 'Climate projection scenario'}
+          <View
+            key={scenario}
+            style={[styles.scenarioSection, { pageBreakBefore: index !== 0 }]} // Each scenario starts on new page
+            wrap={true}
+          >
+            <Text style={styles.scenarioHeader}>{info?.name || `Scenario ${scenario}`}</Text>
+            <Text style={[styles.text, { fontStyle: 'italic', marginBottom: 8 }]}>
+              {info?.description || 'Climate projection scenario.'}
             </Text>
 
             <View style={styles.gridContainer}>
-              {dataArray.map((data) => {
-                const stats = scenarioStats[Number(scenario)];
-                
+              {arr.map((data, i) => {
+                const s = scenarioStats[Number(scenario)];
                 return (
-                  <View key={`${data.subbasin_id}_${scenario}`} style={styles.card}>
+                  <View key={`${data.subbasin_id}_${i}`} style={styles.card} wrap={true}>
                     <Text style={styles.subHeader}>Subbasin {data.subbasin_id}</Text>
-                    
+
                     <View style={styles.statsRow}>
                       <Text style={styles.statLabel}>Period:</Text>
                       <Text style={styles.statValue}>
                         {data.start_year}–{data.end_year}
                       </Text>
                     </View>
-                    
-                    {stats && (
+
+                    {s && (
                       <>
                         <View style={styles.statsRow}>
-                          <Text style={styles.statLabel}>Avg Outflow:</Text>
-                          <Text style={styles.statValue}>
-                            {stats.avgFlow.toFixed(2)} m³
-                          </Text>
+                          <Text style={styles.statLabel}>Avg Flow:</Text>
+                          <Text style={styles.statValue}>{s.avgFlow.toFixed(2)} m³</Text>
                         </View>
-                        
                         <View style={styles.statsRow}>
                           <Text style={styles.statLabel}>Range:</Text>
                           <Text style={styles.statValue}>
-                            {stats.minFlow.toFixed(1)}–{stats.maxFlow.toFixed(1)} m³
+                            {s.minFlow.toFixed(1)}–{s.maxFlow.toFixed(1)} m³
                           </Text>
                         </View>
                       </>
@@ -311,27 +284,17 @@ const ClimateSection: React.FC<ClimateSectionProps> = ({ climateResults }) => {
         );
       })}
 
-      {/* Key Insights */}
       <View style={styles.warningBox}>
         <Text style={styles.warningText}>Key Climate Considerations</Text>
-        <Text style={[styles.text, { fontSize: 9.5, marginTop: 4 }]}>
-          • Higher emission scenarios (RCP 8.5) generally show increased flow variability
-        </Text>
-        <Text style={[styles.text, { fontSize: 9.5 }]}>
-          • Seasonal patterns may shift, affecting recharge timing and volumes
-        </Text>
-        <Text style={[styles.text, { fontSize: 9.5 }]}>
-          • Long-term planning should account for worst-case (RCP 8.5) projections
-        </Text>
-        <Text style={[styles.text, { fontSize: 9.5 }]}>
-          • Adaptive management strategies are essential for climate resilience
-        </Text>
+        <Text style={styles.text}>• Higher emission (RCP 8.5) scenarios show greater flow variability.</Text>
+        <Text style={styles.text}>• Recharge timing and seasonal distribution may shift significantly.</Text>
+        <Text style={styles.text}>• Long-term strategies should consider extreme climate projections.</Text>
+        <Text style={styles.text}>• Adaptation and monitoring are critical for sustainable management.</Text>
       </View>
 
       <Text style={styles.footerNote}>
-        Climate projections are based on CMIP5/CMIP6 models downscaled to the study region. Monthly outflow 
-        values represent simulated runoff under different emission scenarios. These projections help assess 
-        long-term water availability and identify adaptation needs for managed aquifer recharge systems.
+        Data derived from CMIP6 climate models, downscaled for the study region. Monthly runoff values
+        illustrate flow variations under each scenario, guiding climate-resilient MAR design.
       </Text>
     </View>
   );

@@ -4,9 +4,19 @@ import React, { useContext, useEffect, useState } from "react";
 import { DailyContext } from "@/contexts/extract/Rainfal/RaifallContext";
 import { useMapContext } from "@/contexts/extract/Rainfal/MapContext";
 import { motion } from "framer-motion";
-import { Droplets, MapPin, CalendarDays, Map } from "lucide-react";
+import { Droplets, MapPin } from "lucide-react";
 
-export const RainfallSelector = () => {
+interface RainfallSelectorProps {
+  forcedCategory?: "state" | "district";
+  selectedPeriod?: "daily" | "weekly" | "monthly" | "cumulative";
+  onPeriodChange?: (period: "daily" | "weekly" | "monthly" | "cumulative") => void;
+}
+
+export const RainfallSelector: React.FC<RainfallSelectorProps> = ({
+  forcedCategory,
+  selectedPeriod,
+  onPeriodChange,
+}) => {
   const dailyCtx = useContext(DailyContext);
   const mapCtx = useMapContext();
 
@@ -23,6 +33,20 @@ export const RainfallSelector = () => {
     ? Array.from(new Set(rainfallData.features.map((f) => f.properties.district).filter(Boolean))).sort()
     : [];
 
+  // Sync forced category from parent
+  useEffect(() => {
+    if (forcedCategory) {
+      setCategory(forcedCategory);
+    }
+  }, [forcedCategory, setCategory]);
+
+  // Sync period from parent
+  useEffect(() => {
+    if (selectedPeriod) {
+      setPeriod(selectedPeriod);
+    }
+  }, [selectedPeriod, setPeriod]);
+
   // Initialize district selection
   useEffect(() => {
     if (category === "district" && districts.length > 0 && !selectedDistrictValue) {
@@ -37,6 +61,13 @@ export const RainfallSelector = () => {
     }
   }, [category, selectedDistrictValue, setSelectedDistrict]);
 
+  const handlePeriodChange = (newPeriod: "daily" | "weekly" | "monthly" | "cumulative") => {
+    setPeriod(newPeriod);
+    if (onPeriodChange) {
+      onPeriodChange(newPeriod);
+    }
+  };
+
   return (
     <motion.div
       className="flex flex-col gap-4 p-5 bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-500"
@@ -50,47 +81,35 @@ export const RainfallSelector = () => {
       </h2>
 
       <div className="flex flex-col gap-4">
-        {/* Category Selector (State/District) */}
+        {/* Category Display (Read-only when forced) */}
         <motion.div
           whileHover={{ scale: 1.02 }}
           className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-purple-100 p-3 rounded-xl border border-purple-200 shadow-sm"
         >
           <div className="flex items-center gap-2 text-purple-800 font-medium">
-            <Map size={18} />
+            <MapPin size={18} />
             <span>Category</span>
           </div>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as "state" | "district")}
-            className="bg-white border border-purple-300 text-purple-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-purple-400 focus:outline-none transition"
-          >
-            <option value="state">State</option>
-            <option value="district">District</option>
-          </select>
+          <div className="bg-white border border-purple-300 text-purple-800 rounded-lg px-4 py-1 font-semibold capitalize">
+            {category}
+          </div>
         </motion.div>
 
-        {/* Period Selector */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 shadow-sm"
-        >
-          <div className="flex items-center gap-2 text-blue-800 font-medium">
-            <CalendarDays size={18} />
-            <span>Rainfall Period</span>
-          </div>
-          <select
-            value={period}
-            onChange={(e) =>
-              setPeriod(e.target.value as "daily" | "weekly" | "monthly" | "cumulative")
-            }
-            className="bg-white border border-blue-300 text-blue-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+        {/* Period Display (Read-only when controlled from parent) */}
+        {!onPeriodChange && (
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 shadow-sm"
           >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="cumulative">Cumulative</option>
-          </select>
-        </motion.div>
+            <div className="flex items-center gap-2 text-blue-800 font-medium">
+              <Droplets size={18} />
+              <span>Rainfall Period</span>
+            </div>
+            <div className="bg-white border border-blue-300 text-blue-800 rounded-lg px-4 py-1 font-semibold capitalize">
+              {period}
+            </div>
+          </motion.div>
+        )}
 
         {/* District Selector (shown when category is 'district') */}
         {category === "district" && districts.length > 0 && (

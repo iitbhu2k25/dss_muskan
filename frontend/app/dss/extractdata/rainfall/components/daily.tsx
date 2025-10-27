@@ -1,3 +1,4 @@
+// frontend/app/dss/extractdata/rainfall/components/daily.tsx
 "use client";
 
 import React, { useContext } from "react";
