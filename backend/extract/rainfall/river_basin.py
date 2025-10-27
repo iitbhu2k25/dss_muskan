@@ -11,22 +11,54 @@ class RiverBasinAPIView(APIView):
 
     BASE_URL = "https://mausam.imd.gov.in/imd_latest/contents/index_qpf.php"
 
-    # Example precipitation data for days keyed by river basin id
-    day_precipitation_data = {
-        "Day1": {
-            1: {"title": "Ajoy:Ajoy", "fmo": "fmo_asansol", "precip": "0 mm", "color": "#FFFFFF"},
-            2: {"title": "Alaknanda:Alaknanda", "fmo": "fmo_lucknow", "precip": "0 mm", "color": "#FFFFFF"},
-            9: {"title": "Barak:Barak at Silchar", "fmo": "fmo_guwahati", "precip": "0.1 - 10 mm", "color": "#009933"},
-            # Fill other basins as needed
-        },
-        # Add data for other days - Day2, Day3,... AAP
-    }
+    def extract_precipitation_from_script(self, html):
+        """
+        Extract areas array from the embedded JavaScript in the HTML
+        Returns a dictionary keyed by area id
+        """
+        precip_dict = {}
+        
+        # Find the areas array in the script
+        areas_match = re.search(r'"areas":\s*\[(.*?)\](?=\s*\})', html, re.DOTALL)
+        
+        if areas_match:
+            areas_str = '[' + areas_match.group(1) + ']'
+            # Parse individual area objects
+            area_objects = re.findall(r'\{[^}]+\}', areas_str)
+            
+            for area_obj in area_objects:
+                # Extract id
+                id_match = re.search(r'"id":\s*"(\d+)"', area_obj)
+                # Extract title
+                title_match = re.search(r'"title":\s*"([^"]+)"', area_obj)
+                # Extract color
+                color_match = re.search(r'"color":\s*"([^"]+)"', area_obj)
+                
+                if id_match and title_match and color_match:
+                    area_id = int(id_match.group(1))
+                    title = title_match.group(1)
+                    color = color_match.group(1)
+                    
+                    # Parse title to extract components
+                    parts = title.split("<br>")
+                    basin_name = parts[0] if len(parts) > 0 else "Unknown"
+                    fmo = parts[1].replace("FMO:", "") if len(parts) > 1 else ""
+                    precip = parts[2] if len(parts) > 2 else "0 mm"
+                    date = parts[3].replace(" Date:", "").strip() if len(parts) > 3 else ""
+                    
+                    precip_dict[area_id] = {
+                        "title": title,  # Keep full title with <br> tags
+                        "basin_name": basin_name,
+                        "fmo": fmo,
+                        "precip": precip,
+                        "color": color,
+                        "date": date
+                    }
+        
+        return precip_dict
 
     def get(self, request, *args, **kwargs):
         day = kwargs.get('day', request.GET.get("day", "Day1"))
-
-        if day not in self.day_precipitation_data:
-            return JsonResponse({"error": f"Invalid day value {day}"}, status=400)
 
         try:
             # Fetch HTML page for specified day
@@ -36,6 +68,9 @@ class RiverBasinAPIView(APIView):
             html = response.text
 
             soup = BeautifulSoup(html, 'html.parser')
+
+            # Extract precipitation data from the embedded script
+            precipitation_data = self.extract_precipitation_from_script(html)
 
             # Extract GeoJSON URL from embedded jQuery.getJSON call
             scripts = soup.find_all("script")
@@ -55,35 +90,58 @@ class RiverBasinAPIView(APIView):
             geojson_resp.raise_for_status()
             geojson_data = geojson_resp.json()
 
-            # Build AmCharts areas array with precipitation data matching GeoJSON features by id
+            # Enrich GeoJSON features with precipitation data
+            for feature in geojson_data.get("features", []):
+                props = feature.get("properties", {})
+                
+                # Get OBJECTID from GeoJSON properties
+                object_id = props.get("OBJECTID") or props.get("id") or props.get("ID")
+                
+                if object_id is not None:
+                    try:
+                        object_id_int = int(object_id)
+                        basin_data = precipitation_data.get(object_id_int)
+                        
+                        if basin_data:
+                            # Add precipitation data to feature properties
+                            props["title"] = basin_data["title"]
+                            props["color"] = basin_data["color"]
+                            props["basin_name"] = basin_data["basin_name"]
+                            props["fmo_precip"] = basin_data["fmo"]
+                            props["precipitation"] = basin_data["precip"]
+                            props["date"] = basin_data["date"]
+                        else:
+                            # Set default values if no precipitation data
+                            props["title"] = props.get("Subbasin_1", "Unknown")
+                            props["color"] = "#FFFFFF"
+                            props["precipitation"] = "0 mm"
+                    except (ValueError, TypeError):
+                        pass
+
+            # Build areas array for AmCharts
             areas = []
             for feature in geojson_data.get("features", []):
                 props = feature.get("properties", {})
-                area_id = props.get("id") or props.get("ID") or props.get("Id")
-                if area_id is None:
-                    continue
-
-                basin_data = self.day_precipitation_data[day].get(area_id)
-                if basin_data is None:
+                object_id = props.get("OBJECTID") or props.get("id") or props.get("ID")
+                
+                if object_id is not None:
                     area_obj = {
-                        "id": area_id,
-                        "title": props.get("name", "Unknown"),
-                        "color": "#FFFFFF"
+                        "id": str(object_id),
+                        "title": props.get("title", props.get("Subbasin_1", "Unknown")),
+                        "color": props.get("color", "#FFFFFF"),
+                        "basin": props.get("Basin_1", ""),
+                        "subbasin": props.get("Subbasin_1", ""),
+                        "fmo": props.get("FMO_1", "")
                     }
-                else:
-                    area_obj = {
-                        "id": area_id,
-                        "title": f"{basin_data['title']}<br>FMO:{basin_data['fmo']}<br>{basin_data['precip']}<br> Date:2025-10-24",
-                        "color": basin_data["color"]
-                    }
-                areas.append(area_obj)
+                    areas.append(area_obj)
 
+            # Return the combined result
             result = {
-                "mapVar": geojson_data,
-                "areas": areas
+                "mapVar": geojson_data,  # GeoJSON with enriched properties
+                "areas": areas  # Areas array for AmCharts
             }
 
-            return JsonResponse(result)
+            return JsonResponse(result, safe=False)
 
         except requests.RequestException as e:
             return JsonResponse({"error": f"Failed to fetch data: {str(e)}"}, status=502)
