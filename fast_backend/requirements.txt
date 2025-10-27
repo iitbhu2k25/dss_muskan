@@ -39,7 +39,7 @@ pyjwt[crypto]
 pyjwt
 redis[hiredis]
 aiosmtplib
-fastapi-mail
+fastapi-mail==1.5.7
 fastapi-mail[aioredis]
 fastapi-mail[httpx]
 pyotp
