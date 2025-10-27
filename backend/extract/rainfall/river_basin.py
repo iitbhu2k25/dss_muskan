@@ -90,7 +90,7 @@ class RiverBasinAPIView(APIView):
             geojson_resp.raise_for_status()
             geojson_data = geojson_resp.json()
 
-            # Enrich GeoJSON features with precipitation data
+            # Merge areas data into GeoJSON features
             for feature in geojson_data.get("features", []):
                 props = feature.get("properties", {})
                 
@@ -103,7 +103,7 @@ class RiverBasinAPIView(APIView):
                         basin_data = precipitation_data.get(object_id_int)
                         
                         if basin_data:
-                            # Add precipitation data to feature properties
+                            # Merge all precipitation data into feature properties
                             props["title"] = basin_data["title"]
                             props["color"] = basin_data["color"]
                             props["basin_name"] = basin_data["basin_name"]
@@ -115,33 +115,12 @@ class RiverBasinAPIView(APIView):
                             props["title"] = props.get("Subbasin_1", "Unknown")
                             props["color"] = "#FFFFFF"
                             props["precipitation"] = "0 mm"
+                            props["date"] = ""
                     except (ValueError, TypeError):
                         pass
 
-            # Build areas array for AmCharts
-            areas = []
-            for feature in geojson_data.get("features", []):
-                props = feature.get("properties", {})
-                object_id = props.get("OBJECTID") or props.get("id") or props.get("ID")
-                
-                if object_id is not None:
-                    area_obj = {
-                        "id": str(object_id),
-                        "title": props.get("title", props.get("Subbasin_1", "Unknown")),
-                        "color": props.get("color", "#FFFFFF"),
-                        "basin": props.get("Basin_1", ""),
-                        "subbasin": props.get("Subbasin_1", ""),
-                        "fmo": props.get("FMO_1", "")
-                    }
-                    areas.append(area_obj)
-
-            # Return the combined result
-            result = {
-                "mapVar": geojson_data,  # GeoJSON with enriched properties
-                "areas": areas  # Areas array for AmCharts
-            }
-
-            return JsonResponse(result, safe=False)
+            # Return the enriched GeoJSON as single result
+            return JsonResponse(geojson_data, safe=False)
 
         except requests.RequestException as e:
             return JsonResponse({"error": f"Failed to fetch data: {str(e)}"}, status=502)
