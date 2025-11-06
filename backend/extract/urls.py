@@ -1,5 +1,7 @@
 from django.urls import path
 from .rainfall import *
+from .waterlevel import *
+
 
 urlpatterns = [
     path('state/rainfall/daily', RainfallGeoJSONAPIView.as_view(), name='rainfall-daily-geojson'),
@@ -23,6 +25,5 @@ urlpatterns = [
     path('rainfall/riverbasin/day6', RiverBasinAPIView.as_view(), {'day': 'Day6'}, name='rainfall-riverbasin-day6'),
     path('rainfall/riverbasin/day7', RiverBasinAPIView.as_view(), {'day': 'Day7'}, name='rainfall-riverbasin-day7'),
     path('rainfall/riverbasin/aap', RiverBasinAPIView.as_view(), {'day': 'AAP'}, name='rainfall-riverbasin-aap'),
+    path('fetch-station',FFSConsoleDataView.as_view(), name="fetch_station"),
 ]
-
- 

@@ -5,6 +5,9 @@ from bs4 import BeautifulSoup
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+from pyproj import Transformer
+from shapely.geometry import shape, mapping
+from shapely.ops import transform
 
 class RiverBasinAPIView(APIView):
     permission_classes = [AllowAny]
@@ -57,6 +60,69 @@ class RiverBasinAPIView(APIView):
         
         return precip_dict
 
+    def transform_geojson_to_4326(self, geojson_data):
+        """
+        Transform GeoJSON coordinates to EPSG:4326 if needed
+        """
+        # Check if CRS is defined in the GeoJSON
+        crs = geojson_data.get("crs", {})
+        
+        # Common CRS detection
+        source_epsg = None
+        if crs:
+            crs_properties = crs.get("properties", {})
+            crs_name = crs_properties.get("name", "")
+            
+            # Extract EPSG code if present
+            if "EPSG" in crs_name or "epsg" in crs_name:
+                epsg_match = re.search(r'(\d+)', crs_name)
+                if epsg_match:
+                    source_epsg = int(epsg_match.group(1))
+        
+        # If no CRS specified or already EPSG:4326, assume it's already correct
+        if source_epsg is None or source_epsg == 4326:
+            # Still set the CRS explicitly to EPSG:4326
+            geojson_data["crs"] = {
+                "type": "name",
+                "properties": {
+                    "name": "EPSG:4326"
+                }
+            }
+            return geojson_data
+        
+        # Create transformer from source CRS to EPSG:4326
+        transformer = Transformer.from_crs(
+            f"EPSG:{source_epsg}", 
+            "EPSG:4326", 
+            always_xy=True
+        )
+        
+        # Transform each feature's geometry
+        for feature in geojson_data.get("features", []):
+            if "geometry" in feature and feature["geometry"]:
+                try:
+                    # Convert to shapely geometry
+                    geom = shape(feature["geometry"])
+                    
+                    # Transform coordinates
+                    transformed_geom = transform(transformer.transform, geom)
+                    
+                    # Update feature geometry
+                    feature["geometry"] = mapping(transformed_geom)
+                except Exception as e:
+                    print(f"Error transforming feature: {e}")
+                    continue
+        
+        # Update CRS to EPSG:4326
+        geojson_data["crs"] = {
+            "type": "name",
+            "properties": {
+                "name": "EPSG:4326"
+            }
+        }
+        
+        return geojson_data
+
     def get(self, request, *args, **kwargs):
         day = kwargs.get('day', request.GET.get("day", "Day1"))
 
@@ -89,6 +155,9 @@ class RiverBasinAPIView(APIView):
             geojson_resp = requests.get(geojson_url, timeout=30, verify=False)
             geojson_resp.raise_for_status()
             geojson_data = geojson_resp.json()
+
+            # Transform to EPSG:4326
+            geojson_data = self.transform_geojson_to_4326(geojson_data)
 
             # Merge areas data into GeoJSON features
             for feature in geojson_data.get("features", []):

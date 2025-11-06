@@ -15,6 +15,7 @@ import {
   Map as MapIcon,
   BarChart3,
   Waves,
+  Globe2,
 } from "lucide-react";
 
 type MainCategory = "rainfall" | "weather" | null;
@@ -25,12 +26,14 @@ type RainfallSubCategory =
   | "river-basin"
   | null;
 type PeriodType = "daily" | "weekly" | "monthly" | "cumulative";
+type RiverBasinDayType = "day1" | "day2" | "day3" | "day4" | "day5" | "day6" | "day7" | "aap";
 
 const RainfallPage = () => {
   const [mainCategory, setMainCategory] = useState<MainCategory>(null);
   const [rainfallSubCategory, setRainfallSubCategory] =
     useState<RainfallSubCategory>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("daily");
+  const [selectedRiverBasinDay, setSelectedRiverBasinDay] = useState<RiverBasinDayType>("day1");
   const [showRainfallDropdown, setShowRainfallDropdown] = useState(false);
 
   const handleMainCategoryClick = (category: MainCategory) => {
@@ -50,7 +53,6 @@ const RainfallPage = () => {
   };
 
   const renderContent = () => {
-    // Weather placeholder
     if (mainCategory === "weather") {
       return (
         <div className="flex items-center justify-center h-full">
@@ -69,7 +71,6 @@ const RainfallPage = () => {
       );
     }
 
-    // Rainfall subcategories
     if (mainCategory === "rainfall") {
       if (rainfallSubCategory === "statistics") {
         return <RainfallStatistics />;
@@ -77,28 +78,36 @@ const RainfallPage = () => {
 
       if (rainfallSubCategory === "river-basin") {
         return (
-          <div className="flex items-center justify-center h-full">
-            <motion.div
-              className="text-center"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              <Waves size={64} className="mx-auto mb-4 text-blue-400" />
-              <h3 className="text-2xl font-semibold text-gray-700">
-                Rainfall River Basin
-              </h3>
-              <p className="text-gray-500 mt-2">Coming soon...</p>
-            </motion.div>
-          </div>
+          <DailyProvider>
+            <MapProvider>
+              <div className="flex h-full bg-gradient-to-br from-white via-slate-100 to-gray-100">
+                <div className="flex-[6] flex flex-col bg-white border-r border-gray-300 shadow-lg overflow-auto">
+                  <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+                    <RainfallSelector
+                      forcedCategory="riverbasin"
+                    />
+                  </div>
+                  <div className="p-4 flex-1 overflow-auto">
+                    <DailyRainfallTable />
+                  </div>
+                </div>
+                <div className="flex-[4] rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <RainfallMap />
+                </div>
+              </div>
+            </MapProvider>
+          </DailyProvider>
         );
       }
 
-      if (rainfallSubCategory === "state" || rainfallSubCategory === "district") {
+      if (
+        rainfallSubCategory === "state" ||
+        rainfallSubCategory === "district"
+      ) {
         return (
           <DailyProvider>
             <MapProvider>
               <div className="flex h-full bg-gradient-to-br from-white via-slate-100 to-gray-100">
-                {/* Left Section (Selector + Table) */}
                 <div className="flex-[6] flex flex-col bg-white border-r border-gray-300 shadow-lg overflow-auto">
                   <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
                     <RainfallSelector
@@ -111,8 +120,6 @@ const RainfallPage = () => {
                     <DailyRainfallTable />
                   </div>
                 </div>
-
-                {/* Right Section (Map) */}
                 <div className="flex-[4] rounded-xl shadow-lg border border-gray-200 overflow-hidden">
                   <RainfallMap />
                 </div>
@@ -123,7 +130,6 @@ const RainfallPage = () => {
       }
     }
 
-    // Default state - show welcome message
     return (
       <div className="flex items-center justify-center h-full">
         <motion.div
@@ -145,10 +151,10 @@ const RainfallPage = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      {/* Top Navigation Bar */}
-      <div className="bg-white border-b border-gray-300 shadow-md px-6 py-4">
+      {/* Top Navigation */}
+      <div className="bg-white border-b border-gray-300 shadow-md px-6 py-4 relative">
         <div className="flex items-center gap-4">
-          {/* Rainfall Button with Dropdown */}
+          {/* Rainfall Button */}
           <div className="relative">
             <motion.button
               onClick={() => handleMainCategoryClick("rainfall")}
@@ -169,98 +175,6 @@ const RainfallPage = () => {
                 }`}
               />
             </motion.button>
-
-            {/* Rainfall Dropdown */}
-            <AnimatePresence>
-              {showRainfallDropdown && (
-                <motion.div
-                  className="absolute top-full mt-2 left-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[300px] z-50"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  {/* Rainfall State */}
-                  <div className="px-4 py-2 hover:bg-gray-50">
-                    <button
-                      onClick={() => handleRainfallSubCategoryClick("state")}
-                      className="w-full text-left font-medium text-gray-700 flex items-center gap-2"
-                    >
-                      <MapIcon size={16} className="text-blue-500" />
-                      Rainfall State
-                    </button>
-                    <div className="ml-6 mt-2 flex flex-wrap gap-2">
-                      {["daily", "weekly", "monthly", "cumulative"].map(
-                        (period) => (
-                          <button
-                            key={period}
-                            onClick={() => {
-                              setSelectedPeriod(period as PeriodType);
-                              handleRainfallSubCategoryClick("state");
-                            }}
-                            className="px-3 py-1 text-xs rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 capitalize"
-                          >
-                            {period}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 my-2" />
-
-                  {/* Rainfall District */}
-                  <div className="px-4 py-2 hover:bg-gray-50">
-                    <button
-                      onClick={() => handleRainfallSubCategoryClick("district")}
-                      className="w-full text-left font-medium text-gray-700 flex items-center gap-2"
-                    >
-                      <MapIcon size={16} className="text-green-500" />
-                      Rainfall District
-                    </button>
-                    <div className="ml-6 mt-2 flex flex-wrap gap-2">
-                      {["daily", "weekly", "monthly", "cumulative"].map(
-                        (period) => (
-                          <button
-                            key={period}
-                            onClick={() => {
-                              setSelectedPeriod(period as PeriodType);
-                              handleRainfallSubCategoryClick("district");
-                            }}
-                            className="px-3 py-1 text-xs rounded-full bg-green-50 text-green-700 hover:bg-green-100 capitalize"
-                          >
-                            {period}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 my-2" />
-
-                  {/* Rainfall Statistics */}
-                  <button
-                    onClick={() => handleRainfallSubCategoryClick("statistics")}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 font-medium text-gray-700 flex items-center gap-2"
-                  >
-                    <BarChart3 size={16} className="text-purple-500" />
-                    Rainfall Statistics
-                  </button>
-
-                  <div className="border-t border-gray-200 my-2" />
-
-                  {/* Rainfall River Basin */}
-                  <button
-                    onClick={() =>
-                      handleRainfallSubCategoryClick("river-basin")
-                    }
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 font-medium text-gray-700 flex items-center gap-2"
-                  >
-                    <Waves size={16} className="text-cyan-500" />
-                    Rainfall River Basin
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           {/* Weather Button */}
@@ -279,6 +193,104 @@ const RainfallPage = () => {
           </motion.button>
         </div>
 
+        {/* Dropdown */}
+        <AnimatePresence>
+          {showRainfallDropdown && (
+            <motion.div
+              className="mt-4 flex flex-wrap items-center gap-4 bg-white rounded-xl shadow-lg border border-gray-200 p-4 relative z-10"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {/* State */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleRainfallSubCategoryClick("state")}
+                  className="flex items-center whitespace-nowrap gap-2 px-4 py-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium"
+                >
+                  <Globe2 size={18} />
+                  State
+                </button>
+                <div className="flex gap-2">
+                  {["daily", "weekly", "monthly", "cumulative"].map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => {
+                        setSelectedPeriod(period as PeriodType);
+                        handleRainfallSubCategoryClick("state");
+                      }}
+                      className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 capitalize"
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* District */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleRainfallSubCategoryClick("district")}
+                  className="flex items-center whitespace-nowrap gap-2 px-4 py-2 rounded-md bg-green-50 hover:bg-green-100 text-green-700 font-medium"
+                >
+                  <MapIcon size={18} />
+                  District
+                </button>
+                <div className="flex gap-2">
+                  {["daily", "weekly", "monthly", "cumulative"].map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => {
+                        setSelectedPeriod(period as PeriodType);
+                        handleRainfallSubCategoryClick("district");
+                      }}
+                      className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 hover:bg-green-200 capitalize"
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* River Basin */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleRainfallSubCategoryClick("river-basin")}
+                  className="flex items-center whitespace-nowrap gap-2 px-4 py-2 rounded-md bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-medium"
+                >
+                  <Waves size={18} />
+                  River Basin
+                </button>
+                <div className="flex gap-2">
+                  {["day1", "day2", "day3", "day4", "day5", "day6", "day7", "aap"].map((day) => (
+                    <button
+                      key={day}
+                      onClick={() => {
+                        setSelectedRiverBasinDay(day as RiverBasinDayType);
+                        handleRainfallSubCategoryClick("river-basin");
+                      }}
+                      className="px-2 py-1 text-xs rounded-full bg-cyan-100 text-cyan-700 hover:bg-cyan-200 capitalize"
+                    >
+                      {day === "aap" ? "Actual Accumulated Precipitation(Observed Value)" : day.replace("day", "Day")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Statistics */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleRainfallSubCategoryClick("statistics")}
+                  className="flex items-center whitespace-nowrap gap-2 px-4 py-2 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium"
+                >
+                  <BarChart3 size={18} />
+                  Rainfall Statistics
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Breadcrumb */}
         {mainCategory && (
           <motion.div
@@ -290,12 +302,22 @@ const RainfallPage = () => {
             {rainfallSubCategory && (
               <>
                 <span>/</span>
-                <span className="capitalize">{rainfallSubCategory}</span>
+                <span className="capitalize">
+                  {rainfallSubCategory === "river-basin" ? "River Basin" : rainfallSubCategory}
+                </span>
                 {(rainfallSubCategory === "state" ||
                   rainfallSubCategory === "district") && (
                   <>
                     <span>/</span>
                     <span className="capitalize">{selectedPeriod}</span>
+                  </>
+                )}
+                {rainfallSubCategory === "river-basin" && (
+                  <>
+                    <span>/</span>
+                    <span className="uppercase">
+                      {selectedRiverBasinDay === "aap" ? "Actual Accumulated Precipitation" : selectedRiverBasinDay.replace("day", "Day ")}
+                    </span>
                   </>
                 )}
               </>
@@ -304,7 +326,7 @@ const RainfallPage = () => {
         )}
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 overflow-hidden">{renderContent()}</div>
     </div>
   );

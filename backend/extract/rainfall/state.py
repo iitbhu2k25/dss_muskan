@@ -1,4 +1,3 @@
-# backend/extract/rainfall/state.py
 import re
 import json
 import requests
@@ -73,6 +72,14 @@ class RainfallGeoJSONAPIView(APIView):
             print("JS str preview:", repr(js_str[:500]))  # For debugging
             return None
 
+    def extract_date_from_html(self, html_content):
+        """Extract the date from the Daily radio button in the HTML"""
+        # Look for pattern: Daily (DD-MM-YYYY)
+        date_match = re.search(r'Daily\s*\((\d{2}-\d{2}-\d{4})\)', html_content)
+        if date_match:
+            return date_match.group(1)
+        return "Today"
+
     def get_rainfall_category(self, departure_str):
         try:
             if not departure_str or departure_str == "-100%":
@@ -112,6 +119,9 @@ class RainfallGeoJSONAPIView(APIView):
             print("Fetched HTML length:", len(html_content))  # Debug
         except Exception as e:
             return Response({"error": f"Fetch failed: {str(e)}"}, status=500)
+
+        # Extract the date from HTML
+        extracted_date = self.extract_date_from_html(html_content)
 
         js_data = self.extract_js_object(html_content, "countrydataprovider")
         if not js_data:
@@ -168,7 +178,7 @@ class RainfallGeoJSONAPIView(APIView):
                     "category": self.get_rainfall_category(dep_val),
                     "color": area.get("color", "#FFFFFF"),
                     "data_source": "India Meteorological Department",
-                    "last_updated": request.GET.get("date", "Today")
+                    "last_updated": extracted_date
                 }
             })
 
@@ -242,6 +252,14 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
             print("JS str preview:", repr(js_str[:500]))
             return None
 
+    def extract_date_from_html(self, html_content):
+        """Extract the date range from the Weekly radio button in the HTML"""
+        # Look for pattern: Weekly (DD-MM-YYYY To DD-MM-YYYY)
+        date_match = re.search(r'Weekly\s*\((\d{2}-\d{2}-\d{4}\s+To\s+\d{2}-\d{2}-\d{4})\)', html_content)
+        if date_match:
+            return date_match.group(1)
+        return "This Week"
+
     def get_rainfall_category(self, departure_str):
         try:
             if not departure_str or departure_str == "-100%":
@@ -280,6 +298,9 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
             print("Fetched HTML length:", len(html_content))
         except Exception as e:
             return Response({"error": f"Fetch failed: {str(e)}"}, status=500)
+
+        # Extract the date from HTML
+        extracted_date = self.extract_date_from_html(html_content)
 
         js_data = self.extract_js_object(html_content, "countrydataprovider")
         if not js_data:
@@ -335,7 +356,7 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
                     "category": self.get_rainfall_category(dep_val),
                     "color": area.get("color", "#FFFFFF"),
                     "data_source": "India Meteorological Department",
-                    "last_updated": request.GET.get("date", "This Week")
+                    "last_updated": extracted_date
                 }
             })
 
@@ -360,6 +381,8 @@ class WeeklyRainfallGeoJSONAPIView(APIView):
         cache.set(CACHE_KEY + "_weekly", geojson, CACHE_TIMEOUT)
 
         return Response(geojson)
+
+
 class MonthlyRainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -409,6 +432,14 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
             print("JS str preview:", repr(js_str[:500]))
             return None
 
+    def extract_date_from_html(self, html_content):
+        """Extract the date range from the Monthly radio button in the HTML"""
+        # Look for pattern: Monthly (DD-MM-YYYY To DD-MM-YYYY)
+        date_match = re.search(r'Monthly\s*\((\d{2}-\d{2}-\d{4}\s+To\s+\d{2}-\d{2}-\d{4})', html_content)
+        if date_match:
+            return date_match.group(1)
+        return "This Month"
+
     def get_rainfall_category(self, departure_str):
         try:
             if not departure_str or departure_str == "-100%":
@@ -447,6 +478,9 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
             print("Fetched HTML length:", len(html_content))
         except Exception as e:
             return Response({"error": f"Fetch failed: {str(e)}"}, status=500)
+
+        # Extract the date from HTML
+        extracted_date = self.extract_date_from_html(html_content)
 
         js_data = self.extract_js_object(html_content, "countrydataprovider")
         if not js_data:
@@ -502,7 +536,7 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
                     "category": self.get_rainfall_category(dep_val),
                     "color": area.get("color", "#FFFFFF"),
                     "data_source": "India Meteorological Department",
-                    "last_updated": request.GET.get("date", "This Month")
+                    "last_updated": extracted_date
                 }
             })
 
@@ -527,6 +561,8 @@ class MonthlyRainfallGeoJSONAPIView(APIView):
         cache.set(CACHE_KEY + "_monthly", geojson, CACHE_TIMEOUT)
 
         return Response(geojson)
+
+
 class CumulativeRainfallGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -576,6 +612,14 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
             print("JS str preview:", repr(js_str[:500]))
             return None
 
+    def extract_date_from_html(self, html_content):
+        """Extract the date range from the Cumulative radio button in the HTML"""
+        # Look for pattern: Cumulative (DD-MM-YYYY To DD-MM-YYYY)
+        date_match = re.search(r'Cumulative\s*\((\d{2}-\d{2}-\d{4}\s+To\s+\d{2}-\d{2}-\d{4})\)', html_content)
+        if date_match:
+            return date_match.group(1)
+        return "Cumulative"
+
     def get_rainfall_category(self, departure_str):
         try:
             if not departure_str or departure_str == "-100%":
@@ -614,6 +658,9 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
             print("Fetched HTML length:", len(html_content))
         except Exception as e:
             return Response({"error": f"Fetch failed: {str(e)}"}, status=500)
+
+        # Extract the date from HTML
+        extracted_date = self.extract_date_from_html(html_content)
 
         js_data = self.extract_js_object(html_content, "countrydataprovider")
         if not js_data:
@@ -669,7 +716,7 @@ class CumulativeRainfallGeoJSONAPIView(APIView):
                     "category": self.get_rainfall_category(dep_val),
                     "color": area.get("color", "#FFFFFF"),
                     "data_source": "India Meteorological Department",
-                    "last_updated": request.GET.get("date", "Cumulative")
+                    "last_updated": extracted_date
                 }
             })
 
