@@ -35,15 +35,20 @@ class FFSConsoleDataView(APIView):
             url = "https://ffs.india-water.gov.in/"
             driver.get(url)
 
-            # Wait for full load
+            # Wait until the page fully loads
             WebDriverWait(driver, 30).until(
                 lambda d: d.execute_script("return document.readyState") == "complete"
             )
 
-            # Allow extra time for map + data to load and print in console
-            time.sleep(12)
+            # Allow more time for the data to load
+            time.sleep(20)
 
-            logs = driver.get_log("browser")
+            # Repeatedly check for logs (some appear after delays)
+            all_logs = []
+            for _ in range(5):
+                logs = driver.get_log("browser")
+                all_logs.extend(logs)
+                time.sleep(3)
 
         except Exception as e:
             driver.quit()
@@ -55,24 +60,30 @@ class FFSConsoleDataView(APIView):
             driver.quit()
 
         extracted_data = None
+        debug_snippets = []
 
-        for entry in logs:
+        for entry in all_logs:
             msg = entry.get("message", "")
+            debug_snippets.append(msg[:200])  # Save first 200 chars for debugging
 
-            # Find array-like console message containing station data
-            if "[" in msg and "geometry" in msg and "stationCode" in msg:
-                # Extract array safely using a non-greedy match
-                match = re.search(r"\[.*?\]", msg)
+            # Look for console output that seems like GeoJSON/array
+            if any(k in msg for k in ["geometry", "stationCode", "coordinates"]):
+                # Extract array/object
+                match = re.search(r"(\[.*\])", msg)
+                if not match:
+                    match = re.search(r"(\{.*\})", msg)
                 if not match:
                     continue
 
                 raw_json = match.group(0)
 
-                # Clean up special characters and ellipses
                 cleaned = (
                     raw_json
-                    .replace("…", "")  # remove JS ellipses
-                    .replace("'", '"')  # ensure valid JSON quotes
+                    .replace("…", "")
+                    .replace("'", '"')
+                    .replace("None", "null")
+                    .replace("True", "true")
+                    .replace("False", "false")
                 )
 
                 try:
@@ -80,17 +91,21 @@ class FFSConsoleDataView(APIView):
                     if isinstance(data, list) and len(data) > 0:
                         extracted_data = data
                         break
-                except Exception:
+                    elif isinstance(data, dict) and "features" in data:
+                        extracted_data = data
+                        break
+                except json.JSONDecodeError:
                     continue
 
         if extracted_data:
             return Response({
                 "status": "success",
-                "count": len(extracted_data),
+                "count": len(extracted_data) if isinstance(extracted_data, list) else 1,
                 "data": extracted_data
             })
         else:
             return Response({
                 "status": "error",
-                "message": "No valid array data found in console logs."
+                "message": "No valid GeoJSON or array data found in console logs.",
+                "debug_samples": debug_snippets[:10]  # Show some of the logs to debug
             }, status=404)
