@@ -4,10 +4,10 @@ import React, { useContext, useEffect, useState } from "react";
 import { DailyContext } from "@/contexts/extract/Rainfal/RaifallContext";
 import { useMapContext } from "@/contexts/extract/Rainfal/MapContext";
 import { motion } from "framer-motion";
-import { Droplets, MapPin } from "lucide-react";
+import { Droplets, MapPin, Calendar } from "lucide-react";
 
 interface RainfallSelectorProps {
-  forcedCategory?: "state" | "district";
+  forcedCategory?: "state" | "district" | "riverbasin";
   selectedPeriod?: "daily" | "weekly" | "monthly" | "cumulative";
   onPeriodChange?: (period: "daily" | "weekly" | "monthly" | "cumulative") => void;
 }
@@ -23,7 +23,7 @@ export const RainfallSelector: React.FC<RainfallSelectorProps> = ({
   if (!dailyCtx) throw new Error("RainfallSelector must be inside DailyProvider");
   if (!mapCtx) throw new Error("RainfallSelector must be inside MapProvider");
 
-  const { period, setPeriod, category, setCategory, rainfallData } = dailyCtx;
+  const { period, setPeriod, category, setCategory, riverBasinDay, setRiverBasinDay, rainfallData } = dailyCtx;
   const { setSelectedDistrict } = mapCtx;
 
   const [selectedDistrictValue, setSelectedDistrictValue] = useState<string | undefined>(undefined);
@@ -91,12 +91,12 @@ export const RainfallSelector: React.FC<RainfallSelectorProps> = ({
             <span>Category</span>
           </div>
           <div className="bg-white border border-purple-300 text-purple-800 rounded-lg px-4 py-1 font-semibold capitalize">
-            {category}
+            {category === 'riverbasin' ? 'River Basin' : category}
           </div>
         </motion.div>
 
-        {/* Period Display (Read-only when controlled from parent) */}
-        {!onPeriodChange && (
+        {/* Period Display (for state/district only) */}
+        {category !== 'riverbasin' && !onPeriodChange && (
           <motion.div
             whileHover={{ scale: 1.02 }}
             className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 shadow-sm"
@@ -108,6 +108,36 @@ export const RainfallSelector: React.FC<RainfallSelectorProps> = ({
             <div className="bg-white border border-blue-300 text-blue-800 rounded-lg px-4 py-1 font-semibold capitalize">
               {period}
             </div>
+          </motion.div>
+        )}
+
+        {/* River Basin Day Selector */}
+        {category === 'riverbasin' && (
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="flex items-center justify-between bg-gradient-to-r from-teal-50 to-teal-100 p-3 rounded-xl border border-teal-200 shadow-sm"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <div className="flex items-center gap-2 text-teal-800 font-medium">
+              <Calendar size={18} />
+              <span>Forecast Day</span>
+            </div>
+            <select
+              value={riverBasinDay}
+              onChange={(e) => setRiverBasinDay(e.target.value as any)}
+              className="bg-white border border-teal-300 text-teal-800 rounded-lg px-3 py-1 focus:ring-2 focus:ring-teal-400 focus:outline-none transition"
+            >
+              <option value="day1">Day 1</option>
+              <option value="day2">Day 2</option>
+              <option value="day3">Day 3</option>
+              <option value="day4">Day 4</option>
+              <option value="day5">Day 5</option>
+              <option value="day6">Day 6</option>
+              <option value="day7">Day 7</option>
+              <option value="Actual Accumulated Precipitation">Actual Accumulated Precipitation(Observed Value)</option>
+            </select>
           </motion.div>
         )}
 

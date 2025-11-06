@@ -24,6 +24,58 @@ class DistrictRainfallBaseAPIView(APIView):
             "features": []
         }
 
+    def extract_period_dates(self, param):
+        """Extract date information for the given period from IMD state rainfall page"""
+        cache_key = f"imd_period_dates_{param}"
+        cached_dates = cache.get(cache_key)
+        if cached_dates:
+            return cached_dates
+        
+        url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=D"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            html_content = response.text
+            
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Find all radio inputs
+            radio_inputs = soup.find_all('input', {'type': 'radio', 'name': 'group'})
+            
+            period_dates = {}
+            for radio in radio_inputs:
+                value = radio.get('value', '')
+                # Get the text after the input tag
+                label_text = radio.next_sibling
+                if label_text and isinstance(label_text, str):
+                    label_text = label_text.strip()
+                    # Extract the date information
+                    # Examples:
+                    # "Daily (03-11-2025)"
+                    # "Weekly (23-10-2025 To 29-10-2025)"
+                    # "Monthly (01-11-2025 To 03-11-2025)"
+                    # "Cumulative (01-10-2025 To 03-11-2025)"
+                    
+                    match = re.search(r'\(([^)]+)\)', label_text)
+                    if match:
+                        date_info = match.group(1).strip()
+                        period_dates[value] = {
+                            'label': label_text.split('(')[0].strip(),
+                            'date_range': date_info
+                        }
+            
+            # Cache the period dates for 1 hour
+            cache.set(cache_key, period_dates, 3600)
+            return period_dates
+            
+        except Exception as e:
+            print(f"Failed to extract period dates: {e}")
+            return {}
+
     def extract_areas_from_html(self, html_content):
         soup = BeautifulSoup(html_content, 'html.parser')
         script_tags = soup.find_all('script')
@@ -132,10 +184,16 @@ class DistrictRainfallBaseAPIView(APIView):
                 'geometry': feature.get('geometry')  # Use original geometry as-is
             })
 
+        # Extract period date information
+        period_dates = self.extract_period_dates(param)
+        period_info = period_dates.get(param, {})
+        
         metadata = {
             "title": "India District-wise Rainfall Data",
             "source": "India Meteorological Department",
             "period": param,
+            "period_label": period_info.get('label', ''),
+            "date_range": period_info.get('date_range', ''),
             "legend": {
                 "No Rain": {"range": "-100%", "color": "#FFFFFF"},
                 "Large Deficient": {"range": "-99% to -60%", "color": "#FFFF00"},
@@ -149,6 +207,8 @@ class DistrictRainfallBaseAPIView(APIView):
         return {
             "type": "FeatureCollection",
             "period": param,
+            "period_label": period_info.get('label', ''),
+            "date_range": period_info.get('date_range', ''),
             "metadata": metadata,
             "features": features
         }

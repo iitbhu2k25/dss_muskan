@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { View, Text, StyleSheet } from '@react-pdf/renderer';
+import { View, Text, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   section: {
@@ -59,12 +59,19 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     lineHeight: 1.4,
   },
+  imageContainer: {
+   // keeps enough space reserved for large image
+  },
+  image: {
+    
+  },
 });
 
 interface AreaSectionProps {
   selectedSubbasins: {
     sub: number;
     area?: number;
+    image_base64?: string;
   }[];
 }
 
@@ -80,22 +87,23 @@ const AreaSection: React.FC<AreaSectionProps> = ({ selectedSubbasins }) => {
     );
   }
 
-  const totalArea = selectedSubbasins.map(s => s.area || 0).reduce((a, b) => a + b, 0);
+  const totalArea = selectedSubbasins.map((s) => s.area || 0).reduce((a, b) => a + b, 0);
 
   const subbasinList = selectedSubbasins
-    .map(s => `${s.sub}${s.area ? ` (${s.area.toFixed(2)} km²)` : ''}`)
+    .map((s) => `${s.sub}${s.area ? ` (${s.area.toFixed(2)} km²)` : ''}`)
     .join(', ');
+
+  // Pick first available image_base64 from selected subbasins to render one combined image
+  const combinedImageBase64 = selectedSubbasins.find((s) => s.image_base64)?.image_base64;
 
   return (
     <View style={styles.section}>
       <View style={styles.headerBar}>
         <Text style={styles.headerText}>Selected Subbasins Overview</Text>
       </View>
-
       <Text style={styles.text}>
         Below is a detailed summary of all subbasins included in this analysis.
       </Text>
-
       <View style={styles.statRow}>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{selectedSubbasins.length}</Text>
@@ -106,13 +114,18 @@ const AreaSection: React.FC<AreaSectionProps> = ({ selectedSubbasins }) => {
           <Text style={styles.statLabel}>Total Area (km²)</Text>
         </View>
       </View>
-
       <View style={styles.listRow}>
         <Text style={styles.listText}>
           <Text style={{ fontWeight: 'bold' }}>Subbasin IDs & Areas: </Text>
           {subbasinList}
         </Text>
       </View>
+      {/* Render only one combined image, centered and large */}
+      {combinedImageBase64 ? (
+        <View style={styles.imageContainer}>
+          <Image src={combinedImageBase64} style={styles.image} />
+        </View>
+      ) : null}
     </View>
   );
 };

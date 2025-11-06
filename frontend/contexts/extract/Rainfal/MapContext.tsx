@@ -75,15 +75,19 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
       style: (feature) => {
         const color = feature.get("color") || "#000000";
         const isDistrict = feature.get("district") !== undefined;
+        const isRiverBasin = feature.get("basin_name") !== undefined;
 
         return new Style({
           image: new CircleStyle({
-            radius: isDistrict ? 5 : 7,
+            radius: isDistrict ? 5 : isRiverBasin ? 0 : 7,
             fill: new Fill({ color }),
             stroke: new Stroke({ color: "#333", width: 1 }),
           }),
-          fill: new Fill({ color }),
-          stroke: new Stroke({ color: "#333", width: 1 }),
+          fill: new Fill({ color: color + "80" }), // Add transparency for polygons
+          stroke: new Stroke({ 
+            color: isRiverBasin ? "#0891b2" : "#333", 
+            width: isRiverBasin ? 2 : 1 
+          }),
         });
       },
     });
@@ -104,15 +108,17 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
     // Create a persistent hover tooltip container
     const hoverTooltipContainer = document.createElement("div");
     hoverTooltipContainer.style.backgroundColor = "white";
-    hoverTooltipContainer.style.padding = "5px 8px";
+    hoverTooltipContainer.style.padding = "8px 12px";
     hoverTooltipContainer.style.borderRadius = "10px";
     hoverTooltipContainer.style.border = "1px solid #1411c5ff";
-    hoverTooltipContainer.style.minWidth = "150px";
+    hoverTooltipContainer.style.minWidth = "200px";
     hoverTooltipContainer.style.position = "absolute";
     hoverTooltipContainer.style.pointerEvents = "none";
     hoverTooltipContainer.style.whiteSpace = "nowrap";
-    hoverTooltipContainer.style.display = "none"; // hide initially
-    document.body.appendChild(hoverTooltipContainer); // attach to body
+    hoverTooltipContainer.style.display = "none";
+    hoverTooltipContainer.style.zIndex = "1000";
+    hoverTooltipContainer.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+    document.body.appendChild(hoverTooltipContainer);
 
     const hoverOverlay = new Overlay({
       element: hoverTooltipContainer,
@@ -124,7 +130,6 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
     map.on("pointermove", (evt) => {
       if (evt.dragging) return;
       const pixel = map.getEventPixel(evt.originalEvent);
-      // Add hit tolerance to improve feature detection
       const feature = map.forEachFeatureAtPixel(pixel, (feat) => feat, { hitTolerance: 5 });
 
       if (feature) {
@@ -132,18 +137,36 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
 
         const district = feature.get("district");
         const state = feature.get("state");
-        const locationLabel = district
-          ? `<b>${district}</b><br/><i>${state || ""}</i>`
-          : `<b>${state || "Unknown"}</b>`;
+        const basinName = feature.get("basin_name");
+        const precipitation = feature.get("precipitation");
+        const fmo = feature.get("fmo");
+        const date = feature.get("date");
 
-        hoverTooltipContainer.innerHTML = `
-          ${locationLabel}<br/>
-          Actual Rainfall: ${feature.get("actual_rainfall") || "N/A"}<br/>
-          Normal Rainfall: ${feature.get("normal_rainfall") || "N/A"}<br/>
-          Departure: ${feature.get("departure") || "N/A"}<br/>
-          Category: ${feature.get("category") || "No Data"}<br/>
-          Last Updated: ${feature.get("last_updated") || ""}
-        `;
+        if (basinName) {
+          // River Basin tooltip
+          hoverTooltipContainer.innerHTML = `
+            <div style="font-weight: bold; color: #0891b2; margin-bottom: 4px;">${basinName}</div>
+            <div style="font-size: 12px; color: #666;">FMO: ${fmo || "N/A"}</div>
+            <div style="font-size: 12px; margin-top: 4px;">
+              <strong>Precipitation:</strong> ${precipitation || "N/A"}
+            </div>
+            <div style="font-size: 11px; color: #888; margin-top: 2px;">Date: ${date || "N/A"}</div>
+          `;
+        } else {
+          // State/District tooltip
+          const locationLabel = district
+            ? `<b>${district}</b><br/><i>${state || ""}</i>`
+            : `<b>${state || "Unknown"}</b>`;
+
+          hoverTooltipContainer.innerHTML = `
+            ${locationLabel}<br/>
+            Actual Rainfall: ${feature.get("actual_rainfall") || "N/A"}<br/>
+            Normal Rainfall: ${feature.get("normal_rainfall") || "N/A"}<br/>
+            Departure: ${feature.get("departure") || "N/A"}<br/>
+            Category: ${feature.get("category") || "No Data"}<br/>
+            Last Updated: ${feature.get("last_updated") || ""}
+          `;
+        }
         hoverTooltipContainer.style.display = "block";
       } else {
         hoverOverlay.setPosition(undefined);
@@ -154,7 +177,6 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       map.setTarget(undefined);
       mapRef.current = null;
-      // Remove the tooltip from DOM on unmount
       if (hoverTooltipContainer.parentNode) {
         hoverTooltipContainer.parentNode.removeChild(hoverTooltipContainer);
       }
@@ -173,13 +195,10 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
         let geometry;
 
         if (f.geometry.type === "Point") {
-          // Point coordinates are assumed to be in EPSG:4326
           geometry = new Point(fromLonLat(f.geometry.coordinates));
         } else if (f.geometry.type === "Polygon") {
-          // Polygon coordinates are already in EPSG:3857, use directly
           geometry = new Polygon(f.geometry.coordinates);
         } else if (f.geometry.type === "MultiPolygon") {
-          // MultiPolygon coordinates are already in EPSG:3857, use directly
           geometry = new MultiPolygon(f.geometry.coordinates);
         } else {
           return null;
@@ -195,6 +214,11 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
           category: f.properties.category || "No Data",
           color: f.properties.color || f.properties.rainfall_color || "#D8D8D8",
           last_updated: f.properties.last_updated || new Date().toISOString(),
+          // River Basin properties
+          basin_name: f.properties.basin_name || f.properties.Basin_1,
+          precipitation: f.properties.precipitation,
+          fmo: f.properties.fmo_precip || f.properties.FMO_1,
+          date: f.properties.date,
         });
         return feature;
       })
@@ -207,7 +231,7 @@ export const MapProvider = ({ children }: { children: ReactNode }) => {
       if (extent && extent.some(Number.isFinite)) {
         mapRef.current.getView().fit(extent, {
           padding: [50, 50, 50, 50],
-          maxZoom: category === "district" ? 8 : 5,
+          maxZoom: category === "district" ? 8 : category === "riverbasin" ? 6 : 5,
           duration: 800,
         });
       }

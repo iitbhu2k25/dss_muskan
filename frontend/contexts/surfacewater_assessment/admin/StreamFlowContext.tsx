@@ -5,6 +5,7 @@ import { useLocationContext } from '@/contexts/surfacewater_assessment/admin/Loc
 
 export type FDCPoint = { p: number; q: number };
 export type FDCSeries = {
+  data: never[];
   vlcode: string;
   village: string;
   n: number;

@@ -10,7 +10,7 @@ import { EflowProvider, useEflow } from '@/contexts/surfacewater_assessment/drai
 import { ClimateProvider, useClimate } from '@/contexts/surfacewater_assessment/drain/ClimateContext';
 import LocationPage from './components/Location';
 import StreamFlow from './components/StreamFlow';
-import SurfaceWaterCard, { buildMergedSeries } from './components/surfacewater';
+import SurfaceWaterCard from './components/surfacewater';
 import MapPage from './components/Map';
 import EFlow from './components/EFlow';
 import Climate from './components/climate';
@@ -18,116 +18,29 @@ import ResizablePanels from './components/resizable-panels';
 import { BarChart3, Droplets, Leaf, CloudRain } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import ExportPDF from './components/Export/page';
+import { usePdf, PdfProvider } from './components/pdfprovider';
 
 type TabType = 'streamflow' | 'surfacewater' | 'eflow' | 'climate';
+
+const tabs = [
+  { id: 'streamflow', label: 'Stream Flow', icon: BarChart3, color: 'blue', component: StreamFlow },
+  { id: 'surfacewater', label: 'Surface Water', icon: Droplets, color: 'green', component: SurfaceWaterCard },
+  { id: 'eflow', label: 'Environmental Flow', icon: Leaf, color: 'purple', component: EFlow },
+  { id: 'climate', label: 'Climate Change', icon: CloudRain, color: 'orange', component: Climate },
+] as const;
 
 const MainContent: React.FC = () => {
   const { selectionConfirmed, selectedSubbasins } = useLocationContext();
   const [activeTab, setActiveTab] = useState<TabType>('streamflow');
   const { series, hasData } = useStreamFlowContext();
-  const { results } = useSurfaceWater();
-  const { results: eflowResults } = useEflow();
-  const { results: climateResults } = useClimate();
-  
-  // State to control PDF generation
-  const [isPdfReady, setIsPdfReady] = useState(false);
-  const [pdfData, setPdfData] = useState<any>(null);
-  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
 
-  const tabs = [
-    { id: 'streamflow', label: 'Stream Flow', icon: BarChart3, color: 'blue', component: StreamFlow },
-    { id: 'surfacewater', label: 'Surface Water', icon: Droplets, color: 'green', component: SurfaceWaterCard },
-    { id: 'eflow', label: 'Environmental Flow', icon: Leaf, color: 'purple', component: EFlow },
-    { id: 'climate', label: 'Climate Change', icon: CloudRain, color: 'orange', component: Climate },
-  ] as const;
+  const { isPdfReady, isPreparingPdf, pdfError, pdfData, handlePreparePDF, resetPdf } = usePdf();
 
   const handleTabClick = (tabId: TabType) => {
     setActiveTab(tabId);
   };
 
   const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || StreamFlow;
-
-  // Handler to prepare PDF data only when button is clicked
-  const handlePreparePDF = async () => {
-    setIsPreparingPdf(true);
-    setPdfError(null);
-    
-    try {
-      // Small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Build merged series only when needed
-      const { merged, q25 } = buildMergedSeries(results);
-      
-      // Collect subbasin results with images from context
-      const subbasinResultsArray = results ? Object.entries(results)
-        .filter(([_, val]) => val && typeof val === 'object' && !('error' in val))
-        .map(([subId, val]: [string, any]) => ({
-          subbasin: Number(subId),
-          years: val.years || [],
-          Q25_cms: val.Q25_cms,
-          image_base64: val.image_base64,
-          timeseries: val.timeseries || []
-        })) : [];
-      
-      // Collect E-Flow results
-      const eflowData = eflowResults ? Object.entries(eflowResults)
-        .filter(([_, val]) => val && typeof val === 'object' && !('error' in val))
-        .reduce((acc, [subId, val]: [string, any]) => {
-          acc[Number(subId)] = {
-            summary: val.summary || {},
-            curves: val.curves || {}
-          };
-          return acc;
-        }, {} as Record<number, any>) : {};
-      
-      // Collect Climate results (already in correct format from context)
-      const climateData = climateResults || {};
-      
-      // Reduce data density for PDF to prevent memory issues
-      const reducedMergedSeries = reduceDataPoints(merged, 100); // Reduce to max 100 points
-      const reducedSeries = series.map(s => ({
-        ...s,
-        data: reduceDataPoints(s.data || [], 100)
-      }));
-      
-      setPdfData({
-        series: reducedSeries,
-        hasData,
-        selectedSubbasins,
-        surfaceWaterResults: { 
-          mergedSeries: reducedMergedSeries, 
-          q25,
-          subbasinResults: subbasinResultsArray
-        },
-        eflowResults: eflowData,
-        climateResults: climateData
-      });
-      
-      setIsPdfReady(true);
-    } catch (error) {
-      console.error('Error preparing PDF:', error);
-      setPdfError('Failed to prepare PDF data. Please try again.');
-    } finally {
-      setIsPreparingPdf(false);
-    }
-  };
-
-  // Function to reduce data points while maintaining shape
-  const reduceDataPoints = (data: any[], maxPoints: number) => {
-    if (!data || data.length <= maxPoints) return data;
-    
-    const step = Math.ceil(data.length / maxPoints);
-    return data.filter((_, index) => index % step === 0);
-  };
-
-  // Reset PDF state when selection changes
-  React.useEffect(() => {
-    setIsPdfReady(false);
-    setPdfData(null);
-    setPdfError(null);
-  }, [selectedSubbasins, results]);
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col overflow-hidden">
@@ -180,7 +93,7 @@ const MainContent: React.FC = () => {
                           fileName="Surface_Water_Assessment.pdf"
                           className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-all inline-flex items-center gap-2"
                         >
-                          {({ loading }) => (
+                          {({ loading }) =>
                             loading ? (
                               <>
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -194,14 +107,11 @@ const MainContent: React.FC = () => {
                                 Download PDF Report
                               </>
                             )
-                          )}
+                          }
                         </PDFDownloadLink>
-                        
+
                         <button
-                          onClick={() => {
-                            setIsPdfReady(false);
-                            setPdfData(null);
-                          }}
+                          onClick={resetPdf}
                           className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all"
                         >
                           Cancel
@@ -209,13 +119,13 @@ const MainContent: React.FC = () => {
                       </>
                     )}
                   </div>
-                  
+
                   {pdfError && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-red-700 text-sm">{pdfError}</p>
                     </div>
                   )}
-                  
+
                   {isPdfReady && !pdfError && (
                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-green-700 text-sm flex items-center gap-2">
@@ -295,7 +205,9 @@ export default function SurfaceWaterAssessmentDrain() {
           <SurfaceWaterProvider>
             <EflowProvider>
               <ClimateProvider>
-                <MainContent />
+                <PdfProvider>
+                  <MainContent />
+                </PdfProvider>
               </ClimateProvider>
             </EflowProvider>
           </SurfaceWaterProvider>

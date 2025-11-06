@@ -34,8 +34,8 @@ interface ExportPDFProps {
   series: any[];
   hasData: boolean;
   selectedSubbasins: { sub: number; area?: number }[];
-  surfaceWaterResults: { 
-    mergedSeries: { day: number; flow: number; surplus: number }[]; 
+  surfaceWaterResults: {
+    mergedSeries: { day: number; flow: number; surplus: number }[];
     q25: number | null;
     subbasinResults?: Array<{
       subbasin: number;
@@ -85,10 +85,10 @@ const PDFPage: React.FC<PDFPageProps> = ({ children }) => (
   </Page>
 );
 
-const ExportPDF: React.FC<ExportPDFProps> = ({ 
-  series, 
-  hasData, 
-  selectedSubbasins, 
+const ExportPDF: React.FC<ExportPDFProps> = ({
+  series,
+  hasData,
+  selectedSubbasins,
   surfaceWaterResults,
   eflowResults,
   climateResults
@@ -96,9 +96,9 @@ const ExportPDF: React.FC<ExportPDFProps> = ({
   // Further optimize data if needed
   const optimizedSurfaceWaterResults = React.useMemo(() => {
     if (!surfaceWaterResults) return null;
-    
+
     const { mergedSeries, q25, subbasinResults } = surfaceWaterResults;
-    
+
     // If data is too large, sample it more aggressively
     let sampledSeries = mergedSeries;
     if (mergedSeries.length > 365) {
@@ -106,7 +106,7 @@ const ExportPDF: React.FC<ExportPDFProps> = ({
       const step = Math.ceil(mergedSeries.length / 365);
       sampledSeries = mergedSeries.filter((_, index) => index % step === 0);
     }
-    
+
     // Keep subbasin results as-is since they contain pre-rendered images
     return {
       mergedSeries: sampledSeries,
@@ -115,6 +115,21 @@ const ExportPDF: React.FC<ExportPDFProps> = ({
     };
   }, [surfaceWaterResults]);
 
+  const enrichedSelectedSubbasins = React.useMemo(() => {
+    if (!surfaceWaterResults?.subbasinResults) return selectedSubbasins;
+
+    // Map subbasin ID to its image_base64
+    const imageMap = new Map(
+      surfaceWaterResults.subbasinResults.map(sub => [sub.subbasin, sub.image_base64])
+    );
+
+    // Return selectedSubbasins enriched with image_base64 field
+    return selectedSubbasins.map(sub => ({
+      ...sub,
+      image_base64: imageMap.get(sub.sub) || undefined,
+    }));
+  }, [selectedSubbasins, surfaceWaterResults]);
+
   return (
     <Document title="Surface Water Assessment Report" author="DSS Muskan">
       <PDFPage>
@@ -122,8 +137,9 @@ const ExportPDF: React.FC<ExportPDFProps> = ({
       </PDFPage>
 
       <PDFPage>
-        <AreaSection selectedSubbasins={selectedSubbasins} />
+        <AreaSection selectedSubbasins={enrichedSelectedSubbasins} />
       </PDFPage>
+
 
       <PDFPage>
         <FDCCurveSection series={series} hasData={hasData} />
@@ -153,7 +169,7 @@ const ExportPDF: React.FC<ExportPDFProps> = ({
           <ClimateSection climateResults={climateResults} />
         </PDFPage>
       )}
-      
+
 
       <PDFPage>
         <ConclusionSection />

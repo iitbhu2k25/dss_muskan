@@ -13,7 +13,6 @@ const extractValue = (text: string | undefined | null, label: string) => {
   return match ? match[1] : "-";
 };
 
-
 const getCategoryColor = (category: string | undefined | null) => {
   if (!category) return "text-gray-700 bg-gray-50";
 
@@ -26,6 +25,10 @@ const getCategoryColor = (category: string | undefined | null) => {
       return "text-yellow-700 bg-yellow-50";
     case "large deficient":
       return "text-red-700 bg-red-50";
+    case "large excess":
+      return "text-cyan-700 bg-cyan-50";
+    case "no rain":
+      return "text-gray-700 bg-gray-50";
     default:
       return "text-gray-700 bg-gray-50";
   }
@@ -34,10 +37,11 @@ const getCategoryColor = (category: string | undefined | null) => {
 const parseCategoryFromDeparture = (departureStr: string) => {
   const departure = parseFloat(departureStr);
   if (isNaN(departure)) return "N/A";
-  if (departure <= -60) return "Large Deficient";
-  if (departure < 0) return "Deficient";
-  if (departure <= 20) return "Normal";
-  return "Excess";
+  if (departure >= 60) return "Large Excess";
+  if (departure >= 20) return "Excess";
+  if (departure >= -19) return "Normal";
+  if (departure >= -59) return "Deficient";
+  return "Large Deficient";
 };
 
 export const DailyRainfallTable = () => {
@@ -45,6 +49,11 @@ export const DailyRainfallTable = () => {
   if (!dailyCtx) throw new Error("RainfallTable must be inside DailyProvider");
 
   const { rainfallData, loading, error, category } = dailyCtx;
+
+  // Don't show table for river basin
+  if (category === "riverbasin") {
+    return null;
+  }
 
   // Loading shimmer
   if (loading)
@@ -78,7 +87,7 @@ export const DailyRainfallTable = () => {
       </motion.div>
     );
 
-  // District table (different structure)
+  // District table (updated structure with new API fields)
   if (category === "district") {
     return (
       <motion.div
@@ -91,10 +100,15 @@ export const DailyRainfallTable = () => {
           <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
             <Droplets className="text-blue-500" />
             District Rainfall Statistics
+            {rainfallData.period_label && (
+              <span className="text-sm font-normal text-gray-600">
+                ({rainfallData.period_label})
+              </span>
+            )}
           </h3>
           <span className="flex items-center text-gray-500 text-sm gap-1">
             <CalendarClock size={14} />
-            Updated {new Date().toLocaleDateString()}
+            {rainfallData.date_range || "No date available"}
           </span>
         </div>
 
@@ -107,7 +121,6 @@ export const DailyRainfallTable = () => {
                 <th className="px-4 py-3 text-right">Normal Rainfall (mm)</th>
                 <th className="px-4 py-3 text-right">Departure (%)</th>
                 <th className="px-4 py-3 text-center">Category</th>
-                <th className="px-4 py-3 text-center">Last Updated</th>
               </tr>
             </thead>
 
@@ -127,33 +140,52 @@ export const DailyRainfallTable = () => {
                     }`}
                     whileHover={{ scale: 1.01 }}
                   >
-                    <td className="px-4 py-3 font-medium text-gray-800">{props.DISTRICT || "-"}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      {props.DISTRICT || props.rainfall_title || "-"}
+                    </td>
                     <td className="px-4 py-3 text-right">{actual ?? "-"}</td>
                     <td className="px-4 py-3 text-right">{normal ?? "-"}</td>
                     <td
                       className={`px-4 py-3 text-right font-semibold ${
-                        departure && parseFloat(departure) > 0 ? "text-green-600" : "text-red-600"
+                        departure && parseFloat(departure) > 0
+                          ? "text-green-600"
+                          : departure && parseFloat(departure) < 0
+                          ? "text-red-600"
+                          : "text-gray-600"
                       }`}
                     >
                       {departure ?? "-"}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`px-3 py-1 rounded-full font-semibold text-xs ${getCategoryColor(categoryLabel)}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full font-semibold text-xs ${getCategoryColor(
+                          categoryLabel
+                        )}`}
+                      >
                         {categoryLabel || "N/A"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center text-gray-500 text-sm">{new Date().toLocaleDateString()}</td>
                   </motion.tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+
+        {/* Footer with metadata */}
+        <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500 flex justify-between items-center">
+          <span>
+            Source: {rainfallData.metadata?.source || "India Meteorological Department"}
+          </span>
+          <span>
+            Total Districts: {rainfallData.features.length}
+          </span>
+        </div>
       </motion.div>
     );
   }
 
-  // State table (existing structure)
+  // State table (existing structure - kept as is)
   return (
     <motion.div
       className="p-4 bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
@@ -167,8 +199,20 @@ export const DailyRainfallTable = () => {
           State Rainfall Statistics
         </h3>
         <span className="flex items-center text-gray-500 text-sm gap-1">
-          <CalendarClock size={14} />
-          Updated {new Date().toLocaleDateString()}
+          {(() => {
+            const feature = rainfallData.features?.[0];
+            if (!feature) return null;
+
+            const { last_updated } = feature.properties;
+
+            return (
+               <span className="flex items-center text-gray-500 text-sm gap-1">
+              <td className="px-4 py-3 text-center text-gray-500 text-sm">
+                Last Updated : {last_updated}
+              </td>
+              </span>
+            );
+          })()}
         </span>
       </div>
 
@@ -208,17 +252,25 @@ export const DailyRainfallTable = () => {
                   <td className="px-4 py-3 text-right">{normal_rainfall ?? "-"}</td>
                   <td
                     className={`px-4 py-3 text-right font-semibold ${
-                      departure && parseFloat(departure) > 0 ? "text-green-600" : "text-red-600"
+                      departure && parseFloat(departure) > 0
+                        ? "text-green-600"
+                        : "text-red-600"
                     }`}
                   >
                     {departure ?? "-"}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`px-3 py-1 rounded-full font-semibold text-xs ${getCategoryColor(cat)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full font-semibold text-xs ${getCategoryColor(
+                        cat
+                      )}`}
+                    >
                       {cat || "N/A"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center text-gray-500 text-sm">{last_updated}</td>
+                  <td className="px-4 py-3 text-center text-gray-500 text-sm">
+                    {last_updated}
+                  </td>
                 </motion.tr>
               );
             })}
