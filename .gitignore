@@ -11,6 +11,7 @@
 /backend/__pycache__/
 /backend/temp/
 /backend/.env
+/backend/venv/
 /backend/.mypy_cache/
 /backend/.pytest_cache/
 /backend/media/

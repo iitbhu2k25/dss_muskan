@@ -25,5 +25,5 @@ urlpatterns = [
     path('rainfall/riverbasin/day6', RiverBasinAPIView.as_view(), {'day': 'Day6'}, name='rainfall-riverbasin-day6'),
     path('rainfall/riverbasin/day7', RiverBasinAPIView.as_view(), {'day': 'Day7'}, name='rainfall-riverbasin-day7'),
     path('rainfall/riverbasin/aap', RiverBasinAPIView.as_view(), {'day': 'AAP'}, name='rainfall-riverbasin-aap'),
-    path('fetch-station',FFSConsoleDataView.as_view(), name="fetch_station"),
+    path('water-level', WaterLevelAPIView.as_view(), name='water-level'),
 ]
