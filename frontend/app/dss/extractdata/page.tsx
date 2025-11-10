@@ -8,6 +8,9 @@ import RainfallMap from "./rainfall/components/map";
 import { DailyRainfallTable } from "./rainfall/components/daily";
 import { RainfallStatistics } from "./rainfall/components/statistics";
 import { motion, AnimatePresence } from "framer-motion";
+
+import { WaterLevelMapProvider } from "@/contexts/extract/Waterlevel/MapContext";
+import WaterLevelMap from "./waterlevel/components/map";
 import {
   CloudRain,
   Cloud,
@@ -16,9 +19,12 @@ import {
   BarChart3,
   Waves,
   Globe2,
+  Droplet, // Added icon for water level
 } from "lucide-react";
 
-type MainCategory = "rainfall" | "weather" | null;
+
+
+type MainCategory = "rainfall" | "weather" | "waterlevel" | null;
 type RainfallSubCategory =
   | "state"
   | "district"
@@ -26,14 +32,23 @@ type RainfallSubCategory =
   | "river-basin"
   | null;
 type PeriodType = "daily" | "weekly" | "monthly" | "cumulative";
-type RiverBasinDayType = "day1" | "day2" | "day3" | "day4" | "day5" | "day6" | "day7" | "aap";
+type RiverBasinDayType =
+  | "day1"
+  | "day2"
+  | "day3"
+  | "day4"
+  | "day5"
+  | "day6"
+  | "day7"
+  | "aap";
 
 const RainfallPage = () => {
   const [mainCategory, setMainCategory] = useState<MainCategory>(null);
   const [rainfallSubCategory, setRainfallSubCategory] =
     useState<RainfallSubCategory>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("daily");
-  const [selectedRiverBasinDay, setSelectedRiverBasinDay] = useState<RiverBasinDayType>("day1");
+  const [selectedRiverBasinDay, setSelectedRiverBasinDay] =
+    useState<RiverBasinDayType>("day1");
   const [showRainfallDropdown, setShowRainfallDropdown] = useState(false);
 
   const handleMainCategoryClick = (category: MainCategory) => {
@@ -71,6 +86,17 @@ const RainfallPage = () => {
       );
     }
 
+    if (mainCategory === "waterlevel") {
+      return (
+        <WaterLevelMapProvider>
+          <div className="flex items-center justify-center h-full">
+            <WaterLevelMap />
+          </div>
+        </WaterLevelMapProvider>
+      );
+    }
+
+
     if (mainCategory === "rainfall") {
       if (rainfallSubCategory === "statistics") {
         return <RainfallStatistics />;
@@ -83,9 +109,7 @@ const RainfallPage = () => {
               <div className="flex h-full bg-gradient-to-br from-white via-slate-100 to-gray-100">
                 <div className="flex-[6] flex flex-col bg-white border-r border-gray-300 shadow-lg overflow-auto">
                   <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-                    <RainfallSelector
-                      forcedCategory="riverbasin"
-                    />
+                    <RainfallSelector forcedCategory="riverbasin" />
                   </div>
                   <div className="p-4 flex-1 overflow-auto">
                     <DailyRainfallTable />
@@ -158,11 +182,10 @@ const RainfallPage = () => {
           <div className="relative">
             <motion.button
               onClick={() => handleMainCategoryClick("rainfall")}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-                mainCategory === "rainfall"
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${mainCategory === "rainfall"
                   ? "bg-blue-500 text-white shadow-lg"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -170,9 +193,8 @@ const RainfallPage = () => {
               Rainfall
               <ChevronDown
                 size={16}
-                className={`transition-transform ${
-                  showRainfallDropdown ? "rotate-180" : ""
-                }`}
+                className={`transition-transform ${showRainfallDropdown ? "rotate-180" : ""
+                  }`}
               />
             </motion.button>
           </div>
@@ -180,16 +202,29 @@ const RainfallPage = () => {
           {/* Weather Button */}
           <motion.button
             onClick={() => handleMainCategoryClick("weather")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-              mainCategory === "weather"
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${mainCategory === "weather"
                 ? "bg-orange-500 text-white shadow-lg"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+              }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             <Cloud size={20} />
             Weather
+          </motion.button>
+
+          {/* Water Level Button */}
+          <motion.button
+            onClick={() => handleMainCategoryClick("waterlevel")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${mainCategory === "waterlevel"
+                ? "bg-cyan-600 text-white shadow-lg"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Droplet size={20} />
+            Water Level
           </motion.button>
         </div>
 
@@ -262,7 +297,16 @@ const RainfallPage = () => {
                   River Basin
                 </button>
                 <div className="flex gap-2">
-                  {["day1", "day2", "day3", "day4", "day5", "day6", "day7", "aap"].map((day) => (
+                  {[
+                    "day1",
+                    "day2",
+                    "day3",
+                    "day4",
+                    "day5",
+                    "day6",
+                    "day7",
+                    "aap",
+                  ].map((day) => (
                     <button
                       key={day}
                       onClick={() => {
@@ -271,7 +315,9 @@ const RainfallPage = () => {
                       }}
                       className="px-2 py-1 text-xs rounded-full bg-cyan-100 text-cyan-700 hover:bg-cyan-200 capitalize"
                     >
-                      {day === "aap" ? "Actual Accumulated Precipitation(Observed Value)" : day.replace("day", "Day")}
+                      {day === "aap"
+                        ? "Actual Accumulated Precipitation(Observed Value)"
+                        : day.replace("day", "Day")}
                     </button>
                   ))}
                 </div>
@@ -303,20 +349,24 @@ const RainfallPage = () => {
               <>
                 <span>/</span>
                 <span className="capitalize">
-                  {rainfallSubCategory === "river-basin" ? "River Basin" : rainfallSubCategory}
+                  {rainfallSubCategory === "river-basin"
+                    ? "River Basin"
+                    : rainfallSubCategory}
                 </span>
                 {(rainfallSubCategory === "state" ||
                   rainfallSubCategory === "district") && (
-                  <>
-                    <span>/</span>
-                    <span className="capitalize">{selectedPeriod}</span>
-                  </>
-                )}
+                    <>
+                      <span>/</span>
+                      <span className="capitalize">{selectedPeriod}</span>
+                    </>
+                  )}
                 {rainfallSubCategory === "river-basin" && (
                   <>
                     <span>/</span>
                     <span className="uppercase">
-                      {selectedRiverBasinDay === "aap" ? "Actual Accumulated Precipitation" : selectedRiverBasinDay.replace("day", "Day ")}
+                      {selectedRiverBasinDay === "aap"
+                        ? "Actual Accumulated Precipitation"
+                        : selectedRiverBasinDay.replace("day", "Day ")}
                     </span>
                   </>
                 )}
