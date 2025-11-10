@@ -1,12 +1,12 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from rest_framework.views import APIView #type: ignore
+from rest_framework.response import Response #type: ignore
+from rest_framework import status #type: ignore
+from rest_framework.permissions import AllowAny #type: ignore
+from selenium import webdriver #type: ignore
+from selenium.webdriver.chrome.options import Options #type: ignore
+from selenium.webdriver.common.by import By #type: ignore
+from selenium.webdriver.support.ui import WebDriverWait #type: ignore
+from selenium.webdriver.support import expected_conditions as EC #type: ignore
 import requests
 import time
 import random
