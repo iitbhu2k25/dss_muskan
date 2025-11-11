@@ -694,7 +694,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                           </ResponsiveContainer>
 
                           {/* Statistical Summary */}
-                          <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+                          {/* <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
                             <div>
                               <p className="text-xs text-gray-500">Mann-Kendall Tau (τ)</p>
                               <p className="text-sm font-semibold text-gray-800">
@@ -732,7 +732,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                                 {villageData.years[0]} - {villageData.years[villageData.years.length - 1]}
                               </p>
                             </div>
-                          </div>
+                          </div> */}
 
                         </div>
                       </div>
