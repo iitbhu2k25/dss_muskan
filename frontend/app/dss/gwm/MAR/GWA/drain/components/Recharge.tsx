@@ -20,7 +20,7 @@ const LABEL_MAP: Record<string, string> = {
   SY: "Specific Yield",
   mean_water_fluctuation: "Water Fluctuation (m)",
   Shape_Area: "Shape Area (m²)",
-  recharge: "Recharge (m³)",
+  recharge: "Recharge (Million Litres)",
 };
 
 // Formatting functions
