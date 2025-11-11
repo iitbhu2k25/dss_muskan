@@ -26,7 +26,7 @@ interface ChartData {
   };
 }
 
-// --- Field Definitions & Labels (like Recharge.tsx) ---
+// Field Definitions & Labels (like Recharge.tsx) 
 
 const DOMESTIC_DISPLAY_FIELDS: string[] = [
   'village_name',
@@ -44,7 +44,7 @@ const AGRICULTURAL_DISPLAY_FIELDS: string[] = [
 
 const DOMESTIC_LABEL_MAP: Record<string, string> = {
   village_name: "Village Name",
-  demand_mld: "Demand (M³/Year)",
+  demand_mld: "Demand (Million litres/Year)",
   forecast_population: "Forecasted Population",
   target_year: "Target Year",
   lpcd: "LPCD",
@@ -53,7 +53,7 @@ const DOMESTIC_LABEL_MAP: Record<string, string> = {
 const AGRICULTURAL_LABEL_MAP: Record<string, string> = {
   village: "Village Name",
   cropland: "Cropland (M²)",
-  village_demand: "Agriculture Demand (M³/Year)",
+  village_demand: "Agriculture Demand (Million litres/Year)",
 };
 
 const formatLabel = (key: string, map: Record<string, string>) =>
@@ -609,9 +609,9 @@ const Demand = () => {
         </div>
       </div>
 
-      {/* ==================================== */}
+
       {/* 1. DOMESTIC DEMAND SECTION           */}
-      {/* ==================================== */}
+   
       {domesticChecked && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
           {domesticLoading && (
@@ -692,7 +692,6 @@ const Demand = () => {
               </div>
             </div>
 
-            {/* ----- Input ----- */}
             <input
               type="number"
               value={perCapitaConsumption}
@@ -872,9 +871,8 @@ const Demand = () => {
         </div>
       )}
 
-      {/* ==================================== */}
       {/* 2. AGRICULTURAL DEMAND SECTION       */}
-      {/* ==================================== */}
+      
       {agriculturalChecked && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           {agriculturalLoading && (
@@ -1353,9 +1351,8 @@ const Demand = () => {
         </div>
       )}
 
-      {/* ==================================== */}
       {/* 3. INDUSTRIAL DEMAND SECTION         */}
-      {/* ==================================== */}
+
       {industrialChecked && (
         <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
           {industrialLoading && (

@@ -20,7 +20,7 @@ const LABEL_MAP: Record<string, string> = {
   SY: "Specific Yield",
   mean_water_fluctuation: "Water Fluctuation (M)",
   Shape_Area: "Shape Area (M²)",
-  recharge: "Recharge (M³)",
+  recharge: "Recharge (Million Litres)",
 };
 
 // Formatting functions
@@ -355,9 +355,9 @@ const Recharge = () => {
               Showing <strong>{processedData.length}</strong> village{processedData.length !== 1 ? "s" : ""}
               {appliedSearch || sortConfig ? ` (filtered)` : ""}
             </span>
-            <span className="text-blue-600 font-medium">
+            {/* <span className="text-blue-600 font-medium">
               Total Recharge: {summaryStats?.totalRecharge.toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
-            </span>
+            </span> */}
           </div>
         </div>
       )}
