@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useState, useEffect, ReactNode, useContext } from "react";
 import { useMap } from "@/contexts/groundwater_assessment/admin/MapContext";
 import { useLocation } from "./LocationContext";
 import { useWell } from "./WellContext";
@@ -17,7 +17,9 @@ interface VillageTimeseriesData {
   sen_slope: number | null;
   years: string[];
   depths: (number | null)[];
+  trend_line: (number | null)[]; //Trend line calculated using Sen's slope
 }
+
 interface TrendSummaryStats {
   data_quality: any;
   data_quality_additional: any;
@@ -33,7 +35,6 @@ interface TrendSummaryStats {
     timeseries_seasonal_csv_filename: string;
     trend_map_filename?: string;
     trend_map_base64?: string; // Base64 encoded trend map
-    
   };
   trend_distribution: {
     increasing: number;
@@ -110,8 +111,8 @@ interface TrendData {
   analysis_timestamp: string;
   filtered_by_subdis_cod: number[];
   trend_map_filename?: string;
-  trend_map_base64?: string; // trend map 
-  village_timeseries_data?: VillageTimeseriesData[];  
+  trend_map_base64?: string;
+  village_timeseries_data?: VillageTimeseriesData[];
   all_years?: string[];
 }
 
@@ -124,7 +125,7 @@ interface GroundwaterTrendContextType {
   isLoading: boolean;
   error: string | null;
   trendMapFilename: string | null;
-  trendMapBase64: string | null; //   trend map
+  trendMapBase64: string | null;
   setTrendMethod: (value: string) => void;
   setYearStart: (value: string) => void;
   setYearEnd: (value: string) => void;
@@ -138,9 +139,9 @@ interface GroundwaterTrendContextType {
   getTrendMapFilename: () => string | null;
   getTrendMapBase64: () => string | null;
   hasTrendMap: () => boolean;
-  villageTimeseriesData: VillageTimeseriesData[];  
+  villageTimeseriesData: VillageTimeseriesData[];
   allYears: string[];
-  getVillageTimeseries: (villageId: string) => VillageTimeseriesData | null; 
+  getVillageTimeseries: (villageId: string) => VillageTimeseriesData | null;
 }
 
 interface GroundwaterTrendProviderProps {
@@ -172,8 +173,8 @@ export const GroundwaterTrendContext = createContext<GroundwaterTrendContextType
   getTrendMapFilename: () => null,
   getTrendMapBase64: () => null,
   hasTrendMap: () => false,
-   villageTimeseriesData: [], 
-  allYears: [], 
+  villageTimeseriesData: [],
+  allYears: [],
   getVillageTimeseries: () => null,
 });
 
@@ -190,8 +191,8 @@ export const GroundwaterTrendProvider = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [trendMapFilename, setTrendMapFilename] = useState<string | null>(null);
-  const [trendMapBase64, setTrendMapBase64] = useState<string | null>(null); 
-  
+  const [trendMapBase64, setTrendMapBase64] = useState<string | null>(null);
+
   // Get map context for adding trend layer
   const { addTrendLayer, removeTrendLayer, setLegendData } = useMap();
 
@@ -200,7 +201,6 @@ export const GroundwaterTrendProvider = ({
 
   // Get well context for csvFilename
   const { csvFilename } = useWell();
-  
 
   // Clear data when tab changes
   useEffect(() => {
@@ -213,7 +213,7 @@ export const GroundwaterTrendProvider = ({
     setTrendData(null);
     setError(null);
     setTrendMapFilename(null);
-    setTrendMapBase64(null); 
+    setTrendMapBase64(null);
     removeTrendLayer();
     setLegendData((prev: any) => ({
       ...prev,
@@ -257,6 +257,7 @@ export const GroundwaterTrendProvider = ({
   };
 
   const availableCharts = trendData ? Object.keys(trendData.charts || {}) : [];
+  
   // Extract village timeseries data and years
   const villageTimeseriesData = trendData?.village_timeseries_data || [];
   const allYears = trendData?.all_years || [];
@@ -269,8 +270,9 @@ export const GroundwaterTrendProvider = ({
     const village = villageTimeseriesData.find(v => v.village_id === villageId);
     return village || null;
   };
+
   const handleGenerate = async () => {
-    // Validation logic 
+    // Validation logic
     if (!trendMethod || !yearStart || !yearEnd) {
       alert("Please fill all required fields: Trend Method, Start Year, and End Year.");
       return;
@@ -361,23 +363,37 @@ export const GroundwaterTrendProvider = ({
 
       const data: TrendData = await response.json();
       console.log("Trend analysis data received successfully:", data);
-    
+
       // Log CSV filenames
       console.log("Trend CSV Filename:", data.summary_stats.file_info.trend_csv_filename);
       console.log("Yearly Timeseries CSV Filename:", data.summary_stats.file_info.timeseries_yearly_csv_filename);
       console.log("Seasonal Timeseries CSV Filename:", data.summary_stats.file_info.timeseries_seasonal_csv_filename);
-      
+
+      // ⭐ Log village timeseries data with trend_line
+      if (data.village_timeseries_data && data.village_timeseries_data.length > 0) {
+        console.log("Village Timeseries Data Count:", data.village_timeseries_data.length);
+        console.log("Sample Village Timeseries (first village):", {
+          village_id: data.village_timeseries_data[0].village_id,
+          village_name: data.village_timeseries_data[0].village_name,
+          years: data.village_timeseries_data[0].years,
+          depths: data.village_timeseries_data[0].depths,
+          trend_line: data.village_timeseries_data[0].trend_line, // ⭐ NEW
+          sen_slope: data.village_timeseries_data[0].sen_slope,
+          trend_status: data.village_timeseries_data[0].trend_status,
+        });
+      }
+
       // Handle trend map base64 (priority) and filename
       const mapBase64 = data.trend_map_base64 || data.summary_stats?.file_info?.trend_map_base64;
       const mapFilename = data.trend_map_filename || data.summary_stats?.file_info?.trend_map_filename;
-      
+
       if (mapBase64) {
         console.log("Trend Map Base64 received (length):", mapBase64.length);
         setTrendMapBase64(mapBase64);
       } else {
         console.warn("No trend map base64 received from API");
       }
-      
+
       if (mapFilename) {
         console.log("Trend Map Filename:", mapFilename);
         setTrendMapFilename(mapFilename);
@@ -393,10 +409,10 @@ export const GroundwaterTrendProvider = ({
       setTrendData(data);
       onTrendData(data);
 
-      //  trend data to map if village_geojson is available
+      // Add trend data to map if village_geojson is available
       if (data.village_geojson && data.village_geojson.features && data.village_geojson.features.length > 0) {
         console.log("Adding village trend data to map:", data.village_geojson.features.length, "villages");
-        
+
         const transformedGeoJSON = {
           ...data.village_geojson,
           features: data.village_geojson.features.map(feature => ({
@@ -417,7 +433,7 @@ export const GroundwaterTrendProvider = ({
             }
           }))
         };
-        
+
         addTrendLayer(transformedGeoJSON);
       } else {
         console.warn("No village GeoJSON data received or data is empty");
@@ -445,20 +461,23 @@ export const GroundwaterTrendProvider = ({
           },
           trendMapFilename: mapFilename,
           trendMapUrl: mapFilename ? `/django/media/temp/${mapFilename}` : null,
-          trendMapBase64: mapBase64, 
+          trendMapBase64: mapBase64,
         },
       }));
 
-      console.log(" Trend analysis completed successfully!");
-      console.log(` Analyzed ${data.total_villages} villages`);
-      console.log(` Trends: ${data.summary_stats.trend_distribution.increasing} increasing, ${data.summary_stats.trend_distribution.decreasing} decreasing, ${data.summary_stats.trend_distribution.no_trend} no trend`);
-      console.log(` Generated 3 CSV files: 1 trend analysis + 1 yearly time series + 1 seasonal time series`);
+      console.log("✅ Trend analysis completed successfully!");
+      console.log(`📊 Analyzed ${data.total_villages} villages`);
+      console.log(`📈 Trends: ${data.summary_stats.trend_distribution.increasing} increasing, ${data.summary_stats.trend_distribution.decreasing} decreasing, ${data.summary_stats.trend_distribution.no_trend} no trend`);
+      console.log(`📁 Generated 3 CSV files: 1 trend analysis + 1 yearly time series + 1 seasonal time series`);
       if (mapBase64) {
-        console.log(` Generated trend map with base64 (ready for PDF)`);
+        console.log(`🗺️ Generated trend map with base64 (ready for PDF)`);
+      }
+      if (data.village_timeseries_data && data.village_timeseries_data.length > 0) {
+        console.log(`📊 Village timeseries data with trend lines available for ${data.village_timeseries_data.length} villages`);
       }
 
     } catch (error) {
-      console.log("Error generating trend analysis:", error);
+      console.error("❌ Error generating trend analysis:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -466,7 +485,7 @@ export const GroundwaterTrendProvider = ({
       setError(errorMessage);
       setTrendData(null);
       setTrendMapFilename(null);
-      setTrendMapBase64(null); 
+      setTrendMapBase64(null);
       removeTrendLayer();
     } finally {
       setIsLoading(false);
@@ -498,12 +517,21 @@ export const GroundwaterTrendProvider = ({
         getTrendMapFilename,
         getTrendMapBase64,
         hasTrendMap,
-        villageTimeseriesData, 
-        allYears, 
-        getVillageTimeseries,  
+        villageTimeseriesData,
+        allYears,
+        getVillageTimeseries,
       }}
     >
       {children}
     </GroundwaterTrendContext.Provider>
   );
+};
+
+// ⭐ Export custom hook for easier usage
+export const useGroundwaterTrend = () => {
+  const context = useContext(GroundwaterTrendContext);
+  if (!context) {
+    throw new Error('useGroundwaterTrend must be used within a GroundwaterTrendProvider');
+  }
+  return context;
 };

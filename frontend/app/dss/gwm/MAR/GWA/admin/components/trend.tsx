@@ -39,6 +39,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
   const [villageFilter, setVillageFilter] = useState<string>('');
   const [trendFilter, setTrendFilter] = useState<string>('All');
   const [selectedVillageId, setSelectedVillageId] = useState<string>('');
+  
   // Extract available years from wells data columns
   const availableYears = useMemo(() => {
     if (!wellsData || wellsData.length === 0 || !isWellTableSaved) {
@@ -523,7 +524,6 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
-
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -531,12 +531,10 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">{village.Village_Name}</div>
-                              {/* <div className="text-sm text-gray-500">ID: {village.Village_ID}</div> */}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               <div>{village.Block}</div>
                               <div className="text-xs text-gray-500">{village.District}</div>
-                              {/* <div className="text-xs text-gray-400">SUBDIS: {village.SUBDIS_COD}</div> */}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${village.Trend_Status === 'Increasing' ? 'bg-red-100 text-red-800' :
@@ -558,7 +556,6 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                               <div>P: {village.P_Value?.toFixed(4) || 'N/A'}</div>
                               <div>Slope: {village.Sen_Slope?.toFixed(4) || 'N/A'}</div>
                             </td>
-
                           </tr>
                         ))}
                       </tbody>
@@ -595,7 +592,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                     </select>
                   </div>
 
-                  {/* Chart Display */}
+                  {/* Chart Display with Trend Line */}
                   {selectedVillageId && (() => {
                     const villageData = getVillageTimeseries(selectedVillageId);
                     if (!villageData) {
@@ -606,11 +603,12 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                       );
                     }
 
-                    // Prepare data for recharts
+                    // Prepare data for recharts with trend line
                     const chartData = villageData.years.map((year, index) => ({
                       year: year,
-                      depth: villageData.depths[index]
-                    })).filter(d => d.depth !== null);
+                      depth: villageData.depths[index],
+                      trend_line: villageData.trend_line[index] // ⭐ NEW
+                    })).filter(d => d.depth !== null || d.trend_line !== null);
 
                     if (chartData.length === 0) {
                       return (
@@ -638,17 +636,18 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                           </div>
                           <div>
                             <p className="text-xs text-gray-500">Trend Status</p>
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${villageData.trend_status === 'Increasing' ? 'bg-red-100 text-red-800' :
-                                villageData.trend_status === 'Decreasing' ? 'bg-green-100 text-green-800' :
-                                  villageData.trend_status === 'No-Trend' ? 'bg-gray-100 text-gray-800' :
-                                    'bg-yellow-100 text-yellow-800'
-                              }`}>
+                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              villageData.trend_status === 'Increasing' ? 'bg-red-100 text-red-800' :
+                              villageData.trend_status === 'Decreasing' ? 'bg-green-100 text-green-800' :
+                              villageData.trend_status === 'No-Trend' ? 'bg-gray-100 text-gray-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
                               {villageData.trend_status}
                             </div>
                           </div>
                         </div>
 
-                        {/* Line Chart */}
+                        {/* Line Chart with Trend Line */}
                         <div className="bg-white border border-gray-200 rounded-lg p-6">
                           <h5 className="text-md font-semibold text-gray-800 mb-4">
                             Yearly Groundwater Depth Trend
@@ -661,7 +660,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                                 label={{ value: 'Year', position: 'insideBottom', offset: -5 }}
                               />
                               <YAxis
-                                label={{ value: 'Groundwater Depth ', angle: -90, position: 'insideLeft', dy: 80 }}
+                                label={{ value: 'Groundwater Depth (m)', angle: -90, position: 'insideLeft', dy: 80 }}
                                 domain={['auto', 'auto']}
                               />
                               <Tooltip
@@ -669,6 +668,8 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                                 labelFormatter={(label) => `Year: ${label}`}
                               />
                               <Legend />
+                              
+                              {/* Actual Depth Line */}
                               <Line
                                 type="monotone"
                                 dataKey="depth"
@@ -676,12 +677,64 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                                 strokeWidth={3}
                                 dot={{ fill: villageData.color, r: 5 }}
                                 activeDot={{ r: 7 }}
-                              // name="Groundwater Depth"
+                                name="Actual Depth"
+                              />
+                              
+                              {/*Trend Line */}
+                              <Line
+                                type="monotone"
+                                dataKey="trend_line"
+                                stroke="#6366F1"
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                dot={false}
+                                activeDot={false}
+                                name="Trend Line (Sen's Slope)"
                               />
                             </LineChart>
                           </ResponsiveContainer>
 
-              
+                          {/* Statistical Summary */}
+                          <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+                            <div>
+                              <p className="text-xs text-gray-500">Mann-Kendall Tau (τ)</p>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {villageData.mann_kendall_tau !== null 
+                                  ? villageData.mann_kendall_tau.toFixed(4) 
+                                  : 'N/A'}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {villageData.mann_kendall_tau && Math.abs(villageData.mann_kendall_tau) > 0.3
+                                  ? 'Strong correlation'
+                                  : 'Weak correlation'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Sen's Slope (m/year)</p>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {villageData.sen_slope !== null 
+                                  ? villageData.sen_slope.toFixed(4) 
+                                  : 'N/A'}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {villageData.sen_slope && villageData.sen_slope > 0
+                                  ? 'Depth increasing'
+                                  : villageData.sen_slope && villageData.sen_slope < 0
+                                  ? 'Depth decreasing'
+                                  : 'No change'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Data Points</p>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {chartData.length} years
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {villageData.years[0]} - {villageData.years[villageData.years.length - 1]}
+                              </p>
+                            </div>
+                          </div>
+
                         </div>
                       </div>
                     );

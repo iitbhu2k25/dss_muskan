@@ -547,9 +547,9 @@ class GroundwaterTrendAnalysisView(View):
     def extract_village_timeseries_data(self, villages_with_yearly_depth, trend_results_df, all_available_years):
         """
         Extract yearly timeseries data for all villages for frontend plotting
-        Returns list of village timeseries with years and depths
+        Returns list of village timeseries with years and depths INCLUDING TREND LINE
         """
-        print("📊 Extracting village timeseries data for frontend...")
+        print(" Extracting village timeseries data for frontend...")
         
         # Merge village depth data with trend results
         villages_merged = villages_with_yearly_depth.merge(
@@ -580,6 +580,35 @@ class GroundwaterTrendAnalysisView(View):
                     else:
                         depths_list.append(None)
             
+            # Calculate trend line using Sen's slope
+            trend_line = []
+            sen_slope = row.get('Sen_Slope')
+            
+            if pd.notna(sen_slope) and sen_slope is not None:
+                # Filter out None values for calculation
+                valid_indices = [i for i, d in enumerate(depths_list) if d is not None]
+                
+                if len(valid_indices) >= 2:
+                    valid_depths = [depths_list[i] for i in valid_indices]
+                    valid_years_int = [int(years_list[i]) for i in valid_indices]
+                    
+                    # Calculate median point (intercept)
+                    median_year = np.median(valid_years_int)
+                    median_depth = np.median(valid_depths)
+                    
+                    # Calculate trend line for all years using Sen's slope
+                    for year_str in years_list:
+                        year_int = int(year_str)
+                        # y = median_depth + slope * (x - median_year)
+                        trend_value = median_depth + float(sen_slope) * (year_int - median_year)
+                        trend_line.append(round(trend_value, 2))
+                else:
+                    # Not enough valid points for trend line
+                    trend_line = [None] * len(years_list)
+            else:
+                # No valid Sen's slope
+                trend_line = [None] * len(years_list)
+            
             village_timeseries = {
                 'village_id': str(row.get('Village_ID', row.get(self.VILLAGE_CODE_COL, 'Unknown'))),
                 'village_name': str(row.get('village', row.get('VILLAGE', 'Unknown'))),
@@ -591,12 +620,13 @@ class GroundwaterTrendAnalysisView(View):
                 'mann_kendall_tau': float(row['Mann_Kendall_Tau']) if pd.notna(row.get('Mann_Kendall_Tau')) else None,
                 'sen_slope': float(row['Sen_Slope']) if pd.notna(row.get('Sen_Slope')) else None,
                 'years': years_list,
-                'depths': depths_list
+                'depths': depths_list,
+                'trend_line': trend_line  # NEW: Trend line values
             }
             
             village_timeseries_list.append(village_timeseries)
         
-        print(f"✅ Extracted timeseries data for {len(village_timeseries_list)} villages")
+        print(f" Extracted timeseries data for {len(village_timeseries_list)} villages with trend lines")
         return village_timeseries_list
     # ---------------------------
     # GeoJSON
