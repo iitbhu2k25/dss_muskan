@@ -537,7 +537,28 @@ export default function Eflow() {
               <LineChart key={chartKey} data={chartData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" type="number" domain={[1, 12]} label={{ value: 'Month', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle' } }} />
-                <YAxis label={{ value: 'Flow (cms)', angle: -90, position: 'insideLeft', offset: -10, style: { textAnchor: 'middle' } }} />
+                <YAxis 
+  label={{ 
+    value: 'Flow (cms)', 
+    angle: -90, 
+    position: 'insideLeft', 
+    offset: -10, 
+    style: { textAnchor: 'middle' } 
+  }}
+  tickFormatter={(value) => {
+    // Format the number to avoid scientific notation
+    if (value === 0) return '0';
+    
+    // For very small numbers, use toFixed with appropriate decimals
+    if (Math.abs(value) < 0.01) {
+      return value.toFixed(6);
+    }
+    
+    // For normal numbers, use toFixed with 2-3 decimals
+    return value.toFixed(3);
+  }}
+/>
+
                 <Tooltip content={<CustomTooltip />} position={{ x: 0, y: 0 }} cursor={{ stroke: '#cbd5e1', strokeDasharray: '3 3' }} />
                 {threshold !== null && (
                   <ReferenceLine

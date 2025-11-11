@@ -126,97 +126,136 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
   };
 
   // Initialize map and overlay
-  useEffect(() => {
-    if (!map) {
-      console.log("[DEBUG] Initializing map...");
+// Initialize map and overlay
+useEffect(() => {
+  if (!map) {
+    console.log("[DEBUG] Initializing map...");
 
-      const osmLayer = new TileLayer({
-        source: new OSM(),
-        visible: !isSatellite,
-        properties: { name: "osm" },
-      });
+    const osmLayer = new TileLayer({
+      source: new OSM(),
+      visible: !isSatellite,
+      properties: { name: "osm" },
+    });
 
-      const satelliteLayer = new TileLayer({
-        source: new XYZ({
-          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          maxZoom: 19,
+    const satelliteLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        maxZoom: 19,
+      }),
+      visible: isSatellite,
+      properties: { name: "satellite" },
+    });
+
+    // ✅ India boundary base layer from GeoServer
+    const indiaLayer = new ImageLayer({
+      source: new ImageWMS({
+        url: "http://localhost:9090/geoserver/myworkspace/wms",
+        params: {
+          LAYERS: "myworkspace:B_State",
+          TILED: true,
+          FORMAT: "image/png",
+          TRANSPARENT: true,
+        },
+        serverType: "geoserver",
+        crossOrigin: "anonymous",
+      }),
+      visible: true,
+      opacity: 0.9,
+      properties: { name: "indiaBase" },
+    });
+
+    // ✅ Water level overlay layer
+    const waterLevelLayer = new ImageLayer({
+      source: new ImageWMS({
+        url: "http://localhost:9090/geoserver/myworkspace/wms",
+        params: {
+          LAYERS: "myworkspace:waterlevel",
+          TILED: true,
+          FORMAT: "image/png",
+          TRANSPARENT: true,
+        },
+        serverType: "geoserver",
+        crossOrigin: "anonymous",
+      }),
+      visible: true,
+      opacity: 0.8,
+      properties: { name: "waterLevel" },
+    });
+
+    const overlay = new Overlay({
+      element: undefined,
+      autoPan: true,
+      autoPanAnimation: { duration: 50 },
+    });
+
+    const initialMap = new Map({
+      target: undefined,
+      view: new View({
+        center: fromLonLat([78.9629, 22.5937]), // India center
+        zoom: 5,
+        minZoom: 3,
+        maxZoom: 18,
+        projection: "EPSG:3857",
+      }),
+      layers: [osmLayer, satelliteLayer, indiaLayer, waterLevelLayer],
+      overlays: [overlay],
+      controls: defaultControls({
+        zoom: false,
+        attribution: true,
+        rotate: false,
+      }).extend([
+        new ScaleLine({
+          units: "metric",
+          bar: true,
+          steps: 4,
+          text: true,
+          minWidth: 140,
         }),
-        visible: isSatellite,
-        properties: { name: "satellite" },
-      });
+        new FullScreen(),
+      ]),
+    });
 
-      const waterLevelLayer = new ImageLayer({
-        source: new ImageWMS({
-          url: "http://localhost:9090/geoserver/myworkspace/wms",
-          params: {
-            LAYERS: "myworkspace:waterlevel",
-            TILED: true,
-            FORMAT: "image/png",
-            TRANSPARENT: true,
-          },
-          serverType: "geoserver",
-          crossOrigin: "anonymous",
-        }),
-        visible: true,
-        opacity: 0.8,
-        properties: { name: "waterLevel" },
-      });
+    // ✅ Fit the map to India's bounding box (fetched from GeoServer)
+    fetch(
+      "http://localhost:9090/geoserver/myworkspace/wms?service=WMS&version=1.3.0&request=GetCapabilities"
+    )
+      .then((res) => res.text())
+      .then((text) => {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+        const layers = xml.getElementsByTagName("Layer");
+        for (let i = 0; i < layers.length; i++) {
+          const name = layers[i].getElementsByTagName("Name")[0]?.textContent;
+          if (name === "myworkspace:India") {
+            const bboxEl = layers[i].getElementsByTagName("EX_GeographicBoundingBox")[0];
+            if (bboxEl) {
+              const minx = parseFloat(bboxEl.getElementsByTagName("westBoundLongitude")[0].textContent || "68");
+              const miny = parseFloat(bboxEl.getElementsByTagName("southBoundLatitude")[0].textContent || "8");
+              const maxx = parseFloat(bboxEl.getElementsByTagName("eastBoundLongitude")[0].textContent || "97");
+              const maxy = parseFloat(bboxEl.getElementsByTagName("northBoundLatitude")[0].textContent || "35");
 
-      const overlay = new Overlay({
-        element: undefined,
-        autoPan: true,
-        autoPanAnimation: { duration: 250 },
-      });
+              const extent = [
+                ...fromLonLat([minx, miny]),
+                ...fromLonLat([maxx, maxy]),
+              ];
+              initialMap.getView().fit(extent, {
+                padding: [50, 50, 50, 50],
+                duration: 1000,
+              });
+              console.log("[DEBUG] Fitted to India layer extent");
+            }
+            break;
+          }
+        }
+      })
+      .catch((err) => console.error("[DEBUG] Error fetching GetCapabilities:", err));
 
-      const minLon = 68.76833333333333;
-      const minLat = 8.158333333333333;
-      const maxLon = 97.02583333333334;
-      const maxLat = 34.603611111111114;
-      const centerLon = (minLon + maxLon) / 2;
-      const centerLat = (minLat + maxLat) / 2;
+    setMap(initialMap);
+    setPopupOverlay(overlay);
+    console.log("[DEBUG] Map and overlay initialized with India base layer");
+  }
+}, []);
 
-      const initialMap = new Map({
-        target: undefined,
-        view: new View({
-          center: fromLonLat([centerLon, centerLat]),
-          zoom: 5,
-          minZoom: 3,
-          maxZoom: 18,
-          projection: "EPSG:3857",
-        }),
-        layers: [osmLayer, satelliteLayer, waterLevelLayer],
-        overlays: [overlay],
-        controls: defaultControls({
-          zoom: false,
-          attribution: true,
-          rotate: false,
-        }).extend([
-          new ScaleLine({
-            units: "metric",
-            bar: true,
-            steps: 4,
-            text: true,
-            minWidth: 140,
-          }),
-          new FullScreen(),
-        ]),
-      });
-
-      // log once render complete
-      initialMap.once("rendercomplete", () => {
-        console.log("[DEBUG] Map render complete — fitting view");
-        const extent = [
-          ...fromLonLat([minLon, minLat]),
-          ...fromLonLat([maxLon, maxLat]),
-        ];
-        initialMap.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 1000 });
-      });
-
-      setMap(initialMap);
-      setPopupOverlay(overlay);
-      console.log("[DEBUG] Map and overlay initialized");
-    }
-  }, []);
 
   // Handle map click to get feature attributes
   const handleMapClick = async (evt: MapBrowserEvent<any>) => {

@@ -52,6 +52,25 @@ services:
       - fast_db
       - geoserver
 
+  fast_m:
+    build:
+      context: ./fast_m
+      dockerfile: Dockerfile
+    image: fast_m:latest
+    ports:
+      - "7100:7100"
+    env_file:
+      - .fastmdb.env
+    volumes:
+      - ./fast_m:/home/app:z
+    command: uvicorn main:app --host 0.0.0.0 --port 7100 --reload
+    restart: always
+    depends_on:
+      - fast_m_db
+      - geoserver
+
+    
+
   db:
     image: postgres:16
     ports:
@@ -77,6 +96,20 @@ services:
     depends_on:
       - redis
       - geoserver
+
+  fast_m_db:
+    image: postgres:16
+    ports:
+      - "5460:5432"
+    env_file:
+      - .fastmdb.env
+    volumes:
+      - postgres_fastm_data:/var/lib/postgresql/data
+    restart: always
+    depends_on:
+      - redis
+      - geoserver
+    
 
   redis:
     image: redis:7.4
@@ -153,3 +186,4 @@ volumes:
   postgres_cloud_data:
   geoserver_data:
   redis_data:
+  postgres_fastm_data:
