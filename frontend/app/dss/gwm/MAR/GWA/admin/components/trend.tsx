@@ -648,28 +648,6 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                           </div>
                         </div>
 
-                        {/* Statistics Row */}
-                        {/* <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                            <p className="text-xs text-blue-600 font-medium">Mann-Kendall Tau</p>
-                            <p className="text-lg font-semibold text-blue-900">
-                              {villageData.mann_kendall_tau !== null ? villageData.mann_kendall_tau.toFixed(4) : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                            <p className="text-xs text-purple-600 font-medium">Sen's Slope (m/year)</p>
-                            <p className="text-lg font-semibold text-purple-900">
-                              {villageData.sen_slope !== null ? villageData.sen_slope.toFixed(4) : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                            <p className="text-xs text-green-600 font-medium">Data Points</p>
-                            <p className="text-lg font-semibold text-green-900">
-                              {chartData.length} / {villageData.years.length}
-                            </p>
-                          </div>
-                        </div> */}
-
                         {/* Line Chart */}
                         <div className="bg-white border border-gray-200 rounded-lg p-6">
                           <h5 className="text-md font-semibold text-gray-800 mb-4">
@@ -703,21 +681,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                             </LineChart>
                           </ResponsiveContainer>
 
-                          {/* Chart Legend/Info */}
-                          {/* <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
-                            <p className="font-medium text-gray-800 mb-1">Note:</p>
-                            <ul className="list-disc list-inside space-y-1 text-xs">
-                              <li>Higher depth values indicate water table is deeper (potentially worse condition)</li>
-                              <li>Lower depth values indicate water table is shallower (potentially better condition)</li>
-                              <li>Increasing trend means groundwater level is declining (depth increasing)</li>
-                              <li>Decreasing trend means groundwater level is rising (depth decreasing)</li>
-                              {chartData.length < villageData.years.length && (
-                                <li className="text-yellow-600">
-                                  Missing data for {villageData.years.length - chartData.length} year(s)
-                                </li>
-                              )}
-                            </ul>
-                          </div> */}
+              
                         </div>
                       </div>
                     );

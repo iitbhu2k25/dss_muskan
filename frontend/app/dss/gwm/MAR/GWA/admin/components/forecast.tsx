@@ -33,6 +33,17 @@ const GroundwaterForecast: React.FC<GroundwaterForecastProps> = ({ activeTab, st
   const [selectedVillages, setSelectedVillages] = useState<string[]>([]);
   const [hoveredData, setHoveredData] = useState<any>(null);
 
+  // --- States for Table Search/Sort ---
+  const [tableSearchInput, setTableSearchInput] = useState("");
+  const [tableAppliedSearch, setTableAppliedSearch] = useState("");
+  const [tableSortField, setTableSortField] = useState<string>("");
+  const [tableSortDirection, setTableSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [tableAppliedSort, setTableAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [tableShowSortDropdown, setTableShowSortDropdown] = useState(false);
+
+  // --- State for Chart Village Search ---
+  const [chartSearchInput, setChartSearchInput] = useState("");
+
   // Handle chart click to show data
   const handleChartClick = (event: any) => {
     if (event && event.activeLabel !== undefined) {
@@ -127,14 +138,92 @@ const GroundwaterForecast: React.FC<GroundwaterForecastProps> = ({ activeTab, st
     return Array.from(years).sort((a, b) => a - b);
   }, [tableData]);
 
-  // Export CSV function
+  // --- Handlers for Table Search/Sort ---
+  const handleTableApplySearch = () => {
+    setTableAppliedSearch(tableSearchInput.trim());
+  };
+
+  const handleTableApplySort = () => {
+    if (tableSortField) {
+      setTableAppliedSort({ key: tableSortField, direction: tableSortDirection });
+      setTableShowSortDropdown(false);
+    }
+  };
+
+  const handleTableResetSort = () => {
+    setTableSortField("");
+    setTableSortDirection('asc');
+    setTableAppliedSort(null);
+    setTableShowSortDropdown(false);
+  };
+
+  // --- Sortable fields and labels for Table ---
+  const tableSortableFields = useMemo(() => {
+    return ['village', ...allForecastYears.map(String)];
+  }, [allForecastYears]);
+
+  const formatTableLabel = (key: string) => {
+    if (key === 'village') return 'Village';
+    return `Forecasted ${key}`;
+  };
+
+  // --- Processed Data for Table (with Search/Sort) ---
+  const processedTableData = useMemo(() => {
+    let data = [...tableData];
+
+    // Apply Search
+    if (tableAppliedSearch) {
+      data = data.filter(row =>
+        String(row.village || "").toLowerCase().includes(tableAppliedSearch.toLowerCase())
+      );
+    }
+
+    // Apply Sort
+    if (tableAppliedSort) {
+      data.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (tableAppliedSort.key === 'village') {
+          aValue = a.village;
+          bValue = b.village;
+        } else {
+          // Key is a year (as a string), find the corresponding forecast value
+          const yearKey = parseInt(tableAppliedSort.key);
+          aValue = a.forecasts.find((f: any) => f.year === yearKey)?.value;
+          bValue = b.forecasts.find((f: any) => f.year === yearKey)?.value;
+        }
+
+        if (aValue == null) return tableAppliedSort.direction === 'asc' ? -1 : 1;
+        if (bValue == null) return tableAppliedSort.direction === 'asc' ? 1 : -1;
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return tableAppliedSort.direction === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return tableAppliedSort.direction === 'asc'
+            ? aValue - bValue
+            : bValue - aValue;
+        }
+        return 0;
+      });
+    }
+
+    return data;
+  }, [tableData, tableAppliedSearch, tableAppliedSort]);
+
+
+  // Export CSV function (uses processedTableData now)
   const exportToCSV = () => {
-    if (!tableData.length) return;
+    if (!processedTableData.length) return;
 
     const headers = ['Village', ...allForecastYears.map(year => `Forecasted ${year}`)];
     const csvContent = [
       headers.join(','),
-      ...tableData.map((row: { village: any; forecasts: any[]; }) => {
+      ...processedTableData.map((row: { village: any; forecasts: any[]; }) => {
         const values = [row.village];
         allForecastYears.forEach(year => {
           const forecast = row.forecasts.find((f: any) => f.year === year);
@@ -165,6 +254,15 @@ const GroundwaterForecast: React.FC<GroundwaterForecastProps> = ({ activeTab, st
       }
     });
   };
+
+  // --- Filtered Villages for Chart Selection List ---
+  const filteredVillagesForChart = useMemo(() => {
+    if (!forecastData?.villages) return [];
+    return forecastData.villages.filter((village: any) => {
+      const villageName = village.village_info?.village || 'Unknown Village';
+      return villageName.toLowerCase().includes(chartSearchInput.toLowerCase());
+    });
+  }, [forecastData, chartSearchInput]);
 
   // Prepare chart data for selected villages
   const chartData = useMemo(() => {
@@ -743,33 +841,155 @@ const GroundwaterForecast: React.FC<GroundwaterForecastProps> = ({ activeTab, st
               {/* Table Tab */}
               {activeResultTab === 'table' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
                     <h4 className="text-lg font-semibold text-gray-800">Forecast Results</h4>
-                    <button
-                      onClick={exportToCSV}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center gap-2 transition-colors duration-200"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Export as CSV
-                    </button>
+                    {/* Search & Sort Controls */}
+                    <div className="flex flex-col sm:flex-row gap-3 ml-auto">
+                      {/* Search */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search village..."
+                          value={tableSearchInput}
+                          onChange={(e) => setTableSearchInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleTableApplySearch()}
+                          className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <button
+                          onClick={handleTableApplySearch}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                          Search
+                        </button>
+                      </div>
+
+                      {/* Sort */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setTableShowSortDropdown(!tableShowSortDropdown)}
+                          className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m2 5l5-5m0 0l-5-5m5 5H3" /></svg>
+                          Sort
+                        </button>
+
+                        {tableShowSortDropdown && (
+                          <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-4">
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                                <select
+                                  value={tableSortField}
+                                  onChange={(e) => setTableSortField(e.target.value)}
+                                  className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                >
+                                  <option value="">Select Field</option>
+                                  {tableSortableFields.map(field => (
+                                    <option key={field} value={field}>{formatTableLabel(field)}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setTableSortDirection('asc')}
+                                  className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${
+                                    tableSortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                                  }`}
+                                >
+                                  Ascending
+                                </button>
+                                <button
+                                  onClick={() => setTableSortDirection('desc')}
+                                  className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${
+                                    tableSortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                                  }`}
+                                >
+                                  Descending
+                                </button>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleTableApplySort}
+                                  disabled={!tableSortField}
+                                  className="flex-1 py-2 px-3 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  Apply Sort
+                                </button>
+                                <button
+                                  onClick={handleTableResetSort}
+                                  className="flex-1 py-2 px-3 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                                >
+                                  Reset
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                       {/* Export Button */}
+                       <button
+                        onClick={exportToCSV}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Active Filters Indicator */}
+                  {(tableAppliedSearch || tableAppliedSort) && (
+                    <div className="mb-3 flex flex-wrap gap-2 text-sm">
+                      {tableAppliedSearch && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+                          Search: "{tableAppliedSearch}"
+                          <button onClick={() => { setTableAppliedSearch(""); setTableSearchInput(""); }} className="ml-1 hover:text-blue-900">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </span>
+                      )}
+                      {tableAppliedSort && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
+                          Sort: {formatTableLabel(tableAppliedSort.key)} ({tableAppliedSort.direction === 'asc' ? 'Ascending' : 'Descending'})
+                          <button onClick={handleTableResetSort} className="ml-1 hover:text-green-900">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div className="max-h-[600px] overflow-y-auto overflow-x-auto border border-gray-200 rounded-lg">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Village</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Village
+                             {tableAppliedSort?.key === 'village' && (
+                              <span className="ml-1 text-blue-600">
+                                {tableAppliedSort.direction === 'asc' ? '▲' : '▼'}
+                              </span>
+                            )}
+                          </th>
                           {allForecastYears.map(year => (
                             <th key={year} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Forecasted {year}
+                              {tableAppliedSort?.key === String(year) && (
+                                <span className="ml-1 text-blue-600">
+                                  {tableAppliedSort.direction === 'asc' ? '▲' : '▼'}
+                                </span>
+                              )}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {tableData.map((row: { village: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; forecasts: any[]; }, index: React.Key | null | undefined) => (
+                        {processedTableData.map((row: { village: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; forecasts: any[]; }, index: React.Key | null | undefined) => (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               {row.village}
@@ -787,6 +1007,12 @@ const GroundwaterForecast: React.FC<GroundwaterForecastProps> = ({ activeTab, st
                       </tbody>
                     </table>
                   </div>
+                  <div className="mt-3 text-sm text-gray-600">
+                    <span>
+                      Showing <strong>{processedTableData.length}</strong> village{processedTableData.length !== 1 ? "s" : ""}
+                      {tableAppliedSearch || tableAppliedSort ? ` (filtered from ${tableData.length} total)` : ""}
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -802,21 +1028,40 @@ const GroundwaterForecast: React.FC<GroundwaterForecastProps> = ({ activeTab, st
                         Choose villages to display on the chart:
                       </label>
                       <div className="bg-white border border-gray-300 rounded-lg shadow-sm">
+                        
+                        {/* --- NEW: Search bar for chart villages --- */}
+                        <div className="p-2 border-b border-gray-200">
+                           <input
+                            type="text"
+                            placeholder="Search villages in list..."
+                            value={chartSearchInput}
+                            onChange={(e) => setChartSearchInput(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        {/* ------------------------------------------ */}
+
                         <div className="max-h-48 overflow-y-auto">
-                          {forecastData.villages?.map((village: any, index: number) => {
-                            const villageName = village.village_info?.village || `Village ${index + 1}`;
-                            return (
-                              <label key={index} className="flex items-center space-x-3 cursor-pointer py-3 px-4 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedVillages.includes(villageName)}
-                                  onChange={(e) => handleVillageSelection(villageName, e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                                />
-                                <span className="text-sm font-medium text-gray-800">{villageName}</span>
-                              </label>
-                            );
-                          })}
+                          {filteredVillagesForChart.length > 0 ? (
+                            filteredVillagesForChart.map((village: any, index: number) => {
+                              const villageName = village.village_info?.village || `Village ${index + 1}`;
+                              return (
+                                <label key={index} className="flex items-center space-x-3 cursor-pointer py-3 px-4 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors duration-150">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedVillages.includes(villageName)}
+                                    onChange={(e) => handleVillageSelection(villageName, e.target.checked)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                  />
+                                  <span className="text-sm font-medium text-gray-800">{villageName}</span>
+                                </label>
+                              );
+                            })
+                          ) : (
+                            <div className="text-center text-sm text-gray-500 p-4">
+                              No villages match your search.
+                            </div>
+                          )}
                         </div>
                       </div>
 
