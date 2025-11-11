@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useMemo, useState } from 'react';
 import { useDemand } from '@/contexts/groundwater_assessment/admin/DemandContext';
 import { useLocation } from '@/contexts/groundwater_assessment/admin/LocationContext';
@@ -26,8 +25,7 @@ interface ChartData {
   };
 }
 
-// Field Definitions & Labels (like Recharge.tsx) 
-
+// Field Definitions & Labels (like Recharge.tsx)
 const DOMESTIC_DISPLAY_FIELDS: string[] = [
   'village_name',
   'demand_mld',
@@ -60,7 +58,6 @@ const formatLabel = (key: string, map: Record<string, string>) =>
   map[key] || key.replace(/_/g, " ");
 
 // --- End Field Definitions ---
-
 
 const Demand = () => {
   const {
@@ -118,29 +115,21 @@ const Demand = () => {
   // Domestic Table States for Search & Sort
   const [domesticSearchInput, setDomesticSearchInput] = useState("");
   const [domesticAppliedSearch, setDomesticAppliedSearch] = useState("");
-  const [domesticSortField, setDomesticSortField] = useState<string>("");
-  const [domesticSortDirection, setDomesticSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [domesticShowSortDropdown, setDomesticShowSortDropdown] = useState(false);
   const [domesticAppliedSort, setDomesticAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   // Agricultural Table States for Search & Sort
   const [agriculturalSearchInput, setAgriculturalSearchInput] = useState("");
   const [agriculturalAppliedSearch, setAgriculturalAppliedSearch] = useState("");
-  const [agriculturalSortField, setAgriculturalSortField] = useState<string>("");
-  const [agriculturalSortDirection, setAgriculturalSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [agriculturalShowSortDropdown, setAgriculturalShowSortDropdown] = useState(false);
   const [agriculturalAppliedSort, setAgriculturalAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   // Handle Agricultural Compute with Validation
   const handleAgriculturalClick = () => {
     const isAnySeasonSelected = kharifChecked || rabiChecked || zaidChecked;
     const isAnyCropSelected = Object.values(selectedCrops).some(cropsArray => cropsArray && cropsArray.length > 0);
-
     if (!isAnySeasonSelected || !isAnyCropSelected) {
       setShowSelectionWarning(true);
       return;
     }
-
     setShowSelectionWarning(false);
     computeAgriculturalDemand();
   };
@@ -148,98 +137,80 @@ const Demand = () => {
   // Domestic Table Processing (with robust sort logic from Recharge.tsx)
   const processedDomesticData = useMemo(() => {
     let data = [...domesticTableData];
-
     // Apply Search (by village_name)
     if (domesticAppliedSearch) {
       data = data.filter(row =>
         String(row.village_name || "").toLowerCase().includes(domesticAppliedSearch.toLowerCase())
       );
     }
-
     // Apply Sort
     if (domesticAppliedSort) {
       data.sort((a, b) => {
         const aValue = a[domesticAppliedSort.key];
         const bValue = b[domesticAppliedSort.key];
-
         if (aValue == null) return domesticAppliedSort.direction === 'asc' ? -1 : 1;
         if (bValue == null) return domesticAppliedSort.direction === 'asc' ? 1 : -1;
-
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           return domesticAppliedSort.direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
-
         if (typeof aValue === 'number' && typeof bValue === 'number') {
           return domesticAppliedSort.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
         }
-
         // Fallback for numbers stored as strings
         const numA = parseFloat(String(aValue));
         const numB = parseFloat(String(bValue));
-
         if (!isNaN(numA) && !isNaN(numB)) {
           return domesticAppliedSort.direction === 'asc'
             ? numA - numB
             : numB - numA;
         }
-
         return 0;
       });
     }
-
     return data;
   }, [domesticTableData, domesticAppliedSearch, domesticAppliedSort]);
 
   // Agricultural Table Processing (with robust sort logic from Recharge.tsx)
   const processedAgriculturalData = useMemo(() => {
     let data = [...agriculturalTableData];
-
     // Apply Search (by village)
     if (agriculturalAppliedSearch) {
       data = data.filter(row =>
         String(row.village || "").toLowerCase().includes(agriculturalAppliedSearch.toLowerCase())
       );
     }
-
     // Apply Sort
     if (agriculturalAppliedSort) {
       data.sort((a, b) => {
         const aValue = a[agriculturalAppliedSort.key];
         const bValue = b[agriculturalAppliedSort.key];
-
         if (aValue == null) return agriculturalAppliedSort.direction === 'asc' ? -1 : 1;
         if (bValue == null) return agriculturalAppliedSort.direction === 'asc' ? 1 : -1;
-
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           return agriculturalAppliedSort.direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
-
         if (typeof aValue === 'number' && typeof bValue === 'number') {
           return agriculturalAppliedSort.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
         }
-
         // Fallback for numbers stored as strings
         const numA = parseFloat(String(aValue));
         const numB = parseFloat(String(bValue));
-
         if (!isNaN(numA) && !isNaN(numB)) {
           return agriculturalAppliedSort.direction === 'asc'
             ? numA - numB
             : numB - numA;
         }
-
         return 0;
       });
     }
-
     return data;
   }, [agriculturalTableData, agriculturalAppliedSearch, agriculturalAppliedSort]);
 
@@ -248,18 +219,8 @@ const Demand = () => {
     setDomesticAppliedSearch(domesticSearchInput.trim());
   };
 
-  const handleDomesticApplySort = () => {
-    if (domesticSortField) {
-      setDomesticAppliedSort({ key: domesticSortField, direction: domesticSortDirection });
-      setDomesticShowSortDropdown(false);
-    }
-  };
-
   const handleDomesticResetSort = () => {
-    setDomesticSortField("");
-    setDomesticSortDirection('asc');
     setDomesticAppliedSort(null);
-    setDomesticShowSortDropdown(false);
   };
 
   // Agricultural Handlers
@@ -267,22 +228,33 @@ const Demand = () => {
     setAgriculturalAppliedSearch(agriculturalSearchInput.trim());
   };
 
-  const handleAgriculturalApplySort = () => {
-    if (agriculturalSortField) {
-      setAgriculturalAppliedSort({ key: agriculturalSortField, direction: agriculturalSortDirection });
-      setAgriculturalShowSortDropdown(false);
-    }
-  };
-
   const handleAgriculturalResetSort = () => {
-    setAgriculturalSortField("");
-    setAgriculturalSortDirection('asc');
     setAgriculturalAppliedSort(null);
-    setAgriculturalShowSortDropdown(false);
   };
 
   // Domestic Table Component (Table only)
-  const DomesticTable = ({ tableData, title }: { tableData: any[]; title: string }) => {
+  type DomesticTableProps = {
+    tableData: any[];
+    title: string;
+    sortConfig?: { key?: string; direction?: "asc" | "desc" };
+    onSort?: (field: string) => void;
+    isSearched?: boolean;
+  };
+
+  const DomesticTable = ({ tableData, title, sortConfig, onSort, isSearched }: DomesticTableProps) => {
+    const handleSort = (field: string) => {
+      onSort?.(field);
+    };
+
+    const getSortIcon = (field: string) => {
+      if (sortConfig?.key !== field) return null;
+      return sortConfig.direction === "asc" ? (
+        <span className="ml-1 text-blue-600">▲</span>
+      ) : (
+        <span className="ml-1 text-blue-600">▼</span>
+      );
+    };
+
     return (
       <div className="mt-4">
         <h4 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -291,7 +263,6 @@ const Demand = () => {
           </svg>
           {title}
         </h4>
-
         <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-10">
@@ -302,14 +273,17 @@ const Demand = () => {
                 {DOMESTIC_DISPLAY_FIELDS.map((header) => (
                   <th
                     key={header}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200"
+                    onClick={() => handleSort(header)}
+                    className={`
+                      px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider
+                      bg-gray-50 border-b-2 border-gray-200 cursor-pointer
+                      hover:bg-gray-100 transition-colors select-none
+                    `}
                   >
-                    {formatLabel(header, DOMESTIC_LABEL_MAP)}
-                    {domesticAppliedSort?.key === header && (
-                      <span className="ml-1 text-blue-600">
-                        {domesticAppliedSort.direction === 'asc' ? '▲' : '▼'}
-                      </span>
-                    )}
+                    <div className="flex items-center">
+                      {formatLabel(header, DOMESTIC_LABEL_MAP)}
+                      {getSortIcon(header)}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -326,8 +300,9 @@ const Demand = () => {
                   {DOMESTIC_DISPLAY_FIELDS.map((field) => (
                     <td
                       key={field}
-                      className={`px-4 py-3 text-sm whitespace-nowrap ${field === 'demand_mld' ? 'text-blue-900 font-semibold' : 'text-gray-900'
-                        }`}
+                      className={`px-4 py-3 text-sm whitespace-nowrap ${
+                        field === 'demand_mld' ? 'text-blue-900 font-semibold' : 'text-gray-900'
+                      }`}
                     >
                       {row[field] !== null && row[field] !== undefined ? String(row[field]) : 'N/A'}
                     </td>
@@ -337,20 +312,40 @@ const Demand = () => {
             </tbody>
           </table>
         </div>
-
         <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <span>
             Showing <strong>{tableData.length}</strong> record{tableData.length !== 1 ? "s" : ""}
-            {domesticAppliedSearch || domesticAppliedSort ? ` (filtered)` : ""}
+            {(sortConfig?.key || isSearched) ? ` (filtered)` : ""}
           </span>
-          {/* You can add a summary stat here if needed, like total demand */}
+          {/* Optional: Add total demand summary here */}
         </div>
       </div>
     );
   };
 
   // Agricultural Table Component (Table only)
-  const AgriculturalTable = ({ tableData, title }: { tableData: any[]; title: string }) => {
+  type AgriculturalTableProps = {
+    tableData: any[];
+    title: string;
+    sortConfig?: { key?: string; direction?: "asc" | "desc" };
+    onSort?: (field: string) => void;
+    isSearched?: boolean;
+  };
+
+  const AgriculturalTable = ({ tableData, title, sortConfig, onSort, isSearched }: AgriculturalTableProps) => {
+    const handleSort = (field: string) => {
+      onSort?.(field);
+    };
+
+    const getSortIcon = (field: string) => {
+      if (sortConfig?.key !== field) return null;
+      return sortConfig.direction === "asc" ? (
+        <span className="ml-1 text-blue-600">▲</span>
+      ) : (
+        <span className="ml-1 text-blue-600">▼</span>
+      );
+    };
+
     return (
       <div className="mt-4">
         <h4 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -359,7 +354,6 @@ const Demand = () => {
           </svg>
           {title}
         </h4>
-
         <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-10">
@@ -370,14 +364,17 @@ const Demand = () => {
                 {AGRICULTURAL_DISPLAY_FIELDS.map((header) => (
                   <th
                     key={header}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200"
+                    onClick={() => handleSort(header)}
+                    className={`
+                      px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider
+                      bg-gray-50 border-b-2 border-gray-200 cursor-pointer
+                      hover:bg-gray-100 transition-colors select-none
+                    `}
                   >
-                    {formatLabel(header, AGRICULTURAL_LABEL_MAP)}
-                    {agriculturalAppliedSort?.key === header && (
-                      <span className="ml-1 text-blue-600">
-                        {agriculturalAppliedSort.direction === 'asc' ? '▲' : '▼'}
-                      </span>
-                    )}
+                    <div className="flex items-center">
+                      {formatLabel(header, AGRICULTURAL_LABEL_MAP)}
+                      {getSortIcon(header)}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -405,11 +402,10 @@ const Demand = () => {
             </tbody>
           </table>
         </div>
-
         <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <span>
             Showing <strong>{tableData.length}</strong> village{tableData.length !== 1 ? "s" : ""}
-            {agriculturalAppliedSearch || agriculturalAppliedSort ? ` (filtered)` : ""}
+            {(sortConfig?.key || isSearched) ? ` (filtered)` : ""}
           </span>
           {/* You can add a summary stat here if needed */}
         </div>
@@ -420,7 +416,6 @@ const Demand = () => {
   // Chart Display (unchanged)
   const ChartDisplay = () => {
     if (!chartData) return null;
-
     const individualCropsData = chartData.individual_crops.months.map((month, index) => {
       const dataPoint: any = { month };
       Object.keys(chartData.individual_crops.crops_data).forEach(crop => {
@@ -428,15 +423,12 @@ const Demand = () => {
       });
       return dataPoint;
     });
-
     const cumulativeData = chartData.cumulative_demand.months.map((month, index) => ({
       month,
       demand: chartData.cumulative_demand.values[index]
     }));
-
     const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff00ff', '#00ffff', '#ff0000'];
     const cropNames = Object.keys(chartData.individual_crops.crops_data);
-
     return (
       <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
         <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -445,7 +437,6 @@ const Demand = () => {
           </svg>
           Agricultural Water Demand Analysis
         </h4>
-
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
@@ -470,7 +461,6 @@ const Demand = () => {
             </nav>
           </div>
         </div>
-
         <div className="chart-display bg-white p-4 rounded-lg border border-gray-200">
           {selectedChart === 'individual' ? (
             <div>
@@ -554,7 +544,6 @@ const Demand = () => {
         </svg>
         <h4 className="text-md font-semibold text-gray-800">{title}</h4>
       </div>
-
       <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50 sticky top-0">
@@ -579,7 +568,6 @@ const Demand = () => {
           </tbody>
         </table>
       </div>
-
       <div className="mt-2 text-sm text-gray-600">
         Showing {tableData.length} record{tableData.length !== 1 ? 's' : ''}
       </div>
@@ -589,7 +577,6 @@ const Demand = () => {
   return (
     <div className="p-4 bg-green-50 border border-green-200 rounded-md">
       <h3 className="text-lg font-semibold text-green-800 mb-3">Groundwater Demand Assessment</h3>
-
       {/* Demand Type Checkboxes */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">Select Demand Types:</label>
@@ -608,30 +595,17 @@ const Demand = () => {
           </label>
         </div>
       </div>
-
-
-      {/* 1. DOMESTIC DEMAND SECTION           */}
-   
+      {/* 1. DOMESTIC DEMAND SECTION*/}
       {domesticChecked && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          {/* ---------- Loading overlay ---------- */}
           {domesticLoading && (
             <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center bg-white rounded-xl shadow-2xl p-8">
-                {/* ... Loading Spinner SVG ... */}
+                {/* …spinner SVG… */}
                 <div className="inline-block relative">
                   <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <defs>
-                      <linearGradient id="spinner-gradient-domestic" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#3B82F6" />
-                        <stop offset="50%" stopColor="#8B5CF6" />
-                        <stop offset="100%" stopColor="#EC4899" />
-                      </linearGradient>
-                      <linearGradient id="spinner-gradient-2-domestic" x1="100%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#10B981" />
-                        <stop offset="50%" stopColor="#3B82F6" />
-                        <stop offset="100%" stopColor="#6366F1" />
-                      </linearGradient>
-                    </defs>
+                    {/* …gradient defs… */}
                     <circle className="opacity-20" cx="12" cy="12" r="10" stroke="url(#spinner-gradient-domestic)" strokeWidth="3" />
                     <path className="opacity-90" fill="url(#spinner-gradient-2-domestic)" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -647,71 +621,46 @@ const Demand = () => {
             </div>
           )}
           <h4 className="text-md font-semibold text-blue-800 mb-3">Domestic Demand Parameters</h4>
-
-          {/* Per Capita Consumption Input with Info Icon */}
+          {/* ---------- Per Capita Input ---------- */}
           <div className="mb-4 max-w-sm">
-            {/* ----- Label + Tooltip ----- */}
             <div className="flex items-center gap-2 mb-1">
               <label className="block text-sm font-medium text-gray-700">
                 Per Capita Consumption (LPCD)
               </label>
-
-              {/* Info icon (i) */}
               <div className="group relative inline-block">
                 <span className="cursor-help text-blue-500">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </span>
-
-                {/* Tooltip – visible on hover */}
-                <div
-                  className={`
-              absolute left-1/2 -translate-x-1/2 mt-1 w-64
-              bg-gray-800 text-white text-xs rounded-lg p-3
-              opacity-0 group-hover:opacity-100
-              transition-opacity duration-200
-              shadow-lg z-50
-              pointer-events-none
-            `}
-                >
+                <div className={`
+                  absolute left-1/2 -translate-x-1/2 mt-1 w-64
+                  bg-gray-800 text-white text-xs rounded-lg p-3
+                  opacity-0 group-hover:opacity-100
+                  transition-opacity duration-200 shadow-lg z-50 pointer-events-none
+                `}>
                   Per Capita Consumption 60 liters according to Central Public Health
                   and Environmental Engineering Organization (CPHEEO) standards.
                 </div>
               </div>
             </div>
-
             <input
               type="number"
               value={perCapitaConsumption}
-              onChange={(e) => setPerCapitaConsumption(Number(e.target.value))}
-              className={`
-          w-full p-2 border rounded-md text-sm
-          focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-        `}
+              onChange={e => setPerCapitaConsumption(Number(e.target.value))}
+              className="w-full p-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter LPCD value (e.g., 70)"
               min="1"
             />
           </div>
-
+          {/* ---------- Error message ---------- */}
           {domesticError && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-              {/* ... Error Message ... */}
+              {/* …error… */}
             </div>
           )}
-
-          {/* --- Action Buttons (Compute, Search, Sort, Toggle) --- */}
+          {/* ---------- Action Buttons ---------- */}
           <div className="mb-4 flex flex-col sm:flex-row gap-4 items-start">
             <button
               onClick={computeDomesticDemand}
@@ -725,18 +674,16 @@ const Demand = () => {
             >
               {domesticLoading ? "Computing..." : "Compute Domestic Demand"}
             </button>
-
-            {/* Search & Sort Controls (like Recharge.tsx) */}
+            {/* ---------- Search (kept) ---------- */}
             {domesticTableData.length > 0 && (
               <div className="flex flex-col sm:flex-row gap-3 ml-auto">
-                {/* Search */}
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Search village..."
                     value={domesticSearchInput}
-                    onChange={(e) => setDomesticSearchInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleDomesticApplySearch()}
+                    onChange={e => setDomesticSearchInput(e.target.value)}
+                    onKeyPress={e => e.key === "Enter" && handleDomesticApplySearch()}
                     className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <button
@@ -749,74 +696,7 @@ const Demand = () => {
                     Search
                   </button>
                 </div>
-
-                {/* Sort */}
-                <div className="relative">
-                  <button
-                    onClick={() => setDomesticShowSortDropdown(!domesticShowSortDropdown)}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m2 5l5-5m0 0l-5-5m5 5H3" />
-                    </svg>
-                    Sort
-                  </button>
-
-                  {domesticShowSortDropdown && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-4">
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-                          <select
-                            value={domesticSortField}
-                            onChange={(e) => setDomesticSortField(e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                          >
-                            <option value="">Select Field</option>
-                            {DOMESTIC_DISPLAY_FIELDS.map(field => (
-                              <option key={field} value={field}>{formatLabel(field, DOMESTIC_LABEL_MAP)}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setDomesticSortDirection('asc')}
-                            className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${domesticSortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Ascending
-                          </button>
-                          <button
-                            onClick={() => setDomesticSortDirection('desc')}
-                            className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${domesticSortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Descending
-                          </button>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleDomesticApplySort}
-                            disabled={!domesticSortField}
-                            className="flex-1 py-2 px-3 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Apply Sort
-                          </button>
-                          <button
-                            onClick={handleDomesticResetSort}
-                            className="flex-1 py-2 px-3 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Toggle Table */}
+                {/* ---------- Table toggle (kept) ---------- */}
                 <button
                   onClick={toggleDomesticTable}
                   className="p-2 rounded-full hover:bg-gray-200 transition-colors"
@@ -824,21 +704,24 @@ const Demand = () => {
                 >
                   {showDomesticTable ? (
                     <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                   ) : (
                     <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18" />
                     </svg>
                   )}
                 </button>
               </div>
             )}
           </div>
-
-          {/* Active Filters Indicator (like Recharge.tsx) */}
+          {/* ---------- Active filters ---------- */}
           {(domesticAppliedSearch || domesticAppliedSort) && (
             <div className="mb-3 flex flex-wrap gap-2 text-sm">
               {domesticAppliedSearch && (
@@ -853,7 +736,7 @@ const Demand = () => {
               )}
               {domesticAppliedSort && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-                  Sort: {formatLabel(domesticAppliedSort.key, DOMESTIC_LABEL_MAP)} ({domesticAppliedSort.direction === 'asc' ? 'Ascending' : 'Descending'})
+                  Sort: {formatLabel(domesticAppliedSort.key, DOMESTIC_LABEL_MAP)} ({domesticAppliedSort.direction === "asc" ? "Ascending" : "Descending"})
                   <button onClick={handleDomesticResetSort} className="ml-1 hover:text-green-900">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
@@ -863,16 +746,25 @@ const Demand = () => {
               )}
             </div>
           )}
-
-          {/* Domestic Table (conditionally rendered) */}
+          {/* ---------- Domestic Table (with inline sorting) ---------- */}
           {showDomesticTable && domesticTableData.length > 0 && (
-            <DomesticTable tableData={processedDomesticData} title="Groundwater Consumption for Domestic Need" />
+            <DomesticTable
+              tableData={processedDomesticData}
+              title="Groundwater Consumption for Domestic Need"
+              sortConfig={domesticAppliedSort || undefined}
+              onSort={(field: string) => {
+                const direction =
+                  domesticAppliedSort?.key === field && domesticAppliedSort?.direction === "asc"
+                    ? "desc"
+                    : "asc";
+                setDomesticAppliedSort({ key: field, direction });
+              }}
+              isSearched={!!domesticAppliedSearch}
+            />
           )}
         </div>
       )}
-
-      {/* 2. AGRICULTURAL DEMAND SECTION       */}
-      
+      {/* 2. AGRICULTURAL DEMAND SECTION */}
       {agriculturalChecked && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           {agriculturalLoading && (
@@ -926,7 +818,6 @@ const Demand = () => {
                   />
                 </svg>
               </span>
-
               {/* Tooltip – visible on hover */}
               <div
                 className="absolute left-1/2 -translate-x-1/2 mt-1 w-64 bg-gray-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-50 pointer-events-none"
@@ -935,8 +826,6 @@ const Demand = () => {
               </div>
             </div>
           </div>
-
-
           {/* Season Selection */}
           <div className="mb-4">
             {/* ... Season Checkboxes ... */}
@@ -956,7 +845,6 @@ const Demand = () => {
               </label>
             </div>
           </div>
-
           {/* 3-Column Grid for Season Crops */}
           {(kharifChecked || rabiChecked || zaidChecked) && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
@@ -1113,7 +1001,6 @@ const Demand = () => {
               )}
             </div>
           )}
-
           {/* Groundwater Factor Input with Info Icon */}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md max-w-sm">
             <div className="flex items-center gap-2 mb-1">
@@ -1121,30 +1008,29 @@ const Demand = () => {
                 Groundwater Irrigation Factor
               </label>
               <div className="group relative inline-block">
-              <span className="cursor-help text-blue-500">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+                <span className="cursor-help text-blue-500">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </span>
+                {/* Tooltip – visible on hover */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 mt-1 w-64 bg-gray-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-50 pointer-events-none"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </span>
-
-              {/* Tooltip – visible on hover */}
-              <div
-                className="absolute left-1/2 -translate-x-1/2 mt-1 w-64 bg-gray-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-50 pointer-events-none"
-              >
-                Initially share of the groundwater for irrigation is considered as 80%.
+                  Initially share of the groundwater for irrigation is considered as 80%.
+                </div>
               </div>
-            </div>
             </div>
             <input
               type="number"
@@ -1157,21 +1043,18 @@ const Demand = () => {
               step="0.1"
             />
           </div>
-
           {agriculturalError && (
             <div className="my-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
               <p className="font-medium">Computation Failed</p>
               <p className="text-sm mt-1">{agriculturalError}</p>
             </div>
           )}
-
           {chartsError && (
             <div className="my-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md">
               <p className="font-medium">Chart Generation Warning</p>
               <p className="text-sm mt-1">{chartsError}</p>
             </div>
           )}
-
           {showSelectionWarning && (
             <div className="my-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-md flex items-center gap-2">
               <svg className="w-5 h-5 text-yellow-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1180,8 +1063,7 @@ const Demand = () => {
               <span className="text-sm font-medium">Please select at least one season and one crop.</span>
             </div>
           )}
-
-          {/* --- Action Buttons (Compute, Search, Sort, Toggle) --- */}
+          {/* --- Action Buttons (Compute, Search, Toggle) --- */}
           <div className="mt-4 mb-4 flex flex-col sm:flex-row gap-4 items-start">
             <button
               onClick={handleAgriculturalClick}
@@ -1195,8 +1077,7 @@ const Demand = () => {
             >
               {agriculturalLoading ? "Computing..." : "Compute Agricultural Demand"}
             </button>
-
-            {/* Search & Sort Controls (like Recharge.tsx) */}
+            {/* Search & Toggle Controls */}
             {agriculturalTableData.length > 0 && (
               <div className="flex flex-col sm:flex-row gap-3 ml-auto">
                 {/* Search */}
@@ -1219,73 +1100,6 @@ const Demand = () => {
                     Search
                   </button>
                 </div>
-
-                {/* Sort */}
-                <div className="relative">
-                  <button
-                    onClick={() => setAgriculturalShowSortDropdown(!agriculturalShowSortDropdown)}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m2 5l5-5m0 0l-5-5m5 5H3" />
-                    </svg>
-                    Sort
-                  </button>
-
-                  {agriculturalShowSortDropdown && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-4">
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-                          <select
-                            value={agriculturalSortField}
-                            onChange={(e) => setAgriculturalSortField(e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                          >
-                            <option value="">Select Field</option>
-                            {AGRICULTURAL_DISPLAY_FIELDS.map(field => (
-                              <option key={field} value={field}>{formatLabel(field, AGRICULTURAL_LABEL_MAP)}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setAgriculturalSortDirection('asc')}
-                            className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${agriculturalSortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Ascending
-                          </button>
-                          <button
-                            onClick={() => setAgriculturalSortDirection('desc')}
-                            className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${agriculturalSortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                              }`}
-                          >
-                            Descending
-                          </button>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleAgriculturalApplySort}
-                            disabled={!agriculturalSortField}
-                            className="flex-1 py-2 px-3 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Apply Sort
-                          </button>
-                          <button
-                            onClick={handleAgriculturalResetSort}
-                            className="flex-1 py-2 px-3 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Toggle Table */}
                 <button
                   onClick={toggleAgriculturalTable}
@@ -1307,7 +1121,6 @@ const Demand = () => {
               </div>
             )}
           </div>
-
           {/* Active Filters Indicator (like Recharge.tsx) */}
           {(agriculturalAppliedSearch || agriculturalAppliedSort) && (
             <div className="mb-3 flex flex-wrap gap-2 text-sm">
@@ -1333,14 +1146,24 @@ const Demand = () => {
               )}
             </div>
           )}
-
-
           {/* Agricultural Table + Charts Container */}
           {agriculturalTableData.length > 0 && (
             <div className="mt-6 grid grid-cols-1 gap-6">
               {showAgriculturalTable && (
                 <div className="overflow-auto">
-                  <AgriculturalTable tableData={processedAgriculturalData} title="Groundwater Consumption for Agricultural Need" />
+                  <AgriculturalTable
+                    tableData={processedAgriculturalData}
+                    title="Groundwater Consumption for Agricultural Need"
+                    sortConfig={agriculturalAppliedSort || undefined}
+                    onSort={(field: string) => {
+                      const direction =
+                        agriculturalAppliedSort?.key === field && agriculturalAppliedSort?.direction === "asc"
+                          ? "desc"
+                          : "asc";
+                      setAgriculturalAppliedSort({ key: field, direction });
+                    }}
+                    isSearched={!!agriculturalAppliedSearch}
+                  />
                 </div>
               )}
               <div>
@@ -1350,9 +1173,7 @@ const Demand = () => {
           )}
         </div>
       )}
-
-      {/* 3. INDUSTRIAL DEMAND SECTION         */}
-
+      {/* 3. INDUSTRIAL DEMAND SECTION */}
       {industrialChecked && (
         <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
           {industrialLoading && (
@@ -1388,7 +1209,6 @@ const Demand = () => {
             </div>
           )}
           <h4 className="text-md font-semibold text-purple-800 mb-3">Industrial Demand Parameters</h4>
-
           {industrialError && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
               <div className="flex items-start gap-2">
@@ -1402,7 +1222,6 @@ const Demand = () => {
               </div>
             </div>
           )}
-
           <button
             onClick={computeIndustrialDemand}
             disabled={industrialLoading || !canComputeIndustrialDemand()}
@@ -1420,7 +1239,6 @@ const Demand = () => {
               <span>Compute Industrial Demand</span>
             )}
           </button>
-
           {industrialTableData.length > 0 && (
             <TableDisplay tableData={industrialTableData} title="Industrial Demand Results" />
           )}

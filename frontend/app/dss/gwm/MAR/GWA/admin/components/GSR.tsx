@@ -21,15 +21,12 @@ const StressIdentification: React.FC = () => {
   const [stressData, setStressData] = useState<any[]>([]);
 
   const { gsrTableData, computeStressIdentification, canComputeStressIdentification } = useGSR();
-  const [showStressTable, setShowStressTable] = useState(true);  
+  const [showStressTable, setShowStressTable] = useState(true);
 
   // --- Search & Sort States ---
   const [stressSearchInput, setStressSearchInput] = useState("");
   const [stressAppliedSearch, setStressAppliedSearch] = useState("");
-  const [stressSortField, setStressSortField] = useState<string>("");
-  const [stressSortDirection, setStressSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [stressShowSortDropdown, setStressShowSortDropdown] = useState(false);
-  const [stressAppliedSort, setStressAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [stressSortConfig, setStressSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   // --- Field Definitions & Labels ---
   const STRESS_DISPLAY_FIELDS: string[] = [
@@ -77,25 +74,28 @@ const StressIdentification: React.FC = () => {
     setStressAppliedSearch(stressSearchInput.trim());
   };
 
-  const handleStressApplySort = () => {
-    if (stressSortField) {
-      setStressAppliedSort({ key: stressSortField, direction: stressSortDirection });
-      setStressShowSortDropdown(false);
+  const handleStressSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (stressSortConfig && stressSortConfig.key === key && stressSortConfig.direction === 'asc') {
+      direction = 'desc';
     }
+    setStressSortConfig({ key, direction });
   };
 
-  const handleStressResetSort = () => {
-    setStressSortField("");
-    setStressSortDirection('asc');
-    setStressAppliedSort(null);
-    setStressShowSortDropdown(false);
+  const getStressSortIcon = (field: string) => {
+    if (stressSortConfig?.key !== field) return null;
+    return stressSortConfig.direction === "asc" ? (
+      <span className="ml-1 text-blue-600">▲</span>
+    ) : (
+      <span className="ml-1 text-blue-600">▼</span>
+    );
   };
 
   // --- Memoized Data Processing ---
   const processedStressData = useMemo(() => {
     let data = [...stressData];
 
-    // Apply Search (by village_name)
+    // Apply Search
     if (stressAppliedSearch) {
       data = data.filter(row =>
         String(row.village_name || "").toLowerCase().includes(stressAppliedSearch.toLowerCase())
@@ -103,22 +103,22 @@ const StressIdentification: React.FC = () => {
     }
 
     // Apply Sort
-    if (stressAppliedSort) {
+    if (stressSortConfig) {
       data.sort((a, b) => {
-        const aValue = a[stressAppliedSort.key];
-        const bValue = b[stressAppliedSort.key];
+        const aValue = a[stressSortConfig.key];
+        const bValue = b[stressSortConfig.key];
 
-        if (aValue == null) return stressAppliedSort.direction === 'asc' ? -1 : 1;
-        if (bValue == null) return stressAppliedSort.direction === 'asc' ? 1 : -1;
+        if (aValue == null) return stressSortConfig.direction === 'asc' ? -1 : 1;
+        if (bValue == null) return stressSortConfig.direction === 'asc' ? 1 : -1;
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return stressAppliedSort.direction === 'asc'
+          return stressSortConfig.direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
 
         if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return stressAppliedSort.direction === 'asc'
+          return stressSortConfig.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
         }
@@ -127,115 +127,41 @@ const StressIdentification: React.FC = () => {
     }
 
     return data;
-  }, [stressData, stressAppliedSearch, stressAppliedSort]);
+  }, [stressData, stressAppliedSearch, stressSortConfig]);
 
-
-  //  Stress Data Table Display
-  const StressTableDisplay = ({ tableData, appliedSort }: { 
-    tableData: any[]; 
-    appliedSort: { key: string; direction: 'asc' | 'desc' } | null;
-  }) => {
-    if (tableData.length === 0) return null;
-
-    const formatHeader = (header: string): string => STRESS_LABEL_MAP[header] || header.replace(/_/g, ' ').toUpperCase();
-
-    const formatCellValue = (value: any, column: string): string => {
-      if (value === null || value === undefined) return '-';
-      if (typeof value === 'number') {
-        if (['recharge', 'total_demand', 'injection', 'stress_value'].includes(column)) {
-          return value.toFixed(2);
-        } else {
-          return value.toString();
-        }
+  // --- Formatting ---
+  const formatStressValue = (key: string, value: any): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'number') {
+      if (['recharge', 'total_demand', 'injection', 'stress_value'].includes(key)) {
+        return value.toFixed(2);
       }
-      return String(value);
-    };
+    }
+    return String(value);
+  };
 
-    const getCellClasses = (row: any, column: string): string => {
-      const value = row[column];
-      let baseClasses = "px-4 py-3 text-sm whitespace-nowrap";
+  const getStressCellClasses = (row: any, column: string): string => {
+    const value = row[column];
+    let baseClasses = "px-4 py-3 text-sm whitespace-nowrap";
 
-      if (column === 'stress_value') {
-        baseClasses += " font-medium";
-        if (typeof value === 'number') {
-          if (value > 0) {
-            baseClasses += " text-red-700";  // Injection needed
-          } else {
-            baseClasses += " text-green-700"; // No injection needed
-          }
-        } else {
-          baseClasses += " text-gray-900";
-        }
+    if (column === 'stress_value') {
+      baseClasses += " font-medium";
+      if (typeof value === 'number') {
+        if (value > 0) baseClasses += " text-red-700";
+        else baseClasses += " text-green-700";
       } else {
         baseClasses += " text-gray-900";
       }
-      return baseClasses;
-    };
-
-    return (
-      <div className="mt-4">
-        <div className="flex items-center gap-2 mb-3">
-          <h4 className="text-md font-semibold text-gray-800">
-            Groundwater MAR Need Assessment for {yearsCount} year{parseInt(yearsCount) !== 1 ? 's' : ''}
-          </h4>
-        </div>
-
-        <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                  S.No.
-                </th>
-                {STRESS_DISPLAY_FIELDS.map((header) => (
-                  <th
-                    key={header}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider"
-                  >
-                    {formatHeader(header)}
-                    {appliedSort?.key === header && (
-                      <span className="ml-1 text-blue-600">
-                        {appliedSort.direction === 'asc' ? '▲' : '▼'}
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {tableData.map((row, index) => (
-                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                    {index + 1}
-                  </td>
-                  {STRESS_DISPLAY_FIELDS.map((column) => (
-                    <td
-                      key={column}
-                      className={getCellClasses(row, column)}
-                    >
-                      {formatCellValue(row[column], column)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-         <div className="mt-3 text-sm text-gray-600">
-          <span>
-            Showing <strong>{tableData.length}</strong> village{tableData.length !== 1 ? "s" : ""}
-            {stressAppliedSearch || stressAppliedSort ? ` (filtered)` : ""}
-          </span>
-        </div>
-      </div>
-    );
+    } else {
+      baseClasses += " text-gray-900";
+    }
+    return baseClasses;
   };
 
   return (
     <div className="p-4 bg-red-50 border border-red-200 rounded-md">
       {loading && (
         <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
-          {/* ... Loading Spinner ... */}
           <div className="text-center bg-white rounded-xl shadow-2xl p-8">
             <div className="inline-block relative">
               <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -265,17 +191,19 @@ const StressIdentification: React.FC = () => {
           </div>
         </div>
       )}
+
       <h3 className="text-lg font-semibold text-red-800 mb-3">MAR Need Assessment</h3>
 
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-          {/* ... Error Display ... */}
+          <p className="font-medium">{error}</p>
         </div>
       )}
 
       {!canComputeStressIdentification() && (
         <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 text-yellow-700 rounded-md">
-          {/* ... Requirements Message ... */}
+          <p className="font-medium">Requirements Not Met</p>
+          <p className="text-sm mt-1">Please ensure GSR is computed before assessing injection needs.</p>
         </div>
       )}
 
@@ -298,8 +226,8 @@ const StressIdentification: React.FC = () => {
           />
         </div>
       </div>
-      
-      {/* --- Action Buttons (Compute, Search, Sort, Toggle) --- */}
+
+      {/* Action Buttons */}
       <div className="mb-4 flex flex-col sm:flex-row gap-4 items-start">
         <button
           onClick={handleComputeStress}
@@ -314,10 +242,9 @@ const StressIdentification: React.FC = () => {
           {loading ? "Computing..." : "Compute Injection Need"}
         </button>
 
-        {/* Search & Sort Controls */}
+        {/* Search & Toggle */}
         {stressData.length > 0 && (
           <div className="flex flex-col sm:flex-row gap-3 ml-auto">
-            {/* Search */}
             <div className="flex gap-2">
               <input
                 type="text"
@@ -338,106 +265,47 @@ const StressIdentification: React.FC = () => {
               </button>
             </div>
 
-            {/* Sort */}
-            <div className="relative">
-              <button
-                onClick={() => setStressShowSortDropdown(!stressShowSortDropdown)}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m2 5l5-5m0 0l-5-5m5 5H3" />
-                </svg>
-                Sort
-              </button>
-
-              {stressShowSortDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-4">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-                      <select
-                        value={stressSortField}
-                        onChange={(e) => setStressSortField(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="">Select Field</option>
-                        {STRESS_DISPLAY_FIELDS.map(field => (
-                          <option key={field} value={field}>{formatStressLabel(field)}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setStressSortDirection('asc')}
-                        className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${
-                          stressSortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        Ascending
-                      </button>
-                      <button
-                        onClick={() => setStressSortDirection('desc')}
-                        className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${
-                          stressSortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        Descending
-                      </button>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleStressApplySort}
-                        disabled={!stressSortField}
-                        className="flex-1 py-2 px-3 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Apply Sort
-                      </button>
-                      <button
-                        onClick={handleStressResetSort}
-                        className="flex-1 py-2 px-3 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Toggle Table */}
             <button
               onClick={() => setShowStressTable(!showStressTable)}
               className="p-2 rounded-full hover:bg-gray-200 transition-colors"
               title={showStressTable ? "Hide Table" : "Show Table"}
             >
               {showStressTable ? (
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
               ) : (
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18" /></svg>
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18" />
+                </svg>
               )}
             </button>
           </div>
         )}
       </div>
 
-      {/* Active Filters Indicator */}
-      {(stressAppliedSearch || stressAppliedSort) && (
+      {/* Active Filters */}
+      {(stressAppliedSearch || stressSortConfig) && (
         <div className="mb-3 flex flex-wrap gap-2 text-sm">
           {stressAppliedSearch && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
               Search: "{stressAppliedSearch}"
               <button onClick={() => { setStressAppliedSearch(""); setStressSearchInput(""); }} className="ml-1 hover:text-blue-900">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </span>
           )}
-          {stressAppliedSort && (
+          {stressSortConfig && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-              Sort: {formatStressLabel(stressAppliedSort.key)} ({stressAppliedSort.direction === 'asc' ? 'Ascending' : 'Descending'})
-              <button onClick={handleStressResetSort} className="ml-1 hover:text-green-900">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+              Sort: {formatStressLabel(stressSortConfig.key)} ({stressSortConfig.direction === 'asc' ? 'Ascending' : 'Descending'})
+              <button onClick={() => setStressSortConfig(null)} className="ml-1 hover:text-green-900">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </span>
           )}
@@ -446,7 +314,65 @@ const StressIdentification: React.FC = () => {
 
       {/* Stress Table */}
       {showStressTable && stressData.length > 0 && (
-        <StressTableDisplay tableData={processedStressData} appliedSort={stressAppliedSort} />
+        <div className="mt-4">
+          <h4 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Groundwater MAR Need Assessment for {yearsCount} year{parseInt(yearsCount) !== 1 ? 's' : ''}
+          </h4>
+
+          <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                    S.No.
+                  </th>
+                  {STRESS_DISPLAY_FIELDS.map((header) => (
+                    <th
+                      key={header}
+                      onClick={() => handleStressSort(header)}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                    >
+                      <div className="flex items-center">
+                        {formatStressLabel(header)}
+                        {getStressSortIcon(header)}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {processedStressData.map((row, index) => (
+                  <tr
+                    key={index}
+                    className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-red-50 transition-colors`}
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
+                      {index + 1}
+                    </td>
+                    {STRESS_DISPLAY_FIELDS.map((field) => (
+                      <td
+                        key={field}
+                        className={getStressCellClasses(row, field)}
+                      >
+                        {formatStressValue(field, row[field])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 text-sm text-gray-600">
+            <span>
+              Showing <strong>{processedStressData.length}</strong> village{processedStressData.length !== 1 ? "s" : ""}
+              {(stressAppliedSearch || stressSortConfig) ? ` (filtered)` : ""}
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -464,17 +390,12 @@ const GSRAnalysis: React.FC = () => {
     canComputeGSR,
   } = useGSR();
 
-  const { tableData: rechargeTableData } = useRecharge();
-  const { domesticTableData, agriculturalTableData } = useDemand();
-  const [showGsrTable, setShowGsrTable] = useState(true);        
+  const [showGsrTable, setShowGsrTable] = useState(true);
 
   // --- Search & Sort States ---
   const [gsrSearchInput, setGsrSearchInput] = useState("");
   const [gsrAppliedSearch, setGsrAppliedSearch] = useState("");
-  const [gsrSortField, setGsrSortField] = useState<string>("");
-  const [gsrSortDirection, setGsrSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [gsrShowSortDropdown, setGsrShowSortDropdown] = useState(false);
-  const [gsrAppliedSort, setGsrAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [gsrSortConfig, setGsrSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   // --- Field Definitions & Labels ---
   const GSR_DISPLAY_FIELDS: string[] = [
@@ -482,8 +403,8 @@ const GSRAnalysis: React.FC = () => {
     'recharge',
     'total_demand',
     'gsr',
-    'trend_status',    
-    'gsr_classification',         
+    'trend_status',
+    'gsr_classification',
   ];
 
   const GSR_LABEL_MAP: Record<string, string> = {
@@ -492,7 +413,7 @@ const GSRAnalysis: React.FC = () => {
     'total_demand': 'Total Demand (M³/Year)',
     'gsr': 'GSR Ratio',
     'trend_status': 'Trend Status',
-    'gsr_classification': 'GSR Classification',  
+    'gsr_classification': 'GSR Classification',
   };
 
   const formatGsrLabel = (key: string) => GSR_LABEL_MAP[key] || key.replace(/_/g, " ");
@@ -502,25 +423,28 @@ const GSRAnalysis: React.FC = () => {
     setGsrAppliedSearch(gsrSearchInput.trim());
   };
 
-  const handleGsrApplySort = () => {
-    if (gsrSortField) {
-      setGsrAppliedSort({ key: gsrSortField, direction: gsrSortDirection });
-      setGsrShowSortDropdown(false);
+  const handleGsrSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (gsrSortConfig && gsrSortConfig.key === key && gsrSortConfig.direction === 'asc') {
+      direction = 'desc';
     }
+    setGsrSortConfig({ key, direction });
   };
 
-  const handleGsrResetSort = () => {
-    setGsrSortField("");
-    setGsrSortDirection('asc');
-    setGsrAppliedSort(null);
-    setGsrShowSortDropdown(false);
+  const getGsrSortIcon = (field: string) => {
+    if (gsrSortConfig?.key !== field) return null;
+    return gsrSortConfig.direction === "asc" ? (
+      <span className="ml-1 text-blue-600">▲</span>
+    ) : (
+      <span className="ml-1 text-blue-600">▼</span>
+    );
   };
 
   // --- Memoized Data Processing ---
   const processedGsrData = useMemo(() => {
     let data = [...gsrTableData];
 
-    // Apply Search (by village_name)
+    // Apply Search
     if (gsrAppliedSearch) {
       data = data.filter(row =>
         String(row.village_name || "").toLowerCase().includes(gsrAppliedSearch.toLowerCase())
@@ -528,22 +452,22 @@ const GSRAnalysis: React.FC = () => {
     }
 
     // Apply Sort
-    if (gsrAppliedSort) {
+    if (gsrSortConfig) {
       data.sort((a, b) => {
-        const aValue = a[gsrAppliedSort.key];
-        const bValue = b[gsrAppliedSort.key];
+        const aValue = a[gsrSortConfig.key];
+        const bValue = b[gsrSortConfig.key];
 
-        if (aValue == null) return gsrAppliedSort.direction === 'asc' ? -1 : 1;
-        if (bValue == null) return gsrAppliedSort.direction === 'asc' ? 1 : -1;
+        if (aValue == null) return gsrSortConfig.direction === 'asc' ? -1 : 1;
+        if (bValue == null) return gsrSortConfig.direction === 'asc' ? 1 : -1;
 
         if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return gsrAppliedSort.direction === 'asc'
+          return gsrSortConfig.direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
 
         if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return gsrAppliedSort.direction === 'asc'
+          return gsrSortConfig.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
         }
@@ -552,53 +476,35 @@ const GSRAnalysis: React.FC = () => {
     }
 
     return data;
-  }, [gsrTableData, gsrAppliedSearch, gsrAppliedSort]);
+  }, [gsrTableData, gsrAppliedSearch, gsrSortConfig]);
 
+  // --- Formatting ---
+  const formatGsrValue = (value: any, column: string): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'number') {
+      if (['recharge', 'total_demand'].includes(column)) return value.toFixed(2);
+      if (column === 'gsr') return value.toFixed(4);
+    }
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    return String(value);
+  };
 
-  // GSR Table Display Component
-  const GSRTableDisplay = ({ tableData, title, appliedSort }: { 
-    tableData: any[]; 
-    title: string;
-    appliedSort: { key: string; direction: 'asc' | 'desc' } | null;
-  }) => {
-    if (tableData.length === 0) return null;
+  const getGsrCellClasses = (row: any, column: string): string => {
+    const value = row[column];
+    let baseClasses = "px-4 py-3 text-sm whitespace-nowrap";
 
-    const formatHeader = (header: string): string => GSR_LABEL_MAP[header] || header.replace(/_/g, ' ').toUpperCase();
-
-    const formatCellValue = (value: any, column: string): string => {
-      if (value === null || value === undefined) return '-';
-      if (typeof value === 'number') {
-        if (['recharge', 'total_demand'].includes(column)) {
-          return value.toFixed(2);
-        } else if (column === 'gsr') {
-          return value.toFixed(4);
-        } else {
-          return value.toString();
-        }
-      }
-      if (typeof value === 'boolean') {
-        return value ? 'Yes' : 'No';
-      }
-      return String(value);
-    };
-
-    const getCellClasses = (row: any, column: string): string => {
-      const value = row[column];
-      let baseClasses = "px-4 py-3 text-sm whitespace-nowrap";
-
-      if (column === 'trend_status') {
-        if (value === 'Increasing') baseClasses += " text-green-700 font-medium";
-        else if (value === 'Decreasing') baseClasses += " text-red-700 font-medium";
-        else if (value === 'No Trend') baseClasses += " text-gray-700 font-medium";
-        else if (value === 'No Trend Data') baseClasses += " text-yellow-600 font-medium";
-        else baseClasses += " text-gray-900";
-      }
-      else if (column === 'gsr_classification') {
-        baseClasses += " font-medium rounded px-2 py-1";
-        if (!value) {
-          baseClasses += " text-gray-500 bg-gray-100";
-          return baseClasses;
-        }
+    if (column === 'trend_status') {
+      if (value === 'Increasing') baseClasses += " text-green-700 font-medium";
+      else if (value === 'Decreasing') baseClasses += " text-red-700 font-medium";
+      else if (value === 'No Trend') baseClasses += " text-gray-700 font-medium";
+      else if (value === 'No Trend Data') baseClasses += " text-yellow-600 font-medium";
+      else baseClasses += " text-gray-900";
+    }
+    else if (column === 'gsr_classification') {
+      baseClasses += " font-medium rounded px-2 py-1";
+      if (!value) {
+        baseClasses += " text-gray-500 bg-gray-100";
+      } else {
         const backendColor = row.classification_color;
         if (backendColor) {
           baseClasses += " text-white";
@@ -613,87 +519,23 @@ const GSRAnalysis: React.FC = () => {
           else baseClasses += " text-gray-900 bg-gray-50";
         }
       }
-      else {
-        baseClasses += " text-gray-900";
-      }
-      return baseClasses;
-    };
+    } else {
+      baseClasses += " text-gray-900";
+    }
+    return baseClasses;
+  };
 
-    const getInlineStyle = (row: any, column: string): React.CSSProperties => {
-      if (column === 'gsr_classification') {
-        const backendColor = row.classification_color;
-        if (backendColor) {
-          return { backgroundColor: backendColor, color: 'white' };
-        }
-      }
-      return {};
-    };
-
-    return (
-      <div className="mt-4">
-        <div className="flex items-center gap-2 mb-3">
-          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <h4 className="text-md font-semibold text-gray-800">{title}</h4>
-        </div>
-
-        <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                  S.No.
-                </th>
-                {GSR_DISPLAY_FIELDS.map((header) => (
-                  <th
-                    key={header}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider"
-                  >
-                    {formatHeader(header)}
-                    {appliedSort?.key === header && (
-                      <span className="ml-1 text-blue-600">
-                        {appliedSort.direction === 'asc' ? '▲' : '▼'}
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {tableData.map((row, index) => (
-                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                    {index + 1}
-                  </td>
-                  {GSR_DISPLAY_FIELDS.map((column) => (
-                    <td
-                      key={column}
-                      className={getCellClasses(row, column)}
-                      style={getInlineStyle(row, column)} 
-                    >
-                      {formatCellValue(row[column], column)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-3 text-sm text-gray-600">
-          <span>
-            Showing <strong>{tableData.length}</strong> village{tableData.length !== 1 ? "s" : ""}
-            {gsrAppliedSearch || gsrAppliedSort ? ` (filtered)` : ""}
-          </span>
-        </div>
-      </div>
-    );
+  const getGsrInlineStyle = (row: any, column: string): React.CSSProperties => {
+    if (column === 'gsr_classification' && row.classification_color) {
+      return { backgroundColor: row.classification_color, color: 'white' };
+    }
+    return {};
   };
 
   return (
     <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-md">
       {gsrLoading && (
         <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
-          {/* ... Loading Spinner ... */}
           <div className="text-center bg-white rounded-xl shadow-2xl p-8">
             <div className="inline-block relative">
               <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -723,21 +565,23 @@ const GSRAnalysis: React.FC = () => {
           </div>
         </div>
       )}
+
       <h3 className="text-lg font-semibold text-indigo-800 mb-3">Groundwater Sustainability Ratio</h3>
 
       {gsrError && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-          {/* ... Error Display ... */}
+          <p className="font-medium">{gsrError}</p>
         </div>
       )}
 
       {!canComputeGSR() && (
         <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 text-yellow-700 rounded-md">
-          {/* ... Requirements Message ... */}
+          <p className="font-medium">Requirements Not Met</p>
+          <p className="text-sm mt-1">Please ensure recharge and demand are computed before GSR.</p>
         </div>
       )}
 
-      {/* --- Action Buttons (Compute, Search, Sort, Toggle) --- */}
+      {/* Action Buttons */}
       <div className="mb-4 flex flex-col sm:flex-row gap-4 items-start">
         <button
           onClick={computeGSR}
@@ -752,10 +596,9 @@ const GSRAnalysis: React.FC = () => {
           {gsrLoading ? "Computing GSR..." : "Compute GSR"}
         </button>
 
-        {/* Search & Sort Controls */}
+        {/* Search & Toggle */}
         {gsrTableData.length > 0 && (
           <div className="flex flex-col sm:flex-row gap-3 ml-auto">
-            {/* Search */}
             <div className="flex gap-2">
               <input
                 type="text"
@@ -769,109 +612,54 @@ const GSRAnalysis: React.FC = () => {
                 onClick={handleGsrApplySearch}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 Search
               </button>
             </div>
 
-            {/* Sort */}
-            <div className="relative">
-              <button
-                onClick={() => setGsrShowSortDropdown(!gsrShowSortDropdown)}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m2 5l5-5m0 0l-5-5m5 5H3" /></svg>
-                Sort
-              </button>
-
-              {gsrShowSortDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 p-4">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-                      <select
-                        value={gsrSortField}
-                        onChange={(e) => setGsrSortField(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="">Select Field</option>
-                        {GSR_DISPLAY_FIELDS.map(field => (
-                          <option key={field} value={field}>{formatGsrLabel(field)}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setGsrSortDirection('asc')}
-                        className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${
-                          gsrSortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        Ascending
-                      </button>
-                      <button
-                        onClick={() => setGsrSortDirection('desc')}
-                        className={`flex-1 py-1 px-3 rounded text-sm font-medium transition-colors ${
-                          gsrSortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        Descending
-                      </button>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleGsrApplySort}
-                        disabled={!gsrSortField}
-                        className="flex-1 py-2 px-3 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Apply Sort
-                      </button>
-                      <button
-                        onClick={handleGsrResetSort}
-                        className="flex-1 py-2 px-3 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Toggle Table */}
             <button
               onClick={() => setShowGsrTable(!showGsrTable)}
               className="p-2 rounded-full hover:bg-gray-200 transition-colors"
               title={showGsrTable ? "Hide Table" : "Show Table"}
             >
               {showGsrTable ? (
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
               ) : (
-                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18" /></svg>
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18" />
+                </svg>
               )}
             </button>
           </div>
         )}
       </div>
 
-      {/* Active Filters Indicator */}
-      {(gsrAppliedSearch || gsrAppliedSort) && (
+      {/* Active Filters */}
+      {(gsrAppliedSearch || gsrSortConfig) && (
         <div className="mb-3 flex flex-wrap gap-2 text-sm">
           {gsrAppliedSearch && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
               Search: "{gsrAppliedSearch}"
               <button onClick={() => { setGsrAppliedSearch(""); setGsrSearchInput(""); }} className="ml-1 hover:text-blue-900">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </span>
           )}
-          {gsrAppliedSort && (
+          {gsrSortConfig && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-              Sort: {formatGsrLabel(gsrAppliedSort.key)} ({gsrAppliedSort.direction === 'asc' ? 'Ascending' : 'Descending'})
-              <button onClick={handleGsrResetSort} className="ml-1 hover:text-green-900">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+              Sort: {formatGsrLabel(gsrSortConfig.key)} ({gsrSortConfig.direction === 'asc' ? 'Ascending' : 'Descending'})
+              <button onClick={() => setGsrSortConfig(null)} className="ml-1 hover:text-green-900">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </span>
           )}
@@ -880,7 +668,66 @@ const GSRAnalysis: React.FC = () => {
 
       {/* GSR Table */}
       {showGsrTable && gsrTableData.length > 0 && (
-        <GSRTableDisplay tableData={processedGsrData} title="GSR Analysis Results" appliedSort={gsrAppliedSort} />
+        <div className="mt-4">
+          <h4 className="text-md font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            GSR Analysis Results
+          </h4>
+
+          <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                    S.No.
+                  </th>
+                  {GSR_DISPLAY_FIELDS.map((header) => (
+                    <th
+                      key={header}
+                      onClick={() => handleGsrSort(header)}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                    >
+                      <div className="flex items-center">
+                        {formatGsrLabel(header)}
+                        {getGsrSortIcon(header)}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {processedGsrData.map((row, index) => (
+                  <tr
+                    key={index}
+                    className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-indigo-50 transition-colors`}
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
+                      {index + 1}
+                    </td>
+                    {GSR_DISPLAY_FIELDS.map((field) => (
+                      <td
+                        key={field}
+                        className={getGsrCellClasses(row, field)}
+                        style={getGsrInlineStyle(row, field)}
+                      >
+                        {formatGsrValue(row[field], field)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 text-sm text-gray-600">
+            <span>
+              Showing <strong>{processedGsrData.length}</strong> village{processedGsrData.length !== 1 ? "s" : ""}
+              {(gsrAppliedSearch || gsrSortConfig) ? ` (filtered)` : ""}
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -893,16 +740,9 @@ const GSR: React.FC<GSRProps> = ({ step }) => {
   return (
     <div className="h-full overflow-auto flex flex-col">
       <div className="space-y-6">
-        {/* Recharge Component */}
         <Recharge />
-        
-        {/* Demand Component */}
         <Demand />
-        
-        {/* GSR Analysis Component */}
         <GSRAnalysis />
-
-        {/* Stress Identification Component */}
         <StressIdentification />
       </div>
     </div>

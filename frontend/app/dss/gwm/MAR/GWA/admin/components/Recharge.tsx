@@ -146,6 +146,16 @@ const Recharge = () => {
     };
   }, [processedData]);
 
+  // Sorting Icon (like in Demand.tsx)
+  const getSortIcon = (field: string) => {
+    if (sortConfig?.key !== field) return null;
+    return sortConfig.direction === "asc" ? (
+      <span className="ml-1 text-blue-600">▲</span>
+    ) : (
+      <span className="ml-1 text-blue-600">▼</span>
+    );
+  };
+
   return (
     <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
       {isLoading && (
@@ -303,24 +313,9 @@ const Recharge = () => {
                       onClick={() => handleSort(header)}
                       className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors select-none"
                     >
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center">
                         {formatLabel(header)}
-                        {sortConfig?.key === header ? (
-                          sortConfig.direction === 'asc' ? (
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          )
-                        ) : (
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10M12 3v18" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 15l3-3 3 3M15 9l-3 3-3-3" />
-                          </svg>
-                        )}
+                        {getSortIcon(header)}
                       </div>
                     </th>
                   ))}
@@ -355,9 +350,6 @@ const Recharge = () => {
               Showing <strong>{processedData.length}</strong> village{processedData.length !== 1 ? "s" : ""}
               {appliedSearch || sortConfig ? ` (filtered)` : ""}
             </span>
-            {/* <span className="text-blue-600 font-medium">
-              Total Recharge: {summaryStats?.totalRecharge.toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
-            </span> */}
           </div>
         </div>
       )}
