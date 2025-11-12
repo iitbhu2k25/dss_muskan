@@ -279,7 +279,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       console.log('Computing domestic demand via forecast-population with payload:', requestPayload);
 
       // API call to compute domestic demand via forecast-population
-      const response = await fetch('/django/gwa/forecast-population', {
+      const response = await fetch('http://localhost:6500/gwa/forecast-population', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
