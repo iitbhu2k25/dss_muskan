@@ -142,7 +142,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
     setWellsLoading(true);
     setWellsError(null);
     try {
-      const response = await fetch('/django/gwa/wells', {
+      const response = await fetch('http://localhost:6500/gwa/wells', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
