@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 # main.py
 from setting.dbc import test_connection
-from api.routes import gwm
+from app.api.routes import gwm
  
   # ✅ correct import
 

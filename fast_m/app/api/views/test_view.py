@@ -1,6 +1,5 @@
 # app/api/views/test_view.py
-# api/views/test_view.py
-from api.script.test import add_numbers
+from app.api.script.test import add_numbers
 
 
 class TestView:
