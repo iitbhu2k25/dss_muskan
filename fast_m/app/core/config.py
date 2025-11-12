@@ -1,4 +1,6 @@
 from pydantic_settings import BaseSettings
+from typing import ClassVar
+import os
 
 class Settings(BaseSettings):
     POSTGRES_USER: str
@@ -6,6 +8,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     DB_HOST: str
     DB_PORT: str
+
+    BASE_DIR: ClassVar[str] = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
     class Config:
         env_file = ".fastmdb.env"

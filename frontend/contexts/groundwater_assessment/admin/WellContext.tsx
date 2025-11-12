@@ -506,7 +506,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
       formData.append('csv_file', blob, filename);
       
       // Send to the correct endpoint that expects file upload
-      const response = await fetch("/django/gwa/upload-csv", {
+      const response = await fetch("http://localhost:6500/gwa/upload-csv", {
         method: "POST",
         body: formData,
       });

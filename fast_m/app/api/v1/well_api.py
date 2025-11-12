@@ -9,9 +9,7 @@ router = APIRouter()
 
 @router.post("/wells", response_model=List[WellSchema])
 async def get_wells(request: Request, db: Session = Depends(get_db)):
-    """
-    Equivalent to Django WellsAPI — supports both list and dict payloads.
-    """
+    
     data = await request.json()
 
     # Accept both raw list and object payloads for backward compatibility
