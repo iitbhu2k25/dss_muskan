@@ -29,7 +29,7 @@ db_data/
 # Build files
 /build/
 /dist/
-
+/fast_m/media
 # Environment and config files
 .env
 *.env.local

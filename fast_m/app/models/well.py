@@ -1,12 +1,16 @@
+# app/models/well.py
 from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 class Well(Base):
-    __tablename__ = "well"
+    __tablename__ = "gwa_well"
 
     id = Column(Integer, primary_key=True, index=True)
-    village_code = Column(Integer, ForeignKey("village.village_code", ondelete="CASCADE"), nullable=False)
+    village_code = Column(Integer, ForeignKey("gwa_village.village_code", ondelete="CASCADE"), nullable=False)
+
+   
+    
 
     FID_clip = Column(Integer, unique=True)
     OBJECTID = Column(Integer)
