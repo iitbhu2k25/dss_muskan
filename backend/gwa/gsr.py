@@ -533,7 +533,7 @@ def calculate_gsr_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         'sustainability_percentage': round((sustainable_count / total_villages) * 100, 2) if total_villages > 0 else 0,
         'villages_with_trend_data': villages_with_trend_data,
         'trend_distribution': trend_counts,
-        'classification_distribution': classification_counts  # ✅ NEW: Classification breakdown
+        'classification_distribution': classification_counts  
     }
 
 
@@ -598,7 +598,7 @@ class GSRComputeAPIView(APIView):
                     "error": "No villages could be matched across the provided datasets"
                 }, status=404)
             
-            # ✅ NEW: Sort by classification priority
+            
             classification_priority = {
                 "Over Exploited": 1,      # Most critical
                 "Critical": 2,

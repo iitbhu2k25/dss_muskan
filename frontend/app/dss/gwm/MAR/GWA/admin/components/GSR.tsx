@@ -39,10 +39,10 @@ const StressIdentification: React.FC = () => {
 
   const STRESS_LABEL_MAP: Record<string, string> = {
     'village_name': 'Village Name',
-    'recharge': 'Recharge (M³/Year)',
-    'total_demand': 'Total Demand (M³/Year)',
+    'recharge': 'Recharge (Million Litres/Year)',
+    'total_demand': 'Total Demand (Million Litres/Year)',
     'injection': 'Recoverable Potential',
-    'stress_value': 'Injection Need (M³/Year)'
+    'stress_value': 'Injection Need (Million Litres/Year)'
   };
 
   const formatStressLabel = (key: string) => STRESS_LABEL_MAP[key] || key.replace(/_/g, " ");
@@ -409,15 +409,15 @@ const GSRAnalysis: React.FC = () => {
 
   const GSR_LABEL_MAP: Record<string, string> = {
     'village_name': 'Village Name',
-    'recharge': 'Recharge (M³/Year)',
-    'total_demand': 'Total Demand (M³/Year)',
+    'recharge': 'Recharge (Million Litres/Year)',
+    'total_demand': 'Total Demand (Million Litres/Year)',
     'gsr': 'GSR Ratio',
     'trend_status': 'Trend Status',
     'gsr_classification': 'GSR Classification',
   };
 
   const formatGsrLabel = (key: string) => GSR_LABEL_MAP[key] || key.replace(/_/g, " ");
-
+  
   // --- Handlers ---
   const handleGsrApplySearch = () => {
     setGsrAppliedSearch(gsrSearchInput.trim());
