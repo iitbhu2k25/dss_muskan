@@ -336,7 +336,7 @@ export const GroundwaterTrendProvider = ({
 
       console.log("Sending trend analysis request:", payload);
 
-      const response = await fetch("http://localhost:6500/gwa/trends", {
+      const response = await fetch("/django/gwa/trends", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
