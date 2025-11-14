@@ -6,10 +6,16 @@ from app.api.v1.well_api import router as well_router
 from app.api.v1.upload_temp import router as upload_router
 from app.api.v1.trend_api import router as trend_router
 from app.api.v1.recharge_api import router as recharge_router
+from app.api.v1.population_api import router as population_router
+from app.api.v1.agri_demand_api import router as agri_demand_router
+from app.api.v1.crops import router as crops_router
 
 router = APIRouter()
 
 # Include all versioned routes under /gwa
+router.include_router(crops_router, prefix="/gwa", tags=["Crops"])
+router.include_router(agri_demand_router, prefix="/gwa", tags=["Agricultural Demand"])
+router.include_router(population_router, prefix="/gwa", tags=["Population Forecast"])
 router.include_router(well_router, prefix="/gwa", tags=["Wells"])
 router.include_router(upload_router, prefix="/gwa", tags=["Upload CSV"])
 router.include_router(trend_router, prefix="/gwa", tags=["Trends"])

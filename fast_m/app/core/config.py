@@ -9,12 +9,17 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: str
 
+    # BASE_DIR = fast_m/
     BASE_DIR: ClassVar[str] = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
 
+    
+    MEDIA_ROOT: ClassVar[str] = os.path.join(BASE_DIR, "media")
+
     class Config:
         env_file = ".fastmdb.env"
+
 
 settings = Settings()
 

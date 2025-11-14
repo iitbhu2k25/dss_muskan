@@ -30,6 +30,7 @@ db_data/
 /build/
 /dist/
 /fast_m/media
+/fast_m/alembic/versions/*.pyc
 # Environment and config files
 .env
 *.env.local
