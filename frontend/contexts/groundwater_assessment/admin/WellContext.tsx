@@ -142,7 +142,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
     setWellsLoading(true);
     setWellsError(null);
     try {
-      const response = await fetch('/django/gwa/wells', {
+      const response = await fetch('http://localhost:6500/gwa/wells', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -434,7 +434,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
       const formData = new FormData();
       formData.append('csv_file', file);
       
-      const validateResponse = await fetch("/django/gwa/validate-csv", {
+      const validateResponse = await fetch("http://localhost:6500/gwa/validate-csv", {
         method: "POST",
         body: formData,
       });
@@ -506,7 +506,7 @@ export const WellProvider: React.FC<WellProviderProps> = ({
       formData.append('csv_file', blob, filename);
       
       // Send to the correct endpoint that expects file upload
-      const response = await fetch("/django/gwa/upload-csv", {
+      const response = await fetch("http://localhost:6500/gwa/upload-csv", {
         method: "POST",
         body: formData,
       });

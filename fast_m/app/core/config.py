@@ -1,3 +1,4 @@
+# fast_m/app/core/config.py
 from pydantic_settings import BaseSettings
 from typing import ClassVar
 import os

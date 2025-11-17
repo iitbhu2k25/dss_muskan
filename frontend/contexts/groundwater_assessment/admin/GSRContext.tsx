@@ -177,7 +177,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       formData.append('timestamp', new Date().toISOString());
 
       //  Send FormData via fetch (no headers for Content-Type)
-      const response = await fetch('/django/gwa/gsr', {
+      const response = await fetch('http://localhost:6500/gwa/gsr', {
         method: 'POST',
         body: formData,
       });
@@ -273,7 +273,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         timestamp: new Date().toISOString()
       };
 
-      const response = await fetch('/django/gwa/stress', {
+      const response = await fetch('http://localhost:6500/gwa/stress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload),

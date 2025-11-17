@@ -47,7 +47,7 @@ export const RechargeProvider: React.FC<RechargeProviderProps> = ({ children }) 
         selectedSubDistricts,
       };
 
-      const response = await fetch('/django/gwa/recharge2', {
+      const response = await fetch('http://localhost:6500/gwa/recharge2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload),
