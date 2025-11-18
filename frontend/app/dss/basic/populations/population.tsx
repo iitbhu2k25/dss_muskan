@@ -982,9 +982,9 @@ const Population: React.FC<PopulationProps> = ({
 
     // All existing JSX remains unchanged - just the component logic is enhanced
     return (
-        <div className="w-full min-h-50 bg-gray-50">
+        
             <div className="w-full max-w-none p-4 lg:p-6 xl:p-8">
-                <div className="bg-white rounded-lg shadow-md p-4 lg:p-6">
+                <div className="bg-white rounded-md border-1 shadow-md p-4 lg:p-6">
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Population Estimation and Forecasting</h1>
 
                     <div className="mb-4">
@@ -1313,7 +1313,7 @@ const Population: React.FC<PopulationProps> = ({
                     </div>
                 )}
             </div>
-        </div>
+        
     )
 
 }

@@ -1,5 +1,5 @@
 # app/api/v1/recharge_api.py
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,21 +8,13 @@ from app.services.recharge_service import RechargeService
 router = APIRouter()
 
 
-class RechargeRequest(BaseModel):
-    csvFilename: str = Field(..., description="CSV in media/temp/")
-    selectedVillages: Optional[List[str]] = Field(None)
-    selectedSubDistricts: Optional[List[int]] = Field(None)
 
-    @field_validator("selectedVillages", "selectedSubDistricts", mode="before")
-    def check_at_least_one(cls, v, info):
-        values = info.data
-        if info.field_name == "selectedVillages":
-            if v is None and values.get("selectedSubDistricts") is None:
-                raise ValueError("Either selectedVillages or selectedSubDistricts must be provided")
-        elif info.field_name == "selectedSubDistricts":
-            if v is None and values.get("selectedVillages") is None:
-                raise ValueError("Either selectedVillages or selectedSubDistricts must be provided")
-        return v
+
+class RechargeRequest(BaseModel):
+    csvFilename: str
+    selectedVillages: Optional[List[Union[str, int]]] = None
+    selectedSubDistricts: Optional[List[int]] = None
+
 
 
 # ==============================
@@ -32,9 +24,13 @@ class RechargeRequest(BaseModel):
 async def groundwater_recharge_analysis(payload: RechargeRequest):
     service = RechargeService(media_root="media")
     try:
+        selected_villages = None
+        if payload.selectedVillages:
+            selected_villages = [str(v) for v in payload.selectedVillages]
+
         result = service.analyze(
             csv_filename=payload.csvFilename,
-            selected_villages=payload.selectedVillages,
+            selected_villages=selected_villages,
             selected_subdistricts=payload.selectedSubDistricts
         )
         return result
