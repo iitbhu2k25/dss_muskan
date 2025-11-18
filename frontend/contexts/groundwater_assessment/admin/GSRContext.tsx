@@ -6,6 +6,7 @@ import { useDemand } from './DemandContext';
 import { useRecharge } from './RechargeContext';
 import { GroundwaterTrendContext } from './TrendContext';
 import { useMap } from '@/contexts/groundwater_assessment/admin/MapContext';
+import pako from 'pako';
 
 interface GSRData {
   [key: string]: string | number;
@@ -164,22 +165,38 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       // Trend CSV from trend context
       const trendCsvFilename = trendData?.summary_stats?.file_info?.trend_csv_filename || null;
 
-      //  Create FormData instead of JSON
-      const formData = new FormData();
-      formData.append('selectedSubDistricts', JSON.stringify(selectedSubDistricts));
-      formData.append('rechargeData', JSON.stringify(rechargeTableData));
-      formData.append('domesticData', JSON.stringify(domesticTableData));
-      formData.append('agriculturalData', JSON.stringify(agriculturalTableData));
-      formData.append('hasDomesticDemand', JSON.stringify(domesticChecked && domesticTableData.length > 0));
-      formData.append('hasAgriculturalDemand', JSON.stringify(agriculturalChecked && agriculturalTableData.length > 0));
-      formData.append('hasRechargeData', JSON.stringify(rechargeTableData.length > 0));
-      formData.append('trendCsvFilename', trendCsvFilename || '');
-      formData.append('timestamp', new Date().toISOString());
+      // Create payload object
+      const payload = {
+        selectedSubDistricts: selectedSubDistricts,
+        rechargeData: rechargeTableData,
+        domesticData: domesticTableData,
+        agriculturalData: agriculturalTableData,
+        hasDomesticDemand: domesticChecked && domesticTableData.length > 0,
+        hasAgriculturalDemand: agriculturalChecked && agriculturalTableData.length > 0,
+        hasRechargeData: rechargeTableData.length > 0,
+        trendCsvFilename: trendCsvFilename || '',
+        timestamp: new Date().toISOString()
+      };
 
-      //  Send FormData via fetch (no headers for Content-Type)
+      // Convert payload to JSON string and compress
+      const jsonString = JSON.stringify(payload);
+      const compressed = pako.gzip(jsonString);
+      
+      // Convert to base64 without spreading (avoids stack overflow)
+      let binary = '';
+      const len = compressed.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(compressed[i]);
+      }
+      const base64Compressed = btoa(binary);
+
+      // Send compressed data
       const response = await fetch('http://localhost:6500/gwa/gsr', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ zipped_data: base64Compressed }),
       });
 
       if (!response.ok) {
@@ -189,7 +206,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
 
       const result = await response.json();
 
-      //  Same handling as before
+      // Same handling as before
       if (result.success && result.data && Array.isArray(result.data)) {
         setGSRTableData(result.data);
       } else if (result.gsr_data && Array.isArray(result.gsr_data)) {
@@ -221,18 +238,18 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       // Map images
       if (result.map_image_filename) {
         setMapImageFilename(result.map_image_filename);
-        console.log(' GSR map image generated:', result.map_image_filename);
+        console.log('📸 GSR map image generated:', result.map_image_filename);
       } else {
         setMapImageFilename(null);
-        console.log(' No map image generated');
+        console.log('⚠️ No map image generated');
       }
 
       if (result.map_image_base64) {
         setMapImageBase64(result.map_image_base64);
-        console.log(' GSR map image base64 received');
+        console.log('📸 GSR map image base64 received');
       } else {
         setMapImageBase64(null);
-        console.log(' No map image base64 received');
+        console.log('⚠️ No map image base64 received');
       }
 
     } catch (err) {

@@ -1,10 +1,11 @@
-# app/api/v1/gsr.py
 from fastapi import APIRouter, HTTPException, Request, Form
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Union
 import json
 import base64
 import os
+import gzip
+import io
 
 from app.services.gsr_service import (
     match_village_data,
@@ -28,7 +29,18 @@ async def compute_gsr(request: Request):
         content_type = request.headers.get("content-type", "")
         
         if "application/json" in content_type:
-            data = await request.json()
+            body = await request.json()
+            
+            # Check if data is zipped
+            if "zipped_data" in body:
+                # Decode base64 and decompress gzip
+                compressed_bytes = base64.b64decode(body["zipped_data"])
+                with gzip.GzipFile(fileobj=io.BytesIO(compressed_bytes)) as gz:
+                    json_data = gz.read().decode('utf-8')
+                    data = json.loads(json_data)
+            else:
+                data = body
+                
         elif "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
             form_data = await request.form()
             data = dict(form_data)
@@ -180,7 +192,7 @@ async def compute_gsr(request: Request):
         response_data = {
             "success": True,
             "message": f"GSR analysis completed successfully for {len(matched_results)} villages",
-            "data": matched_results,  # Original JSON GSR results
+            "data": matched_results,
             "summary": summary,
             "metadata": metadata,
             "villages_count": len(matched_results),
