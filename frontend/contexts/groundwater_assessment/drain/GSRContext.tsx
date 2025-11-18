@@ -210,7 +210,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       console.log('Computing GSR with payload:', requestPayload);
 
       // API call to compute GSR
-      const response = await fetch('/django/gwa/gsr', {
+      const response = await fetch('http://localhost:6500/gwa/gsr', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -317,7 +317,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       console.log('Computing Stress Identification with payload:', requestPayload);
 
       // API call to compute stress identification
-      const response = await fetch('/django/gwa/stress', {
+      const response = await fetch('http://localhost:6500/gwa/stress', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -17,9 +17,9 @@ from typing import List, Optional, Dict, Any, Tuple
 import multiprocessing
 
 
-# ----------------------------------------------------------------------
+# ------------------------------------------
 # Helper: Ultra-fast parallel zonal stats
-# ----------------------------------------------------------------------
+# ------------------------------------------
 def fast_zonal_stats(
     geometries: List,
     raster_path: str,
@@ -52,9 +52,9 @@ def fast_zonal_stats(
     return results
 
 
-# ----------------------------------------------------------------------
+# --------------------------------------
 # Helper: Optimized IDW interpolation
-# ----------------------------------------------------------------------
+# --------------------------------------
 def interpolate_for_villages(
     points_gdf: gpd.GeoDataFrame,
     filtered_gdf: gpd.GeoDataFrame,
