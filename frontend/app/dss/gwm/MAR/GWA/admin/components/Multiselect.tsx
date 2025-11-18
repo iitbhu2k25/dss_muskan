@@ -36,7 +36,8 @@ export const MultiSelect = <
 
   // refs
   const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);   // <-- list container only
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const allItemIds = items.map((i) => Number(i.id));
@@ -50,6 +51,15 @@ export const MultiSelect = <
       displayPattern(item).toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item as any).name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Get IDs of selectable filtered items (not disabled)
+  const selectableFilteredIds = filteredItems
+    .filter(item => !(itemDisabled && itemDisabled(item)))
+    .map(item => Number(item.id));
+
+  // Check if all selectable filtered items are selected
+  const allFilteredSelected = selectableFilteredIds.length > 0 && 
+    selectableFilteredIds.every(id => selectedItems.includes(id));
 
   // ---------- POSITION ----------
   const calculateDropdownPosition = () => {
@@ -67,7 +77,7 @@ export const MultiSelect = <
   // ---------- CLICK OUTSIDE ----------
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -92,7 +102,20 @@ export const MultiSelect = <
 
   // ---------- SELECT ALL ----------
   const handleSelectAll = () => {
-    onSelectionChange(allSelected ? [] : [...allItemIds]);
+    if (searchQuery) {
+      // When searching, toggle only the filtered selectable items
+      if (allFilteredSelected) {
+        // Deselect all filtered items
+        onSelectionChange(selectedItems.filter(id => !selectableFilteredIds.includes(id)));
+      } else {
+        // Select all filtered items (add them to existing selection)
+        const newSelection = [...new Set([...selectedItems, ...selectableFilteredIds])];
+        onSelectionChange(newSelection);
+      }
+    } else {
+      // When not searching, toggle all items
+      onSelectionChange(allSelected ? [] : [...allItemIds]);
+    }
   };
 
   // ---------- ITEM SELECT ----------
@@ -131,7 +154,7 @@ export const MultiSelect = <
   }, [filteredItems, selectedItems]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* LABEL */}
       <label className="block text-sm font-semibold text-gray-700 mb-2">{label}:</label>
 
@@ -198,12 +221,18 @@ export const MultiSelect = <
             {/* SELECT ALL */}
             <div
               className={`p-2 hover:bg-blue-100 cursor-pointer border-b border-gray-200 font-medium ${
-                allSelected ? 'bg-blue-50' : ''
+                (searchQuery ? allFilteredSelected : allSelected) ? 'bg-blue-50' : ''
               }`}
               onClick={handleSelectAll}
             >
-              <input type="checkbox" checked={allSelected} onChange={handleSelectAll} className="mr-2" />
-              All {label}s
+              <input 
+                type="checkbox" 
+                checked={searchQuery ? allFilteredSelected : allSelected} 
+                onChange={handleSelectAll} 
+                className="mr-2"
+                onClick={(e) => e.stopPropagation()}
+              />
+              {searchQuery ? `All Filtered ${label}s` : `All ${label}s`}
             </div>
 
             {/* NO RESULTS */}
@@ -216,7 +245,7 @@ export const MultiSelect = <
             {/* ITEMS */}
             {filteredItems.map((item) => {
               const id = Number(item.id);
-              const disabled = itemDisabled ? itemDisabled(item) : false;
+              const isDisabled = itemDisabled ? itemDisabled(item) : false;
               const extra = itemClassName ? itemClassName(item) : '';
 
               return (
@@ -226,16 +255,17 @@ export const MultiSelect = <
                     p-2 cursor-pointer
                     ${selectedItems.includes(id) ? 'bg-blue-50' : 'hover:bg-blue-100'}
                     ${extra}
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
                   `.trim()}
-                  onClick={() => !disabled && handleItemSelect(id)}
+                  onClick={() => !isDisabled && handleItemSelect(id)}
                 >
                   <input
                     type="checkbox"
                     checked={selectedItems.includes(id)}
-                    onChange={() => !disabled && handleItemSelect(id)}
+                    onChange={() => !isDisabled && handleItemSelect(id)}
                     className="mr-2"
-                    disabled={disabled}
+                    disabled={isDisabled}
+                    onClick={(e) => e.stopPropagation()}
                   />
                   {displayPattern(item)}
                 </div>
