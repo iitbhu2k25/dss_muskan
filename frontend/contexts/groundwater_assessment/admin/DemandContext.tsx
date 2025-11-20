@@ -12,6 +12,32 @@ interface CropData {
   [season: string]: string[]; 
 }
 
+// Define a structure for industrial sub-types to manage user input and constant values
+export interface IndustrialSubtype {
+  industry: string;
+  subtype: string;
+  unit: 'MW' | 'm³/tonne of product'; // Added a clearer unit based on the table
+  consumptionValue: number;
+  production: number; // User input for Annual Industrial Production (MW or MT)
+}
+
+// Initial industrial data based on the provided image
+const initialIndustrialData: IndustrialSubtype[] = [
+  // Thermal Power Plants
+  { industry: 'Thermal Power Plants', subtype: 'Small (<1000 MW)', unit: 'm³/tonne of product', consumptionValue: 3.1, production: 0 },
+  { industry: 'Thermal Power Plants', subtype: 'Medium (1000–2500 MW)', unit: 'm³/tonne of product', consumptionValue: 4.2, production: 0 },
+  { industry: 'Thermal Power Plants', subtype: 'Large (>2500 MW)', unit: 'm³/tonne of product', consumptionValue: 3.1, production: 0 },
+  // Pulp & Paper
+  { industry: 'Pulp & Paper', subtype: 'Integrated Mills', unit: 'm³/tonne of product', consumptionValue: 31.8, production: 0 },
+  { industry: 'Pulp & Paper', subtype: 'RCF-based Mills', unit: 'm³/tonne of product', consumptionValue: 11.5, production: 0 },
+  // Textiles
+  { industry: 'Textiles', subtype: 'Integrated (Cotton)', unit: 'm³/tonne of product', consumptionValue: 224, production: 0 },
+  { industry: 'Textiles', subtype: 'Fabric Processing', unit: 'm³/tonne of product', consumptionValue: 75, production: 0 },
+  // Iron & Steel
+  { industry: 'Iron & Steel', subtype: 'Integrated (Woollen)', unit: 'm³/tonne of product', consumptionValue: 237, production: 0 },
+  { industry: 'Iron & Steel', subtype: 'General', unit: 'm³/tonne of product', consumptionValue: 6.5, production: 0 },
+];
+
 // interface for chart data
 interface ChartData {
   individual_crops: {
@@ -53,8 +79,12 @@ interface DemandContextType {
   cropsLoading: { [season: string]: boolean };
   cropsError: { [season: string]: string | null };
   
-  // Groundwater Factor
+  // Groundwater Factor (Agricultural)
   groundwaterFactor: number;
+  
+  // Industrial State
+  industrialData: IndustrialSubtype[];
+  industrialGWShare: number; // Share of Groundwater in industrial use (default 0.5)
   
   // Charts State 
   chartData: ChartData | null;
@@ -79,6 +109,11 @@ interface DemandContextType {
   setIndustrialChecked: (checked: boolean) => void;
   setPerCapitaConsumption: (value: number) => void;
   setGroundwaterFactor: (value: number) => void;
+  
+  // Industrial Actions
+  setIndustrialData: (data: IndustrialSubtype[]) => void;
+  setIndustrialGWShare: (value: number) => void;
+  updateIndustrialProduction: (industry: string, subtype: string, production: number) => void;
   
   // Season Actions
   setKharifChecked: (checked: boolean) => void;
@@ -124,8 +159,12 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   const [cropsLoading, setCropsLoading] = useState<{ [season: string]: boolean }>({});
   const [cropsError, setCropsError] = useState<{ [season: string]: string | null }>({});
   
-  // Groundwater Factor
+  // Groundwater Factor (Agricultural)
   const [groundwaterFactor, setGroundwaterFactor] = useState<number>(0.8);
+  
+  // Industrial State
+  const [industrialData, setIndustrialData] = useState<IndustrialSubtype[]>(initialIndustrialData);
+  const [industrialGWShare, setIndustrialGWShare] = useState<number>(0.5); // Default 50%
   
   // Charts State - supports structured chart data
   const [chartData, setChartData] = useState<ChartData | null>(null);
@@ -147,6 +186,17 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   // Context dependencies
   const { selectedSubDistricts } = useLocation();
   const { csvFilename } = useWell();
+  
+  // Action to update production for a specific sub-type
+  const updateIndustrialProduction = (industry: string, subtype: string, production: number) => {
+    setIndustrialData(prevData =>
+      prevData.map(item =>
+        item.industry === industry && item.subtype === subtype
+          ? { ...item, production: isNaN(production) || production < 0 ? 0 : production }
+          : item
+      )
+    );
+  };
 
   // Clear chart data helper
   const clearChartData = () => {
@@ -247,6 +297,8 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   };
 
   const canComputeIndustrialDemand = (): boolean => {
+    // Industrial computation is possible if checked and a location is selected, 
+    // even if production inputs are 0 (they will be validated inside the function)
     return !!(industrialChecked && selectedSubDistricts.length > 0);
   };
 
@@ -408,9 +460,33 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
         throw new Error('Sub-district selection is required. Please select areas first.');
       }
 
-      // Prepare request payload
+      // 1. Calculate Total Annual Water Demand (I_Total)
+      const totalAnnualDemand = industrialData.reduce((sum, item) => {
+        // I_Total = Annual Industrial Production * Default Water Consumption Value
+        const demand = item.production * item.consumptionValue;
+        return sum + demand;
+      }, 0);
+      
+      // 2. Calculate Groundwater Industrial Demand
+      const groundwaterIndustrialDemand = totalAnnualDemand * industrialGWShare;
+      
+      // Validation for total demand
+      if (totalAnnualDemand === 0) {
+        throw new Error('Total Annual Industrial Production is zero. Please enter production values.');
+      }
+
+      // Prepare request payload - SEND THE CALCULATED GROUNDWATER DEMAND
       const requestPayload = {
-        selectedSubDistricts: selectedSubDistricts,
+        subdistrict_code: selectedSubDistricts,
+        // SEND THE FINAL CALCULATED GROUNDWATER DEMAND (in m³ or other standard unit)
+        groundwater_industrial_demand: groundwaterIndustrialDemand, 
+        // OPTIONAL: Send the raw inputs if needed by backend for logging/verification
+        industrial_inputs: industrialData.map(item => ({
+          industry: item.industry,
+          subtype: item.subtype,
+          production: item.production,
+          consumptionValue: item.consumptionValue
+        }))
       };
 
       console.log('Computing industrial demand with payload:', requestPayload);
@@ -435,6 +511,14 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       // Set the table data from API response
       if (result.data && Array.isArray(result.data)) {
         setIndustrialTableData(result.data);
+      } else if (result.result) {
+        // If the backend just returns a single result (e.g., total demand or allocation)
+        setIndustrialTableData([{
+          Total_Demand_Input: totalAnnualDemand.toFixed(2),
+          GW_Factor: `${(industrialGWShare * 100).toFixed(0)}%`,
+          Total_GW_Demand_Sent: groundwaterIndustrialDemand.toFixed(2),
+          Backend_Result: result.result // Assuming backend returns a field 'result'
+        }]);
       } else {
         throw new Error('Invalid response format from server');
       }
@@ -464,8 +548,12 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     cropsLoading,
     cropsError,
     
-    // Groundwater Factor
+    // Groundwater Factor (Agricultural)
     groundwaterFactor,
+    
+    // Industrial State
+    industrialData,
+    industrialGWShare,
     
     // Charts State
     chartData,
@@ -490,6 +578,11 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     setIndustrialChecked,
     setPerCapitaConsumption,
     setGroundwaterFactor,
+    
+    // Industrial Actions
+    setIndustrialData,
+    setIndustrialGWShare,
+    updateIndustrialProduction,
     
     // Season Actions
     setKharifChecked: handleKharifChecked,

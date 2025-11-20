@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from 'react';
-import { useDemand } from '@/contexts/groundwater_assessment/admin/DemandContext';
+import { useDemand, IndustrialSubtype } from '@/contexts/groundwater_assessment/admin/DemandContext';
 import { useLocation } from '@/contexts/groundwater_assessment/admin/LocationContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
@@ -73,6 +73,8 @@ const Demand = () => {
     cropsLoading,
     cropsError,
     groundwaterFactor,
+    industrialData,
+    industrialGWShare,
     chartData,
     chartsError,
     domesticTableData,
@@ -89,6 +91,8 @@ const Demand = () => {
     setIndustrialChecked,
     setPerCapitaConsumption,
     setGroundwaterFactor,
+    setIndustrialGWShare,
+    updateIndustrialProduction,
     clearChartData,
     setKharifChecked,
     setRabiChecked,
@@ -550,7 +554,7 @@ const Demand = () => {
             <tr>
               {Object.keys(tableData[0] || {}).map((header) => (
                 <th key={header} className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                  {header}
+                  {header.replace(/_/g, ' ')} {/* Simple header formatting */}
                 </th>
               ))}
             </tr>
@@ -573,6 +577,211 @@ const Demand = () => {
       </div>
     </div>
   );
+  
+  // --- NEW: Industrial Demand Input Table Component ---
+const IndustrialDemandInputTable = () => {
+  // Group data by main industry type
+  const groupedData = industrialData.reduce((acc, item) => {
+    if (!acc[item.industry]) {
+      acc[item.industry] = [];
+    }
+    acc[item.industry].push(item);
+    return acc;
+  }, {} as Record<string, IndustrialSubtype[]>);
+
+  // Calculate totals
+  const totalAnnualDemand = industrialData.reduce((sum, item) => {
+    return sum + (item.production * item.consumptionValue);
+  }, 0);
+
+  const totalGWIndustrialDemand = totalAnnualDemand * industrialGWShare;
+
+  // Helper: Get correct unit label (MW or MT)
+  const getInputLabel = (item: IndustrialSubtype): string => {
+    return item.industry === "Thermal Power Plants" ? "MW" : "MT";
+  };
+
+  // Helper: Format default consumption value
+  const formatConsumptionValue = (item: IndustrialSubtype): string => {
+    const unit = item.industry === "Thermal Power Plants" ? "MW" : "MT";
+    return `${item.consumptionValue} m³/${unit}`;
+  };
+
+  return (
+    <div className="mt-6 p-6 bg-white border border-gray-300 rounded-xl shadow-sm">
+      <h5 className="text-lg font-bold text-gray-800 mb-6">
+        Industrial Water Demand Input
+      </h5>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Industry
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Sub-Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Default Water Use
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Annual Production
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Calculated Demand (m³/year)
+              </th>
+            </tr>
+          </thead>
+
+          <tbody className="bg-white divide-y divide-gray-100">
+            {Object.entries(groupedData).map(([industry, subtypes]) =>
+              subtypes.map((item, subIndex) => (
+                <tr
+                  key={`${item.industry}-${item.subtype}`}
+                  className={subIndex === 0 ? "border-t-4 border-purple-400" : ""}
+                >
+                  {/* Industry Name */}
+                  {subIndex === 0 && (
+                    <td
+                      rowSpan={subtypes.length}
+                      className="px-6 py-4 text-sm font-bold text-purple-800 bg-purple-50 whitespace-nowrap align-top"
+                    >
+                      {industry}
+                    </td>
+                  )}
+
+                  {/* Sub-Type */}
+                  <td className="px-6 py-4 text-sm text-gray-800">
+                    {item.subtype}
+                  </td>
+
+                  {/* Default Consumption */}
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {formatConsumptionValue(item)}
+                  </td>
+
+                  {/* Production Input */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={item.production === 0 ? "" : item.production}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+
+                          if (raw.trim() === "") {
+                            updateIndustrialProduction(
+                              item.industry,
+                              item.subtype,
+                              0
+                            );
+                            return;
+                          }
+
+                          const num = parseFloat(raw);
+
+                          if (!isNaN(num)) {
+                            updateIndustrialProduction(
+                              item.industry,
+                              item.subtype,
+                              num
+                            );
+                          }
+                        }}
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-right"
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-gray-500 font-medium">
+                        {getInputLabel(item)}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Calculated Demand */}
+                  <td className="px-6 py-4 text-sm font-semibold text-blue-700 text-right">
+                    {(item.production * item.consumptionValue).toLocaleString(
+                      undefined,
+                      {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      }
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Summary Section */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Total Industrial Demand */}
+        <div className="p-5 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm font-medium text-blue-800">
+            Total Industrial Water Demand
+          </p>
+          <p className="text-2xl font-bold text-blue-900 mt-1">
+            {totalAnnualDemand.toLocaleString(undefined, {
+              maximumFractionDigits: 0,
+            })}{" "}
+            m³/year
+          </p>
+        </div>
+
+        {/* Groundwater Share */}
+        <div className="p-5 bg-green-50 border border-green-200 rounded-lg space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Share of Groundwater in Industrial Use (%)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={(industrialGWShare * 100).toString()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw.trim() === "") {
+                    setIndustrialGWShare(0);
+                    return;
+                  }
+
+                  const num = parseFloat(raw);
+                  if (!isNaN(num)) {
+                    setIndustrialGWShare(Math.max(0, Math.min(100, num)) / 100);
+                  }
+                }}
+                className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-green-500"
+                placeholder="0"
+              />
+              <span className="text-lg font-semibold text-gray-700">%</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Default: 50%</p>
+          </div>
+
+          <div className="pt-3 border-t border-green-200">
+            <p className="text-sm font-medium text-green-800">
+              Groundwater Industrial Demand
+            </p>
+            <p className="text-2xl font-bold text-green-900 mt-1">
+              {totalGWIndustrialDemand.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}{" "}
+              m³/year
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 text-center text-sm text-gray-600">
+        This groundwater demand will be used in the final assessment.
+      </div>
+    </div>
+  );
+};
+
 
   return (
     <div className="p-4 bg-green-50 border border-green-200 rounded-md">
@@ -1222,23 +1431,29 @@ const Demand = () => {
               </div>
             </div>
           )}
-          <button
-            onClick={computeIndustrialDemand}
-            disabled={industrialLoading || !canComputeIndustrialDemand()}
-            className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
-          >
-            {industrialLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Computing Industrial Demand...</span>
-              </>
-            ) : (
-              <span>Compute Industrial Demand</span>
-            )}
-          </button>
+          
+          {/* NEW: Industrial Input Table Component Integration */}
+          <IndustrialDemandInputTable />
+
+          <div className="mt-4">
+            <button
+              onClick={computeIndustrialDemand}
+              disabled={industrialLoading || !canComputeIndustrialDemand()}
+              className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
+            >
+              {industrialLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Computing Industrial Demand...</span>
+                </>
+              ) : (
+                <span>Compute Industrial Demand</span>
+              )}
+            </button>
+          </div>
           {industrialTableData.length > 0 && (
             <TableDisplay tableData={industrialTableData} title="Industrial Demand Results" />
           )}
