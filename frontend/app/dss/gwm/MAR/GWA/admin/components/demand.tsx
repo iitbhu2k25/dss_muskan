@@ -304,9 +304,8 @@ const Demand = () => {
                   {DOMESTIC_DISPLAY_FIELDS.map((field) => (
                     <td
                       key={field}
-                      className={`px-4 py-3 text-sm whitespace-nowrap ${
-                        field === 'demand_mld' ? 'text-blue-900 font-semibold' : 'text-gray-900'
-                      }`}
+                      className={`px-4 py-3 text-sm whitespace-nowrap ${field === 'demand_mld' ? 'text-blue-900 font-semibold' : 'text-gray-900'
+                        }`}
                     >
                       {row[field] !== null && row[field] !== undefined ? String(row[field]) : 'N/A'}
                     </td>
@@ -577,8 +576,8 @@ const Demand = () => {
       </div>
     </div>
   );
-  
-const IndustrialDemandInputTable = () => {
+
+  const IndustrialDemandInputTable = () => {
   // Local state for input values to avoid re-render issues
   const [localInputs, setLocalInputs] = useState<Record<string, string>>({});
 
@@ -603,7 +602,7 @@ const IndustrialDemandInputTable = () => {
   const totalAnnualDemand = industrialData.reduce((sum, item) => {
     return sum + (item.production * item.consumptionValue);
   }, 0);
-  
+
   const totalGWIndustrialDemand = totalAnnualDemand * industrialGWShare;
 
   const getInputLabel = (item: IndustrialSubtype): string => {
@@ -618,21 +617,27 @@ const IndustrialDemandInputTable = () => {
   // Handle input change with local state
   const handleInputChange = (industry: string, subtype: string, value: string) => {
     const key = `${industry}-${subtype}`;
-    
-    // Update local state immediately for responsive UI
-    setLocalInputs(prev => ({
-      ...prev,
-      [key]: value
-    }));
+
+    // Allow empty string, numbers, and decimal points
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setLocalInputs(prev => ({
+        ...prev,
+        [key]: value
+      }));
+    }
   };
 
   // Handle blur to update context (prevents repeated re-renders)
   const handleInputBlur = (industry: string, subtype: string) => {
     const key = `${industry}-${subtype}`;
     const value = localInputs[key];
-    
+
     if (value === undefined || value.trim() === "") {
       updateIndustrialProduction(industry, subtype, 0);
+      setLocalInputs(prev => ({
+        ...prev,
+        [key]: ""
+      }));
       return;
     }
 
@@ -651,11 +656,30 @@ const IndustrialDemandInputTable = () => {
     }
   };
 
+  // Handle Enter key press to move to next input
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, industry: string, subtype: string) => {
+    if (e.key === 'Enter') {
+      handleInputBlur(industry, subtype);
+      // Optional: Move focus to next input
+      const form = e.currentTarget.form;
+      if (form) {
+        const inputs = Array.from(form.querySelectorAll('input'));
+        const currentIndex = inputs.indexOf(e.currentTarget);
+        if (currentIndex < inputs.length - 1) {
+          (inputs[currentIndex + 1] as HTMLInputElement).focus();
+        }
+      }
+    }
+  };
+
   // Handle GW Share input with local state
   const [localGWShare, setLocalGWShare] = useState<string>((industrialGWShare * 100).toString());
 
   const handleGWShareChange = (value: string) => {
-    setLocalGWShare(value);
+    // Allow empty string, numbers, and decimal points
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setLocalGWShare(value);
+    }
   };
 
   const handleGWShareBlur = () => {
@@ -669,9 +693,16 @@ const IndustrialDemandInputTable = () => {
     if (!isNaN(num)) {
       const clamped = Math.max(0, Math.min(100, num));
       setIndustrialGWShare(clamped / 100);
-      setLocalGWShare(clamped.toString());
+      setLocalGWShare(clamped.toFixed(2));
     } else {
-      setLocalGWShare((industrialGWShare * 100).toString());
+      setLocalGWShare((industrialGWShare * 100).toFixed(2));
+    }
+  };
+
+  const handleGWShareKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleGWShareBlur();
+      e.currentTarget.blur();
     }
   };
 
@@ -681,132 +712,140 @@ const IndustrialDemandInputTable = () => {
         Industrial Water Demand Input
       </h5>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Industry
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Sub-Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Default Water Use
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Annual Production
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Calculated Demand (m³/year)
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {Object.entries(groupedData).map(([industry, subtypes]) =>
-              subtypes.map((item, subIndex) => {
-                const key = `${item.industry}-${item.subtype}`;
-                return (
-                  <tr
-                    key={key}
-                    className={subIndex === 0 ? "border-t-4 border-purple-400" : ""}
-                  >
-                    {subIndex === 0 && (
-                      <td
-                        rowSpan={subtypes.length}
-                        className="px-6 py-4 text-sm font-bold text-purple-800 bg-purple-50 whitespace-nowrap align-top"
-                      >
-                        {industry}
+      <form onSubmit={(e) => e.preventDefault()}>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Industry
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Sub-Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Default Water Use
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Annual Production
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Calculated Demand (m³/year)
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {Object.entries(groupedData).map(([industry, subtypes]) =>
+                subtypes.map((item, subIndex) => {
+                  const key = `${item.industry}-${item.subtype}`;
+                  return (
+                    <tr
+                      key={key}
+                      className={subIndex === 0 ? "border-t-4 border-purple-400" : ""}
+                    >
+                      {subIndex === 0 && (
+                        <td
+                          rowSpan={subtypes.length}
+                          className="px-6 py-4 text-sm font-bold text-purple-800 bg-purple-50 whitespace-nowrap align-top"
+                        >
+                          {industry}
+                        </td>
+                      )}
+
+                      <td className="px-6 py-4 text-sm text-gray-800">
+                        {item.subtype}
                       </td>
-                    )}
 
-                    <td className="px-6 py-4 text-sm text-gray-800">
-                      {item.subtype}
-                    </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {formatConsumptionValue(item)}
+                      </td>
 
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {formatConsumptionValue(item)}
-                    </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={localInputs[key] || ""}
+                            onChange={(e) => handleInputChange(item.industry, item.subtype, e.target.value)}
+                            onBlur={() => handleInputBlur(item.industry, item.subtype)}
+                            onKeyPress={(e) => handleKeyPress(e, item.industry, item.subtype)}
+                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                            placeholder="0"
+                            autoComplete="off"
+                          />
+                          <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
+                            {getInputLabel(item)}
+                          </span>
+                        </div>
+                      </td>
 
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={localInputs[key] || ""}
-                          onChange={(e) => handleInputChange(item.industry, item.subtype, e.target.value)}
-                          onBlur={() => handleInputBlur(item.industry, item.subtype)}
-                          className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-right"
-                          placeholder="0"
-                        />
-                        <span className="text-sm text-gray-500 font-medium">
-                          {getInputLabel(item)}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-semibold text-blue-700 text-right">
-                      {(item.production * item.consumptionValue).toLocaleString(undefined, {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-5 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm font-medium text-blue-800">
-            Total Industrial Water Demand
-          </p>
-          <p className="text-2xl font-bold text-blue-900 mt-1">
-            {totalAnnualDemand.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}{" "}
-            m³/year
-          </p>
+                      <td className="px-6 py-4 text-sm font-semibold text-blue-700 text">
+                        {(item.production * item.consumptionValue).toLocaleString(undefined, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <div className="p-5 bg-green-50 border border-green-200 rounded-lg space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Share of Groundwater in Industrial Use (%)
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                value={localGWShare}
-                onChange={(e) => handleGWShareChange(e.target.value)}
-                onBlur={handleGWShareBlur}
-                className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-green-500"
-                placeholder="0"
-              />
-              <span className="text-lg font-semibold text-gray-700">%</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Default: 50%</p>
-          </div>
-
-          <div className="pt-3 border-t border-green-200">
-            <p className="text-sm font-medium text-green-800">
-              Groundwater Industrial Demand
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-5 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm font-medium text-blue-800">
+              Total Industrial Water Demand
             </p>
-            <p className="text-2xl font-bold text-green-900 mt-1">
-              {totalGWIndustrialDemand.toLocaleString(undefined, {
+            <p className="text-2xl font-bold text-blue-900 mt-1">
+              {totalAnnualDemand.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}{" "}
               m³/year
             </p>
           </div>
-        </div>
-      </div>
 
-      <div className="mt-6 text-center text-sm text-gray-600">
-        This groundwater demand will be used in the final assessment.
-      </div>
+          <div className="p-5 bg-green-50 border border-green-200 rounded-lg space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Share of Groundwater in Industrial Use (%)
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={localGWShare}
+                  onChange={(e) => handleGWShareChange(e.target.value)}
+                  onBlur={handleGWShareBlur}
+                  onKeyPress={handleGWShareKeyPress}
+                  className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm text font-medium focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="0"
+                  autoComplete="off"
+                />
+                <span className="text-lg font-semibold text-gray-700">%</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Default: 50% (Range: 0-100)</p>
+            </div>
+
+            <div className="pt-3 border-t border-green-200">
+              <p className="text-sm font-medium text-green-800">
+                Groundwater Industrial Demand
+              </p>
+              <p className="text-2xl font-bold text-green-900 mt-1">
+                {totalGWIndustrialDemand.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}{" "}
+                m³/year
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-sm text-gray-600">
+          This groundwater demand will be used in the final assessment.
+        </div>
+      </form>
     </div>
   );
 };
@@ -1461,7 +1500,7 @@ const IndustrialDemandInputTable = () => {
               </div>
             </div>
           )}
-          
+
           {/* NEW: Industrial Input Table Component Integration */}
           <IndustrialDemandInputTable />
 

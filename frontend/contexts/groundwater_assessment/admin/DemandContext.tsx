@@ -9,7 +9,7 @@ interface TableData {
 }
 
 interface CropData {
-  [season: string]: string[]; 
+  [season: string]: string[];
 }
 
 export interface IndustrialSubtype {
@@ -139,7 +139,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
 
   const { selectedSubDistricts } = useLocation();
   const { csvFilename } = useWell();
-  
+
   // Update production for a specific sub-type
   const updateIndustrialProduction = (industry: string, subtype: string, production: number) => {
     setIndustrialData(prevData =>
@@ -201,7 +201,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
           ...prev,
           [season]: result.data.crops
         }));
-        
+
         if (!selectedCrops[season]) {
           setSelectedCrops(prev => ({
             ...prev,
@@ -224,10 +224,10 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     setSelectedCrops(prev => {
       const currentSeasonCrops = prev[season] || [];
       const isSelected = currentSeasonCrops.includes(crop);
-      
+
       return {
         ...prev,
-        [season]: isSelected 
+        [season]: isSelected
           ? currentSeasonCrops.filter(c => c !== crop)
           : [...currentSeasonCrops, crop]
       };
@@ -327,7 +327,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
           rabi: rabiChecked,
           zaid: zaidChecked
         },
-        include_charts: true  
+        include_charts: true
       };
 
       console.log('Computing agricultural demand with payload:', requestPayload);
@@ -373,7 +373,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       console.log('Error computing agricultural demand:', errorMessage);
       setAgriculturalError(errorMessage);
       setAgriculturalTableData([]);
-      clearChartData(); 
+      clearChartData();
     } finally {
       setAgriculturalLoading(false);
     }
@@ -400,10 +400,10 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       const totalAnnualDemand = industrialData.reduce((sum, item) => {
         return sum + (item.production * item.consumptionValue);
       }, 0);
-      
+
       // Calculate Groundwater Industrial Demand
       const groundwaterIndustrialDemand = totalAnnualDemand * industrialGWShare;
-      
+
       if (totalAnnualDemand === 0) {
         throw new Error('Total Annual Industrial Production is zero. Please enter production values.');
       }
