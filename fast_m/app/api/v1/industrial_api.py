@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.industrial_service import IndustrialForecastService
 
-router = APIRouter(prefix="/industrial", tags=["Industrial Forecast"])
+router = APIRouter()
 
 
 class IndustrialRequest(BaseModel):
@@ -17,7 +17,7 @@ class IndustrialRequest(BaseModel):
     subdistrict_codes: Optional[List[int]] = None
 
 
-@router.post("/forecast")
+@router.post("/industrial")
 def industrial_forecast(
     payload: IndustrialRequest,
     db: Session = Depends(get_db)

@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDemand, IndustrialSubtype } from '@/contexts/groundwater_assessment/admin/DemandContext';
 import { useLocation } from '@/contexts/groundwater_assessment/admin/LocationContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -578,9 +578,20 @@ const Demand = () => {
     </div>
   );
   
-  // --- NEW: Industrial Demand Input Table Component ---
 const IndustrialDemandInputTable = () => {
-  // Group data by main industry type
+  // Local state for input values to avoid re-render issues
+  const [localInputs, setLocalInputs] = useState<Record<string, string>>({});
+
+  // Initialize local inputs from context data
+  useEffect(() => {
+    const initialInputs: Record<string, string> = {};
+    industrialData.forEach(item => {
+      const key = `${item.industry}-${item.subtype}`;
+      initialInputs[key] = item.production === 0 ? "" : item.production.toString();
+    });
+    setLocalInputs(initialInputs);
+  }, [industrialData]);
+
   const groupedData = industrialData.reduce((acc, item) => {
     if (!acc[item.industry]) {
       acc[item.industry] = [];
@@ -589,22 +600,79 @@ const IndustrialDemandInputTable = () => {
     return acc;
   }, {} as Record<string, IndustrialSubtype[]>);
 
-  // Calculate totals
   const totalAnnualDemand = industrialData.reduce((sum, item) => {
     return sum + (item.production * item.consumptionValue);
   }, 0);
-
+  
   const totalGWIndustrialDemand = totalAnnualDemand * industrialGWShare;
 
-  // Helper: Get correct unit label (MW or MT)
   const getInputLabel = (item: IndustrialSubtype): string => {
     return item.industry === "Thermal Power Plants" ? "MW" : "MT";
   };
 
-  // Helper: Format default consumption value
   const formatConsumptionValue = (item: IndustrialSubtype): string => {
     const unit = item.industry === "Thermal Power Plants" ? "MW" : "MT";
     return `${item.consumptionValue} m³/${unit}`;
+  };
+
+  // Handle input change with local state
+  const handleInputChange = (industry: string, subtype: string, value: string) => {
+    const key = `${industry}-${subtype}`;
+    
+    // Update local state immediately for responsive UI
+    setLocalInputs(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  // Handle blur to update context (prevents repeated re-renders)
+  const handleInputBlur = (industry: string, subtype: string) => {
+    const key = `${industry}-${subtype}`;
+    const value = localInputs[key];
+    
+    if (value === undefined || value.trim() === "") {
+      updateIndustrialProduction(industry, subtype, 0);
+      return;
+    }
+
+    const num = parseFloat(value);
+    if (!isNaN(num) && num >= 0) {
+      updateIndustrialProduction(industry, subtype, num);
+    } else {
+      // Reset to previous valid value
+      const currentItem = industrialData.find(
+        item => item.industry === industry && item.subtype === subtype
+      );
+      setLocalInputs(prev => ({
+        ...prev,
+        [key]: currentItem?.production === 0 ? "" : (currentItem?.production.toString() || "")
+      }));
+    }
+  };
+
+  // Handle GW Share input with local state
+  const [localGWShare, setLocalGWShare] = useState<string>((industrialGWShare * 100).toString());
+
+  const handleGWShareChange = (value: string) => {
+    setLocalGWShare(value);
+  };
+
+  const handleGWShareBlur = () => {
+    if (localGWShare.trim() === "") {
+      setIndustrialGWShare(0);
+      setLocalGWShare("0");
+      return;
+    }
+
+    const num = parseFloat(localGWShare);
+    if (!isNaN(num)) {
+      const clamped = Math.max(0, Math.min(100, num));
+      setIndustrialGWShare(clamped / 100);
+      setLocalGWShare(clamped.toString());
+    } else {
+      setLocalGWShare((industrialGWShare * 100).toString());
+    }
   };
 
   return (
@@ -634,91 +702,63 @@ const IndustrialDemandInputTable = () => {
               </th>
             </tr>
           </thead>
-
           <tbody className="bg-white divide-y divide-gray-100">
             {Object.entries(groupedData).map(([industry, subtypes]) =>
-              subtypes.map((item, subIndex) => (
-                <tr
-                  key={`${item.industry}-${item.subtype}`}
-                  className={subIndex === 0 ? "border-t-4 border-purple-400" : ""}
-                >
-                  {/* Industry Name */}
-                  {subIndex === 0 && (
-                    <td
-                      rowSpan={subtypes.length}
-                      className="px-6 py-4 text-sm font-bold text-purple-800 bg-purple-50 whitespace-nowrap align-top"
-                    >
-                      {industry}
+              subtypes.map((item, subIndex) => {
+                const key = `${item.industry}-${item.subtype}`;
+                return (
+                  <tr
+                    key={key}
+                    className={subIndex === 0 ? "border-t-4 border-purple-400" : ""}
+                  >
+                    {subIndex === 0 && (
+                      <td
+                        rowSpan={subtypes.length}
+                        className="px-6 py-4 text-sm font-bold text-purple-800 bg-purple-50 whitespace-nowrap align-top"
+                      >
+                        {industry}
+                      </td>
+                    )}
+
+                    <td className="px-6 py-4 text-sm text-gray-800">
+                      {item.subtype}
                     </td>
-                  )}
 
-                  {/* Sub-Type */}
-                  <td className="px-6 py-4 text-sm text-gray-800">
-                    {item.subtype}
-                  </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {formatConsumptionValue(item)}
+                    </td>
 
-                  {/* Default Consumption */}
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {formatConsumptionValue(item)}
-                  </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={localInputs[key] || ""}
+                          onChange={(e) => handleInputChange(item.industry, item.subtype, e.target.value)}
+                          onBlur={() => handleInputBlur(item.industry, item.subtype)}
+                          className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-right"
+                          placeholder="0"
+                        />
+                        <span className="text-sm text-gray-500 font-medium">
+                          {getInputLabel(item)}
+                        </span>
+                      </div>
+                    </td>
 
-                  {/* Production Input */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={item.production === 0 ? "" : item.production}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-
-                          if (raw.trim() === "") {
-                            updateIndustrialProduction(
-                              item.industry,
-                              item.subtype,
-                              0
-                            );
-                            return;
-                          }
-
-                          const num = parseFloat(raw);
-
-                          if (!isNaN(num)) {
-                            updateIndustrialProduction(
-                              item.industry,
-                              item.subtype,
-                              num
-                            );
-                          }
-                        }}
-                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-right"
-                        placeholder="0"
-                      />
-                      <span className="text-sm text-gray-500 font-medium">
-                        {getInputLabel(item)}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Calculated Demand */}
-                  <td className="px-6 py-4 text-sm font-semibold text-blue-700 text-right">
-                    {(item.production * item.consumptionValue).toLocaleString(
-                      undefined,
-                      {
+                    <td className="px-6 py-4 text-sm font-semibold text-blue-700 text-right">
+                      {(item.production * item.consumptionValue).toLocaleString(undefined, {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 2,
-                      }
-                    )}
-                  </td>
-                </tr>
-              ))
+                      })}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Summary Section */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Total Industrial Demand */}
         <div className="p-5 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm font-medium text-blue-800">
             Total Industrial Water Demand
@@ -731,7 +771,6 @@ const IndustrialDemandInputTable = () => {
           </p>
         </div>
 
-        {/* Groundwater Share */}
         <div className="p-5 bg-green-50 border border-green-200 rounded-lg space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -740,19 +779,9 @@ const IndustrialDemandInputTable = () => {
             <div className="flex items-center gap-3">
               <input
                 type="text"
-                value={(industrialGWShare * 100).toString()}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw.trim() === "") {
-                    setIndustrialGWShare(0);
-                    return;
-                  }
-
-                  const num = parseFloat(raw);
-                  if (!isNaN(num)) {
-                    setIndustrialGWShare(Math.max(0, Math.min(100, num)) / 100);
-                  }
-                }}
+                value={localGWShare}
+                onChange={(e) => handleGWShareChange(e.target.value)}
+                onBlur={handleGWShareBlur}
                 className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-green-500"
                 placeholder="0"
               />
@@ -781,6 +810,7 @@ const IndustrialDemandInputTable = () => {
     </div>
   );
 };
+
 
 
   return (
