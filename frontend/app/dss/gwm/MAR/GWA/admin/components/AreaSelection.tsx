@@ -39,7 +39,7 @@ const AreaSelection: React.FC<AreaSelectionProps> = ({ onAreaConfirmed }) => {
   }, [states]);
 
   // Allowed district IDs
-  const allowedDistrictIds = [187, 179, 174, 152, 120];
+  const allowedDistrictIds = [179,152, 120, 174, 187];
 
   // Check if a state is selectable (only id 9)
   const isStateSelectable = (stateId: string | number): boolean => {

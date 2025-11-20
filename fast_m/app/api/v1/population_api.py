@@ -13,7 +13,7 @@ router = APIRouter()
 class PopulationRequest(BaseModel):
     csv_filename: str = Field(..., description="CSV file in media/temp/")
 
-    villages: Optional[List[str]] = Field(None, alias="village_code")
+    villages: Optional[List[int]] = Field(None, alias="village_code")
     subdistricts: Optional[List[int]] = Field(None, alias="subdistrict_code")
 
     lpcd: Optional[float] = Field(60)
