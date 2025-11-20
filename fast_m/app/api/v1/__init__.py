@@ -10,6 +10,7 @@ __all__ = [
     "stress",
     "forecast",
     "interpolation",
-    "gsr"  
-    # "IndustrialService"
+    "gsr",
+    "industrial_api"
+
 ]
