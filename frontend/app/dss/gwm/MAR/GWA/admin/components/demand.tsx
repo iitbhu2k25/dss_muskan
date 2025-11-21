@@ -730,7 +730,7 @@ const Demand = () => {
                   Annual Production
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Calculated Demand (m³/year)
+                  Calculated Demand (m3)
                 </th>
               </tr>
             </thead>
@@ -802,7 +802,7 @@ const Demand = () => {
               {totalAnnualDemand.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}{" "}
-              m³/year
+              m³
             </p>
           </div>
 
@@ -836,7 +836,7 @@ const Demand = () => {
                 {totalGWIndustrialDemand.toLocaleString(undefined, {
                   maximumFractionDigits: 0,
                 })}{" "}
-                m³/year
+                m³
               </p>
             </div>
           </div>
