@@ -32,28 +32,20 @@ const WaterLevelMap = () => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'raw'>('overview');
-  
-  // Modal state
-  const [showHydrographModal, setShowHydrographModal] = useState(false);
-  const [hydrographData, setHydrographData] = useState<any[]>([]);
-  const [isLoadingHydrograph, setIsLoadingHydrograph] = useState(false);
+  const [activeTab, setActiveTab] = useState<'current' | 'trend' | 'data'>('current');
 
-  // Set map target once ref is ready
   useEffect(() => {
     if (map && mapElement.current && !map.getTarget()) {
       map.setTarget(mapElement.current);
     }
   }, [map]);
 
-  // Set popup overlay element once ref is ready
   useEffect(() => {
     if (popupOverlay && popupRef.current) {
       popupOverlay.setElement(popupRef.current);
     }
   }, [popupOverlay]);
 
-  // Track fullscreen state
   useEffect(() => {
     const onFsChange = () => setIsFullScreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFsChange);
@@ -68,7 +60,6 @@ const WaterLevelMap = () => {
     };
   }, []);
 
-  // Fullscreen toggle
   const toggleFullscreen = async () => {
     const el = wrapRef.current;
     if (!el) return;
@@ -100,55 +91,6 @@ const WaterLevelMap = () => {
     }
   };
 
-  // Fetch hydrograph data from API
-  const fetchHydrographData = async (stationCode: string) => {
-    setIsLoadingHydrograph(true);
-    try {
-      // Replace with your actual API endpoint
-      const response = await fetch(`/django/extract/water-level${stationCode}`);
-      const data = await response.json();
-      
-      // Transform data for recharts format
-      const formattedData = data.map((item: any) => ({
-        time: new Date(item.dateTime).getTime(),
-        timeFormatted: new Date(item.dateTime).toLocaleString(),
-        waterLevel: item.waterLevel,
-      }));
-      
-      setHydrographData(formattedData);
-    } catch (error) {
-      console.error("Error fetching hydrograph data:", error);
-      // Fallback to mock data for demonstration
-      setHydrographData(generateMockData());
-    } finally {
-      setIsLoadingHydrograph(false);
-    }
-  };
-
-  // Mock data generator (remove when API is ready)
-  const generateMockData = () => {
-    const data = [];
-    const now = Date.now();
-    for (let i = 30; i >= 0; i--) {
-      const time = now - i * 24 * 60 * 60 * 1000;
-      data.push({
-        time,
-        timeFormatted: new Date(time).toLocaleDateString(),
-        waterLevel: Math.random() * 10 + 2,
-      });
-    }
-    return data;
-  };
-
-  // Handle hydrograph button click
-  const handleHydrographClick = () => {
-    if (popupData?.stationCode) {
-      setShowHydrographModal(true);
-      fetchHydrographData(popupData.stationCode);
-    }
-  };
-
-  // Custom tooltip for the chart
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -163,50 +105,29 @@ const WaterLevelMap = () => {
     return null;
   };
 
-  // Helper to render metadata fields
-  const renderMetadataField = (label: string, value: any) => {
-    if (value === null || value === undefined || value === "") return null;
-    
-    if (typeof value === 'object' && !Array.isArray(value)) {
-      return (
-        <div key={label} className="mb-2">
-          <p className="font-semibold text-xs text-gray-700 mb-1">{label}:</p>
-          <div className="ml-3 space-y-1">
-            {Object.entries(value).map(([k, v]) => renderMetadataField(k, v))}
-          </div>
-        </div>
-      );
-    }
-    
-    if (Array.isArray(value)) {
-      return (
-        <div key={label} className="mb-2">
-          <p className="font-semibold text-xs text-gray-700 mb-1">{label}:</p>
-          <div className="ml-3">
-            {value.map((item, idx) => (
-              <div key={idx} className="text-xs text-gray-800">{JSON.stringify(item)}</div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <p key={label} className="flex justify-between text-xs mb-1">
-        <span className="text-gray-600 font-medium">{label}:</span>
-        <span className="text-gray-800 ml-2 text-right flex-1">{String(value)}</span>
-      </p>
-    );
-  };
+  // Prepare chart data from allData
+  const chartData = popupData?.allData.map((item) => {
+    const dateTime = new Date(item.actualTime);
+    return {
+      time: dateTime.getTime(),
+      timeFormatted: dateTime.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      waterLevel: parseFloat(item.value.toString()),
+      dateTime: item.actualTime
+    };
+  }).sort((a, b) => a.time - b.time) || [];
 
   return (
     <div ref={wrapRef} className={`${isFullScreen ? "fixed inset-0 z-50" : "h-screen w-full"} bg-gray-100 p-15`}>
       <div className="h-full w-full relative flex flex-col">
-        {/* Map container */}
         <div className="flex-1 w-full relative rounded-lg overflow-hidden shadow-2xl border-4 border-gray-300">
           <div ref={mapElement} className="w-full h-full" style={{ minHeight: "400px" }} />
 
-          {/* Popup - Always rendered but positioned by OpenLayers */}
           <div
             ref={popupRef}
             className="ol-popup"
@@ -219,9 +140,9 @@ const WaterLevelMap = () => {
               border: "2px solid #e5e7eb",
               bottom: "12px",
               left: "-200px",
-              minWidth: "400px",
-              maxWidth: "500px",
-              maxHeight: "600px",
+              minWidth: "450px",
+              maxWidth: "550px",
+              maxHeight: "650px",
               overflowY: "auto",
               display: isPopupVisible ? "block" : "none",
             }}
@@ -247,185 +168,308 @@ const WaterLevelMap = () => {
                     {popupData.stationName}
                   </h3>
 
-                  {/* Hydrograph Button */}
-                  <button
-                    onClick={handleHydrographClick}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    View Hydrograph
-                  </button>
-
-                  {/* Tab Navigation */}
                   <div className="flex gap-2 border-b border-gray-200">
                     <button
-                      onClick={() => setActiveTab('overview')}
-                      className={`px-3 py-2 text-sm font-medium transition-colors ${
-                        activeTab === 'overview'
+                      onClick={() => setActiveTab('current')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
+                        activeTab === 'current'
                           ? 'border-b-2 border-blue-500 text-blue-600'
                           : 'text-gray-600 hover:text-gray-800'
                       }`}
                     >
-                      Overview
+                      Current Status
                     </button>
                     <button
-                      onClick={() => setActiveTab('details')}
-                      className={`px-3 py-2 text-sm font-medium transition-colors ${
-                        activeTab === 'details'
+                      onClick={() => setActiveTab('trend')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
+                        activeTab === 'trend'
                           ? 'border-b-2 border-blue-500 text-blue-600'
                           : 'text-gray-600 hover:text-gray-800'
                       }`}
                     >
-                      Full Details
+                      Trend Graph
                     </button>
                     <button
-                      onClick={() => setActiveTab('raw')}
-                      className={`px-3 py-2 text-sm font-medium transition-colors ${
-                        activeTab === 'raw'
+                      onClick={() => setActiveTab('data')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
+                        activeTab === 'data'
                           ? 'border-b-2 border-blue-500 text-blue-600'
                           : 'text-gray-600 hover:text-gray-800'
                       }`}
                     >
-                      Raw Data
+                      Data Table
                     </button>
                   </div>
 
-                  {/* Overview Tab */}
-                  {activeTab === 'overview' && (
-                    <div className="space-y-2 text-sm">
-                      <p className="flex justify-between">
-                        <span className="font-semibold text-gray-600">Station Code:</span>
-                        <span className="text-gray-800">{popupData.stationCode}</span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="font-semibold text-gray-600">Water Level:</span>
-                        <span className={`font-bold ${popupData.waterLevel !== null ? "text-blue-600" : "text-gray-400"}`}>
-                          {popupData.waterLevel !== null ? `${popupData.waterLevel} m` : "No data"}
-                        </span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="font-semibold text-gray-600">Date/Time:</span>
-                        <span className="text-gray-800 text-xs">{popupData.dateTime}</span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="font-semibold text-gray-600">Flood Status:</span>
-                        <span
-                          className={`font-semibold ${
-                            popupData.floodStatus === "Normal" ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {popupData.floodStatus}
-                        </span>
-                      </p>
-                      {popupData.status && (
-                        <p className="flex justify-between">
-                          <span className="font-semibold text-gray-600">API Status:</span>
-                          <span className={`text-xs ${popupData.status === "Success" ? "text-green-600" : "text-orange-600"}`}>
-                            {popupData.status}
-                          </span>
+                  {/* Current Status Tab */}
+                  {activeTab === 'current' && (
+                    <div className="space-y-3">
+                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+                        <p className="text-xs text-gray-600 mb-1">Current Water Level</p>
+                        <p className="text-3xl font-bold text-blue-600">
+                          {popupData.latestData.value.toFixed(2)} m
                         </p>
-                      )}
-
-                      {popupData.metadata && (
-                        <div className="mt-4 pt-3 border-t border-gray-200">
-                          <h4 className="font-semibold text-sm text-gray-700 mb-2">Quick Info</h4>
-                          <div className="space-y-1 text-xs">
-                            {popupData.metadata.riverName && renderMetadataField("River", popupData.metadata.riverName)}
-                            {popupData.metadata.basinName && renderMetadataField("Basin", popupData.metadata.basinName)}
-                            {popupData.metadata.stateName && renderMetadataField("State", popupData.metadata.stateName)}
-                            {popupData.metadata.districtName && renderMetadataField("District", popupData.metadata.districtName)}
-                            {popupData.metadata.dangerLevel && renderMetadataField("Danger Level", `${popupData.metadata.dangerLevel} m`)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Full Details Tab */}
-                  {activeTab === 'details' && popupData.metadata && (
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <h4 className="font-semibold text-sm text-gray-700 mb-2 border-b pb-1">Station Information</h4>
-                        <div className="space-y-1">
-                          {popupData.metadata.stationName && renderMetadataField("Station Name", popupData.metadata.stationName)}
-                          {popupData.metadata.stationCode && renderMetadataField("Code", popupData.metadata.stationCode)}
-                          {popupData.metadata.stationType && renderMetadataField("Type", popupData.metadata.stationType)}
-                          {popupData.metadata.agencyName && renderMetadataField("Agency", popupData.metadata.agencyName)}
-                          {popupData.metadata.stationStatus && renderMetadataField("Status", popupData.metadata.stationStatus)}
-                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Last Updated: {new Date(popupData.latestData.actualTime).toLocaleString('en-GB')}
+                        </p>
                       </div>
 
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <h4 className="font-semibold text-sm text-gray-700 mb-2 border-b pb-1">Location</h4>
-                        <div className="space-y-1">
-                          {popupData.metadata.riverName && renderMetadataField("River", popupData.metadata.riverName)}
-                          {popupData.metadata.basinName && renderMetadataField("Basin", popupData.metadata.basinName)}
-                          {popupData.metadata.subBasinName && renderMetadataField("Sub-Basin", popupData.metadata.subBasinName)}
-                          {popupData.metadata.stateName && renderMetadataField("State", popupData.metadata.stateName)}
-                          {popupData.metadata.districtName && renderMetadataField("District", popupData.metadata.districtName)}
-                          {popupData.metadata.latitude && popupData.metadata.longitude && (
-                            <p className="text-xs">
-                              <span className="text-gray-600 font-medium">Coordinates: </span>
-                              <span className="text-gray-800">{popupData.metadata.latitude.toFixed(4)}, {popupData.metadata.longitude.toFixed(4)}</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {(popupData.metadata.dangerLevel || popupData.metadata.warningLevel || popupData.metadata.highFloodLevel) && (
+                      <div className="grid grid-cols-2 gap-3">
                         <div className="bg-gray-50 p-3 rounded-lg">
-                          <h4 className="font-semibold text-sm text-gray-700 mb-2 border-b pb-1">Threshold Levels (m)</h4>
-                          <div className="space-y-1">
-                            {popupData.metadata.dangerLevel && (
-                              <p className="text-xs flex justify-between">
-                                <span className="text-gray-600 font-medium">Danger Level:</span>
-                                <span className="text-red-600 font-semibold">{popupData.metadata.dangerLevel}</span>
-                              </p>
-                            )}
-                            {popupData.metadata.warningLevel && (
-                              <p className="text-xs flex justify-between">
-                                <span className="text-gray-600 font-medium">Warning Level:</span>
-                                <span className="text-orange-600 font-semibold">{popupData.metadata.warningLevel}</span>
-                              </p>
-                            )}
-                            {popupData.metadata.highFloodLevel && (
-                              <p className="text-xs flex justify-between">
-                                <span className="text-gray-600 font-medium">High Flood Level:</span>
-                                <span className="text-purple-600 font-semibold">{popupData.metadata.highFloodLevel}</span>
-                              </p>
-                            )}
-                            {popupData.metadata.lowestLevel && renderMetadataField("Lowest Level", `${popupData.metadata.lowestLevel} m`)}
-                            {popupData.metadata.highestLevel && renderMetadataField("Highest Level", `${popupData.metadata.highestLevel} m`)}
-                          </div>
+                          <p className="text-xs text-gray-600 mb-1">Station Code</p>
+                          <p className="text-sm font-semibold text-gray-800">{popupData.stationCode}</p>
                         </div>
-                      )}
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-1">Station Type</p>
+                          <p className="text-sm font-semibold text-gray-800">{popupData.latestData.stationType}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-sm text-gray-700 border-b pb-1">Reference Levels</h4>
+                        
+                        {popupData.latestData.highestFlowLevel && (
+                          <div className="flex justify-between items-center bg-purple-50 p-2 rounded">
+                            <span className="text-xs text-gray-600">Highest Flow Level:</span>
+                            <span className="text-sm font-bold text-purple-600">
+                              {popupData.latestData.highestFlowLevel.toFixed(2)} m
+                            </span>
+                          </div>
+                        )}
+                        
+                        {popupData.latestData.dangerLevel && (
+                          <div className="flex justify-between items-center bg-red-50 p-2 rounded">
+                            <span className="text-xs text-gray-600">Danger Level:</span>
+                            <span className="text-sm font-bold text-red-600">
+                              {popupData.latestData.dangerLevel.toFixed(2)} m
+                            </span>
+                          </div>
+                        )}
+                        
+                        {popupData.latestData.warningLevel && (
+                          <div className="flex justify-between items-center bg-orange-50 p-2 rounded">
+                            <span className="text-xs text-gray-600">Warning Level:</span>
+                            <span className="text-sm font-bold text-orange-600">
+                              {popupData.latestData.warningLevel.toFixed(2)} m
+                            </span>
+                          </div>
+                        )}
+
+                        {popupData.latestData.frl && (
+                          <div className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                            <span className="text-xs text-gray-600">FRL:</span>
+                            <span className="text-sm font-semibold text-gray-800">
+                              {popupData.latestData.frl.toFixed(2)} m
+                            </span>
+                          </div>
+                        )}
+
+                        {popupData.latestData.mwl && (
+                          <div className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                            <span className="text-xs text-gray-600">MWL:</span>
+                            <span className="text-sm font-semibold text-gray-800">
+                              {popupData.latestData.mwl.toFixed(2)} m
+                            </span>
+                          </div>
+                        )}
+                      </div>
 
                       <div className="bg-gray-50 p-3 rounded-lg">
-                        <h4 className="font-semibold text-sm text-gray-700 mb-2 border-b pb-1">Additional Information</h4>
-                        <div className="space-y-1">
-                          {Object.entries(popupData.metadata).map(([key, value]) => {
-                            const displayedFields = [
-                              'stationName', 'stationCode', 'stationType', 'agencyName', 'stationStatus',
-                              'riverName', 'basinName', 'subBasinName', 'stateName', 'districtName',
-                              'latitude', 'longitude', 'dangerLevel', 'warningLevel', 'highFloodLevel',
-                              'lowestLevel', 'highestLevel', '@class'
-                            ];
-                            if (displayedFields.includes(key)) return null;
-                            return renderMetadataField(key, value);
-                          })}
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">Data Type:</span>
+                          <span className="text-gray-800 font-medium">{popupData.latestData.dataTypeCode}</span>
+                        </div>
+                        <div className="flex justify-between text-xs mt-1">
+                          <span className="text-gray-600">Parameter:</span>
+                          <span className="text-gray-800 font-medium">{popupData.latestData.otherParam}</span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Raw Data Tab */}
-                  {activeTab === 'raw' && popupData.metadata && (
-                    <div className="bg-gray-900 text-green-400 p-3 rounded-lg text-xs font-mono max-h-96 overflow-auto">
-                      <pre className="whitespace-pre-wrap break-words">
-                        {JSON.stringify(popupData.metadata, null, 2)}
-                      </pre>
+                  {/* Trend Graph Tab */}
+                  {activeTab === 'trend' && (
+                    <div className="space-y-3">
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-xs text-gray-600 mb-1">Data Period</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          2025-01-01 to {new Date().toISOString().split('T')[0]}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Total Records: {popupData.allData.length}
+                        </p>
+                      </div>
+
+                      {chartData.length > 0 ? (
+                        <div className="w-full">
+                          <ResponsiveContainer width="100%" height={300}>
+                            <LineChart
+                              data={chartData}
+                              margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                              <XAxis
+                                dataKey="time"
+                                type="number"
+                                domain={['dataMin', 'dataMax']}
+                                tickFormatter={(timestamp) => {
+                                  const date = new Date(timestamp);
+                                  return date.toLocaleDateString('en-GB', { 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  });
+                                }}
+                                label={{ 
+                                  value: 'Time', 
+                                  position: 'insideBottom', 
+                                  offset: -10,
+                                  style: { fontSize: 12, fontWeight: 600 }
+                                }}
+                                stroke="#6b7280"
+                                style={{ fontSize: 10 }}
+                              />
+                              <YAxis
+                                label={{ 
+                                  value: 'Water Level (m)', 
+                                  angle: -90, 
+                                  position: 'insideLeft',
+                                  style: { fontSize: 12, fontWeight: 600 }
+                                }}
+                                stroke="#6b7280"
+                                style={{ fontSize: 10 }}
+                              />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Legend 
+                                wrapperStyle={{ paddingTop: '10px', fontSize: 11 }}
+                                iconType="line"
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="waterLevel"
+                                stroke="#2563eb"
+                                strokeWidth={2}
+                                dot={{ r: 2, fill: '#2563eb' }}
+                                activeDot={{ r: 4 }}
+                                name="Water Level"
+                              />
+                              
+                              {popupData.latestData.dangerLevel && (
+                                <Line
+                                  type="monotone"
+                                  dataKey={() => popupData.latestData.dangerLevel}
+                                  stroke="#dc2626"
+                                  strokeWidth={1.5}
+                                  strokeDasharray="5 5"
+                                  dot={false}
+                                  name="Danger Level"
+                                />
+                              )}
+                              {popupData.latestData.warningLevel && (
+                                <Line
+                                  type="monotone"
+                                  dataKey={() => popupData.latestData.warningLevel}
+                                  stroke="#f97316"
+                                  strokeWidth={1.5}
+                                  strokeDasharray="5 5"
+                                  dot={false}
+                                  name="Warning Level"
+                                />
+                              )}
+                              {popupData.latestData.highestFlowLevel && (
+                                <Line
+                                  type="monotone"
+                                  dataKey={() => popupData.latestData.highestFlowLevel}
+                                  stroke="#8b5cf6"
+                                  strokeWidth={1.5}
+                                  strokeDasharray="5 5"
+                                  dot={false}
+                                  name="Highest Flow"
+                                />
+                              )}
+                            </LineChart>
+                          </ResponsiveContainer>
+
+                          <div className="grid grid-cols-3 gap-2 mt-3">
+                            <div className="bg-blue-50 p-2 rounded">
+                              <p className="text-xs text-gray-600">Current</p>
+                              <p className="text-sm font-bold text-blue-600">
+                                {popupData.latestData.value.toFixed(2)} m
+                              </p>
+                            </div>
+                            <div className="bg-green-50 p-2 rounded">
+                              <p className="text-xs text-gray-600">Min</p>
+                              <p className="text-sm font-bold text-green-600">
+                                {Math.min(...chartData.map(d => d.waterLevel)).toFixed(2)} m
+                              </p>
+                            </div>
+                            <div className="bg-red-50 p-2 rounded">
+                              <p className="text-xs text-gray-600">Max</p>
+                              <p className="text-sm font-bold text-red-600">
+                                {Math.max(...chartData.map(d => d.waterLevel)).toFixed(2)} m
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-10">
+                          <p className="text-gray-500">No chart data available</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Data Table Tab */}
+                  {activeTab === 'data' && (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      <div className="bg-gray-50 p-3 rounded-lg mb-3">
+                        <p className="text-xs text-gray-600">Showing {popupData.allData.length} records</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {popupData.allData.map((item, index) => (
+                          <div 
+                            key={index} 
+                            className={`p-3 rounded-lg border ${
+                              index === 0 
+                                ? 'bg-blue-50 border-blue-200' 
+                                : 'bg-white border-gray-200'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {item.value.toFixed(2)} m
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {new Date(item.actualTime).toLocaleString('en-GB')}
+                                </p>
+                              </div>
+                              {index === 0 && (
+                                <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                                  Latest
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-gray-500">Type:</span>
+                                <span className="ml-1 text-gray-700">{item.dataTypeCode}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Param:</span>
+                                <span className="ml-1 text-gray-700">{item.otherParam}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 p-3 bg-gray-900 text-green-400 rounded-lg">
+                        <p className="text-xs font-mono mb-2">Raw JSON (Latest Record):</p>
+                        <pre className="text-xs font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                          {JSON.stringify(popupData.latestData, null, 2)}
+                        </pre>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -433,7 +477,6 @@ const WaterLevelMap = () => {
             </div>
           </div>
 
-          {/* Zoom Controls */}
           <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
             <button
               onClick={handleZoomIn}
@@ -457,7 +500,6 @@ const WaterLevelMap = () => {
             </button>
           </div>
 
-          {/* Compass */}
           <div className="absolute top-4 left-20 z-20 bg-white rounded-full shadow-lg p-2 border border-gray-200">
             <div className="w-10 h-10 relative flex items-center justify-center">
               <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -466,7 +508,6 @@ const WaterLevelMap = () => {
             </div>
           </div>
 
-          {/* Base Map Toggle */}
           <div className="absolute top-4 right-4 z-20">
             <button
               onClick={toggleBaseMap}
@@ -487,7 +528,6 @@ const WaterLevelMap = () => {
             </button>
           </div>
 
-          {/* Fullscreen Toggle */}
           <div className="absolute bottom-16 right-4 z-20">
             <button
               onClick={toggleFullscreen}
@@ -507,144 +547,6 @@ const WaterLevelMap = () => {
           </div>
         </div>
       </div>
-
-      {/* Hydrograph Modal with Transparent/Blurred Backdrop */}
-      {showHydrographModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[100]"
-          style={{
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            backgroundColor: "rgba(0, 0, 0, 0.3)",
-          }}
-          onClick={() => setShowHydrographModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button - Top Right */}
-            <button
-              onClick={() => setShowHydrographModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10 p-2 hover:bg-gray-100 rounded-full"
-              aria-label="Close modal"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            {/* Modal Header */}
-            <div className="mb-6 pr-10">
-              <h2 className="text-2xl font-bold text-gray-800">
-                Hydrograph - {popupData?.stationName}
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Station Code: {popupData?.stationCode}
-              </p>
-            </div>
-
-            {/* Chart */}
-            {isLoadingHydrograph ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
-            ) : (
-              <div className="w-full">
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart
-                    data={hydrographData}
-                    margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="time"
-                      type="number"
-                      domain={['dataMin', 'dataMax']}
-                      tickFormatter={(timestamp) => {
-                        const date = new Date(timestamp);
-                        return date.toLocaleDateString('en-GB', { 
-                          month: 'short', 
-                          day: 'numeric' 
-                        });
-                      }}
-                      label={{ 
-                        value: 'Time', 
-                        position: 'insideBottom', 
-                        offset: -10,
-                        style: { fontSize: 14, fontWeight: 600 }
-                      }}
-                      stroke="#6b7280"
-                    />
-                    <YAxis
-                      label={{ 
-                        value: 'Water Level (m)', 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        style: { fontSize: 14, fontWeight: 600 }
-                      }}
-                      stroke="#6b7280"
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend 
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      iconType="line"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="waterLevel"
-                      stroke="#2563eb"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: '#2563eb' }}
-                      activeDot={{ r: 5 }}
-                      name="Water Level"
-                    />
-                    
-                    {/* Danger level reference line */}
-                    {popupData?.metadata?.dangerLevel && (
-                      <Line
-                        type="monotone"
-                        dataKey={() => popupData.metadata.dangerLevel}
-                        stroke="#dc2626"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={false}
-                        name="Danger Level"
-                      />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-
-                {/* Chart Statistics */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-xs text-gray-600 mb-1">Current Water Level</p>
-                    <p className="text-xl font-bold text-blue-600">
-                      {popupData?.waterLevel ? `${popupData.waterLevel} m` : 'N/A'}
-                    </p>
-                  </div>
-                  {popupData?.metadata?.dangerLevel && (
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <p className="text-xs text-gray-600 mb-1">Danger Level</p>
-                      <p className="text-xl font-bold text-red-600">
-                        {popupData.metadata.dangerLevel} m
-                      </p>
-                    </div>
-                  )}
-                  {popupData?.metadata?.warningLevel && (
-                    <div className="bg-orange-50 p-4 rounded-lg">
-                      <p className="text-xs text-gray-600 mb-1">Warning Level</p>
-                      <p className="text-xl font-bold text-orange-600">
-                        {popupData.metadata.warningLevel} m
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

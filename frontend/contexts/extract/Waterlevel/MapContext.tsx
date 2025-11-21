@@ -13,14 +13,25 @@ import { defaults as defaultControls, ScaleLine, FullScreen } from "ol/control";
 import Overlay from "ol/Overlay";
 import { MapBrowserEvent } from "ol";
 
+interface StationData {
+  stationCode: string;
+  warningLevel: number | null;
+  dangerLevel: number | null;
+  highestFlowLevel: number | null;
+  frl: number | null;
+  mwl: number | null;
+  stationType: string;
+  dataTypeCode: string;
+  value: number;
+  actualTime: string;
+  otherParam: string;
+}
+
 interface PopupData {
   stationName: string;
   stationCode: string;
-  waterLevel: string | number | null;
-  dateTime: string;
-  floodStatus: string;
-  metadata?: any;
-  status?: string;
+  latestData: StationData;
+  allData: StationData[];
 }
 
 interface MapContextProps {
@@ -34,10 +45,6 @@ interface MapContextProps {
   closePopup: () => void;
   handleZoomIn: () => void;
   handleZoomOut: () => void;
-  clickedFeature: any | null;
-  setClickedFeature: React.Dispatch<React.SetStateAction<any | null>>;
-  waterLevelApiData: PopupData | null;
-  fetchWaterLevel: () => Promise<void>;
 }
 
 const MapContext = createContext<MapContextProps | undefined>(undefined);
@@ -49,215 +56,180 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
   const [popupData, setPopupData] = useState<PopupData | null>(null);
   const [isPopupVisible, setIsPopupVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [clickedFeature, setClickedFeature] = useState<any | null>(null);
-  const [waterLevelApiData, setWaterLevelApiData] = useState<PopupData | null>(null);
 
-  // API function to fetch water level data
-  const fetchWaterLevelData = async (stationCode: string) => {
-    console.log("[DEBUG] fetchWaterLevelData called with stationCode:", stationCode);
+  // API function to fetch hydrograph station data
+  const fetchHydrographStationData = async (stationCode: string) => {
+    console.log("[DEBUG] fetchHydrographStationData called with stationCode:", stationCode);
 
     try {
-      const apiUrl = "http://localhost:9000/django/extract/water-level";
+      const currentDate = new Date().toISOString().split('T')[0];
+      const startDate = "2025-01-01";
+      
+      const apiUrl = "http://localhost:9000/django/extract/level";
       console.log("[DEBUG] Sending POST request to:", apiUrl);
+      console.log("[DEBUG] Payload:", { stationCode: `'${stationCode}'`, startDate, endDate: currentDate });
 
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ station_code: stationCode }),
+        body: JSON.stringify({ 
+          stationCode: `'${stationCode}'`,
+          startDate: startDate,
+          endDate: currentDate
+        }),
       });
 
       console.log("[DEBUG] API response status:", response.status);
       if (!response.ok) {
         const text = await response.text();
         console.error("[DEBUG] Non-OK response:", text);
-        throw new Error("Failed to fetch water level data");
+        throw new Error("Failed to fetch hydrograph station data");
       }
 
       const data = await response.json();
       console.log("[DEBUG] API response JSON:", data);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("No data available for this station");
+      }
+      
       return data;
     } catch (error) {
-      console.error("[ERROR] fetchWaterLevelData failed:", error);
+      console.error("[ERROR] fetchHydrographStationData failed:", error);
       throw error;
     }
   };
 
-  // Fetch API data on button click
-  const fetchWaterLevel = async () => {
-    console.log("[DEBUG] fetchWaterLevel triggered");
-    if (!clickedFeature) {
-      console.warn("[DEBUG] No clickedFeature available");
-      return;
-    }
+  useEffect(() => {
+    if (!map) {
+      console.log("[DEBUG] Initializing map...");
 
-    const stationCode =
-      clickedFeature.properties.stationCod ||
-      clickedFeature.properties.StationCod ||
-      clickedFeature.properties.stationcod;
-
-    console.log("[DEBUG] Extracted stationCode:", stationCode);
-
-    if (!stationCode) {
-      console.warn("[DEBUG] No valid station code found in feature properties");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const data = await fetchWaterLevelData(stationCode);
-      console.log("[DEBUG] Setting water level API data:", data);
-
-      setWaterLevelApiData({
-        stationName: clickedFeature.properties.name || "Station",
-        stationCode,
-        waterLevel: data.Present_Water_Level_m,
-        dateTime: data.DateTime,
-        floodStatus: clickedFeature.properties.floodStatu || "N/A",
-        metadata: data.Metadata,
-        status: data.Status,
+      const osmLayer = new TileLayer({
+        source: new OSM(),
+        visible: !isSatellite,
+        properties: { name: "osm" },
       });
-    } catch (error) {
-      console.error("[ERROR] Error fetching water level data:", error);
-      setWaterLevelApiData(null);
-    } finally {
-      setIsLoading(false);
-      console.log("[DEBUG] fetchWaterLevel finished");
-    }
-  };
 
-  // Initialize map and overlay
-// Initialize map and overlay
-useEffect(() => {
-  if (!map) {
-    console.log("[DEBUG] Initializing map...");
-
-    const osmLayer = new TileLayer({
-      source: new OSM(),
-      visible: !isSatellite,
-      properties: { name: "osm" },
-    });
-
-    const satelliteLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        maxZoom: 19,
-      }),
-      visible: isSatellite,
-      properties: { name: "satellite" },
-    });
-
-    // ✅ India boundary base layer from GeoServer
-    const indiaLayer = new ImageLayer({
-      source: new ImageWMS({
-        url: "http://localhost:9090/geoserver/myworkspace/wms",
-        params: {
-          LAYERS: "myworkspace:B_State",
-          TILED: true,
-          FORMAT: "image/png",
-          TRANSPARENT: true,
-        },
-        serverType: "geoserver",
-        crossOrigin: "anonymous",
-      }),
-      visible: true,
-      opacity: 0.9,
-      properties: { name: "indiaBase" },
-    });
-
-    // ✅ Water level overlay layer
-    const waterLevelLayer = new ImageLayer({
-      source: new ImageWMS({
-        url: "http://localhost:9090/geoserver/myworkspace/wms",
-        params: {
-          LAYERS: "myworkspace:waterlevel",
-          TILED: true,
-          FORMAT: "image/png",
-          TRANSPARENT: true,
-        },
-        serverType: "geoserver",
-        crossOrigin: "anonymous",
-      }),
-      visible: true,
-      opacity: 0.8,
-      properties: { name: "waterLevel" },
-    });
-
-    const overlay = new Overlay({
-      element: undefined,
-      autoPan: true,
-      autoPanAnimation: { duration: 50 },
-    });
-
-    const initialMap = new Map({
-      target: undefined,
-      view: new View({
-        center: fromLonLat([78.9629, 22.5937]), // India center
-        zoom: 5,
-        minZoom: 3,
-        maxZoom: 18,
-        projection: "EPSG:3857",
-      }),
-      layers: [osmLayer, satelliteLayer, indiaLayer, waterLevelLayer],
-      overlays: [overlay],
-      controls: defaultControls({
-        zoom: false,
-        attribution: true,
-        rotate: false,
-      }).extend([
-        new ScaleLine({
-          units: "metric",
-          bar: true,
-          steps: 4,
-          text: true,
-          minWidth: 140,
+      const satelliteLayer = new TileLayer({
+        source: new XYZ({
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          maxZoom: 19,
         }),
-        new FullScreen(),
-      ]),
-    });
+        visible: isSatellite,
+        properties: { name: "satellite" },
+      });
 
-    // ✅ Fit the map to India's bounding box (fetched from GeoServer)
-    fetch(
-      "http://localhost:9090/geoserver/myworkspace/wms?service=WMS&version=1.3.0&request=GetCapabilities"
-    )
-      .then((res) => res.text())
-      .then((text) => {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
-        const layers = xml.getElementsByTagName("Layer");
-        for (let i = 0; i < layers.length; i++) {
-          const name = layers[i].getElementsByTagName("Name")[0]?.textContent;
-          if (name === "myworkspace:India") {
-            const bboxEl = layers[i].getElementsByTagName("EX_GeographicBoundingBox")[0];
-            if (bboxEl) {
-              const minx = parseFloat(bboxEl.getElementsByTagName("westBoundLongitude")[0].textContent || "68");
-              const miny = parseFloat(bboxEl.getElementsByTagName("southBoundLatitude")[0].textContent || "8");
-              const maxx = parseFloat(bboxEl.getElementsByTagName("eastBoundLongitude")[0].textContent || "97");
-              const maxy = parseFloat(bboxEl.getElementsByTagName("northBoundLatitude")[0].textContent || "35");
+      const indiaLayer = new ImageLayer({
+        source: new ImageWMS({
+          url: "http://localhost:9090/geoserver/myworkspace/wms",
+          params: {
+            LAYERS: "myworkspace:B_State",
+            TILED: true,
+            FORMAT: "image/png",
+            TRANSPARENT: true,
+          },
+          serverType: "geoserver",
+          crossOrigin: "anonymous",
+        }),
+        visible: true,
+        opacity: 0.9,
+        properties: { name: "indiaBase" },
+      });
 
-              const extent = [
-                ...fromLonLat([minx, miny]),
-                ...fromLonLat([maxx, maxy]),
-              ];
-              initialMap.getView().fit(extent, {
-                padding: [50, 50, 50, 50],
-                duration: 1000,
-              });
-              console.log("[DEBUG] Fitted to India layer extent");
+      const waterLevelLayer = new ImageLayer({
+        source: new ImageWMS({
+          url: "http://localhost:9090/geoserver/myworkspace/wms",
+          params: {
+            LAYERS: "myworkspace:waterlevel",
+            TILED: true,
+            FORMAT: "image/png",
+            TRANSPARENT: true,
+          },
+          serverType: "geoserver",
+          crossOrigin: "anonymous",
+        }),
+        visible: true,
+        opacity: 0.8,
+        properties: { name: "waterLevel" },
+      });
+
+      const overlay = new Overlay({
+        element: undefined,
+        autoPan: true,
+        autoPanAnimation: { duration: 50 },
+      });
+
+      const initialMap = new Map({
+        target: undefined,
+        view: new View({
+          center: fromLonLat([78.9629, 22.5937]),
+          zoom: 5,
+          minZoom: 3,
+          maxZoom: 18,
+          projection: "EPSG:3857",
+        }),
+        layers: [osmLayer, satelliteLayer, indiaLayer, waterLevelLayer],
+        overlays: [overlay],
+        controls: defaultControls({
+          zoom: false,
+          attribution: true,
+          rotate: false,
+        }).extend([
+          new ScaleLine({
+            units: "metric",
+            bar: true,
+            steps: 4,
+            text: true,
+            minWidth: 140,
+          }),
+          new FullScreen(),
+        ]),
+      });
+
+      fetch(
+        "http://localhost:9090/geoserver/myworkspace/wms?service=WMS&version=1.3.0&request=GetCapabilities"
+      )
+        .then((res) => res.text())
+        .then((text) => {
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(text, "text/xml");
+          const layers = xml.getElementsByTagName("Layer");
+          for (let i = 0; i < layers.length; i++) {
+            const name = layers[i].getElementsByTagName("Name")[0]?.textContent;
+            if (name === "myworkspace:India") {
+              const bboxEl = layers[i].getElementsByTagName("EX_GeographicBoundingBox")[0];
+              if (bboxEl) {
+                const minx = parseFloat(bboxEl.getElementsByTagName("westBoundLongitude")[0].textContent || "68");
+                const miny = parseFloat(bboxEl.getElementsByTagName("southBoundLatitude")[0].textContent || "8");
+                const maxx = parseFloat(bboxEl.getElementsByTagName("eastBoundLongitude")[0].textContent || "97");
+                const maxy = parseFloat(bboxEl.getElementsByTagName("northBoundLatitude")[0].textContent || "35");
+
+                const extent = [
+                  ...fromLonLat([minx, miny]),
+                  ...fromLonLat([maxx, maxy]),
+                ];
+                initialMap.getView().fit(extent, {
+                  padding: [50, 50, 50, 50],
+                  duration: 1000,
+                });
+                console.log("[DEBUG] Fitted to India layer extent");
+              }
+              break;
             }
-            break;
           }
-        }
-      })
-      .catch((err) => console.error("[DEBUG] Error fetching GetCapabilities:", err));
+        })
+        .catch((err) => console.error("[DEBUG] Error fetching GetCapabilities:", err));
 
-    setMap(initialMap);
-    setPopupOverlay(overlay);
-    console.log("[DEBUG] Map and overlay initialized with India base layer");
-  }
-}, []);
+      setMap(initialMap);
+      setPopupOverlay(overlay);
+      console.log("[DEBUG] Map and overlay initialized with India base layer");
+    }
+  }, []);
 
-
-  // Handle map click to get feature attributes
   const handleMapClick = async (evt: MapBrowserEvent<any>) => {
     console.log("[DEBUG] Map clicked at coordinate:", evt.coordinate);
 
@@ -309,7 +281,6 @@ useEffect(() => {
         const props = feature.properties;
         console.log("[DEBUG] Feature properties:", props);
 
-        // Handle variations in property name casing
         const stationCode =
           props.stationCod || props.StationCod || props.stationcod;
 
@@ -322,40 +293,37 @@ useEffect(() => {
           return;
         }
 
-        // Set position for popup
         popupOverlay.setPosition(evt.coordinate);
-        setClickedFeature(feature);
         setIsLoading(true);
         setIsPopupVisible(true);
 
         try {
           console.log("[DEBUG] Calling backend API for station:", stationCode);
-          const waterLevelData = await fetchWaterLevelData(stationCode);
-          console.log("[DEBUG] Backend API response:", waterLevelData);
+          const hydrographData = await fetchHydrographStationData(stationCode);
+          console.log("[DEBUG] Backend API response:", hydrographData);
+
+          if (!Array.isArray(hydrographData) || hydrographData.length === 0) {
+            throw new Error("No valid data received");
+          }
+
+          // Sort data by time (newest first)
+          const sortedData = hydrographData.sort((a: any, b: any) => 
+            new Date(b.actualTime).getTime() - new Date(a.actualTime).getTime()
+          );
+
+          const latestData = sortedData[0];
 
           setPopupData({
-            stationName: props.name || "Station",
-            stationCode,
-            waterLevel: waterLevelData.Present_Water_Level_m,
-            dateTime: waterLevelData.DateTime,
-            floodStatus: props.floodStatu || "N/A",
-            metadata: waterLevelData.Metadata,
-            status: waterLevelData.Status,
+            stationName: props.name || latestData.stationCode || "Station",
+            stationCode: latestData.stationCode,
+            latestData: latestData,
+            allData: sortedData,
           });
 
           console.log("[DEBUG] Popup data set successfully");
         } catch (apiError) {
           console.error("[DEBUG] API call failed:", apiError);
-          // Still show popup with feature data even if API fails
-          setPopupData({
-            stationName: props.name || "Station",
-            stationCode,
-            waterLevel: null,
-            dateTime: "N/A",
-            floodStatus: props.floodStatu || "N/A",
-            metadata: null,
-            status: "Error",
-          });
+          setPopupData(null);
         }
         
         setIsLoading(false);
@@ -372,7 +340,6 @@ useEffect(() => {
     }
   };
 
-  // Attach map click handler after map & overlay ready
   useEffect(() => {
     if (!map) return;
 
@@ -384,7 +351,6 @@ useEffect(() => {
     };
   }, [map, popupOverlay]);
 
-  // Toggle base map visibility
   useEffect(() => {
     if (map) {
       map.getLayers().forEach((layer) => {
@@ -405,8 +371,6 @@ useEffect(() => {
   const closePopup = () => {
     setIsPopupVisible(false);
     setPopupData(null);
-    setClickedFeature(null);
-    setWaterLevelApiData(null);
     popupOverlay?.setPosition(undefined);
   };
 
@@ -439,10 +403,6 @@ useEffect(() => {
         closePopup,
         handleZoomIn,
         handleZoomOut,
-        clickedFeature,
-        setClickedFeature,
-        waterLevelApiData,
-        fetchWaterLevel,
       }}
     >
       {children}
