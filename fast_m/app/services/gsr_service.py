@@ -17,9 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 
-
 BASE_MEDIA = "media"   # same as Django MEDIA_ROOT
-
 
 # -----------------------------------------------------------
 # Helper functions
@@ -33,13 +31,11 @@ def parse_to_list(value) -> List[str]:
         return [str(v).strip() for v in value if str(v).strip()]
     return [s.strip() for s in re.split(r"[,\|]+", str(value)) if s.strip()]
 
-
 def safe_string_compare(val1, val2) -> bool:
     """Safely compare two values as strings"""
     if pd.isna(val1) or pd.isna(val2):
         return False
     return str(val1).strip().lower() == str(val2).strip().lower()
-
 
 def load_trend_data(trend_csv_filename: str) -> Dict[str, str]:
     """
@@ -77,7 +73,6 @@ def load_trend_data(trend_csv_filename: str) -> Dict[str, str]:
     
     return trend_map
 
-
 def load_village_shapefile() -> Optional[gpd.GeoDataFrame]:
     """
     Load village shapefile from the specified path
@@ -113,7 +108,6 @@ def load_village_shapefile() -> Optional[gpd.GeoDataFrame]:
     except Exception as e:
         print(f"❌ Error loading village shapefile: {str(e)}")
         return None
-
 
 def merge_gsr_with_shapefile(gsr_results: List[Dict[str, Any]], village_gdf: gpd.GeoDataFrame) -> Dict[str, Any]:
     """
@@ -174,7 +168,6 @@ def merge_gsr_with_shapefile(gsr_results: List[Dict[str, Any]], village_gdf: gpd
             },
             'merged_gdf': None
         }
-
 
 def generate_gsr_map_image(merged_gdf: gpd.GeoDataFrame) -> Optional[str]:
     """
@@ -301,7 +294,6 @@ def generate_gsr_map_image(merged_gdf: gpd.GeoDataFrame) -> Optional[str]:
         plt.close('all')
         return None
 
-
 def calculate_gsr_classification(gsr_value: float, trend_status: str) -> str:
     """
     Calculate GSR classification based on GSR ratio and trend status
@@ -343,7 +335,6 @@ def calculate_gsr_classification(gsr_value: float, trend_status: str) -> str:
         else:  # gsr_value > 1.05
             return "Very Safe"
 
-
 def get_classification_color(classification: str) -> str:
     """
     Return CSS color name for each of the 6 classifications
@@ -358,15 +349,15 @@ def get_classification_color(classification: str) -> str:
     }
     return color_map.get(classification, 'gray')
 
-
 def match_village_data(
     recharge_data: List[Dict[str, Any]],
     domestic_data: List[Dict[str, Any]], 
     agricultural_data: List[Dict[str, Any]],
+    industrial_data: List[Dict[str, Any]],
     trend_csv_filename: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    Match village data across recharge, domestic, agricultural datasets, and trend data
+    Match village data across recharge, domestic, agricultural, industrial datasets, and trend data
     """
     # Load trend data if filename is provided
     trend_map = load_trend_data(trend_csv_filename) if trend_csv_filename else {}
@@ -375,6 +366,7 @@ def match_village_data(
     recharge_map = {}
     domestic_map = {}
     agricultural_map = {}
+    industrial_map = {}
     
     # Process recharge data - using village_co as key
     for item in recharge_data:
@@ -403,8 +395,17 @@ def match_village_data(
                 'raw_data': item
             }
     
+    # Process industrial data - using village_code as key
+    for item in industrial_data:
+        village_code = str(item.get('village_code', '')).strip()
+        if village_code:
+            industrial_map[village_code] = {
+                'industrial_demand': float(item.get('demand_mld', 0) or 0),
+                'raw_data': item
+            }
+    
     # Get all unique village codes
-    all_village_codes = set(recharge_map.keys()) | set(domestic_map.keys()) | set(agricultural_map.keys())
+    all_village_codes = set(recharge_map.keys()) | set(domestic_map.keys()) | set(agricultural_map.keys()) | set(industrial_map.keys())
     
     results = []
     
@@ -413,13 +414,15 @@ def match_village_data(
         recharge_info = recharge_map.get(village_code, {})
         domestic_info = domestic_map.get(village_code, {})
         agricultural_info = agricultural_map.get(village_code, {})
+        industrial_info = industrial_map.get(village_code, {})
         
         recharge = recharge_info.get('recharge', 0)
         domestic_demand = domestic_info.get('domestic_demand', 0)
         agricultural_demand = agricultural_info.get('agricultural_demand', 0)
+        industrial_demand = industrial_info.get('industrial_demand', 0)
         
-        # Calculate total demand
-        total_demand = domestic_demand + agricultural_demand
+        # Calculate total demand (including industrial)
+        total_demand = domestic_demand + agricultural_demand + industrial_demand
         
         # Calculate GSR (avoiding division by zero)
         if total_demand > 0:
@@ -447,7 +450,8 @@ def match_village_data(
         # Try to get village name and other info from any available dataset
         for raw_data in [recharge_info.get('raw_data', {}), 
                         domestic_info.get('raw_data', {}), 
-                        agricultural_info.get('raw_data', {})]:
+                        agricultural_info.get('raw_data', {}),
+                        industrial_info.get('raw_data', {})]:
             if raw_data:
                 if village_info['village_name'] == 'N/A':
                     village_info['village_name'] = raw_data.get('village_name', 
@@ -464,6 +468,7 @@ def match_village_data(
             'recharge': round(recharge, 4),
             'domestic_demand': round(domestic_demand, 4),
             'agricultural_demand': round(agricultural_demand, 4),
+            'industrial_demand': round(industrial_demand, 4),
             'total_demand': round(total_demand, 4),
             'gsr': round(gsr, 4) if gsr is not None else None,
             'gsr_status': gsr_status,
@@ -473,13 +478,13 @@ def match_village_data(
             'has_recharge_data': village_code in recharge_map,
             'has_domestic_data': village_code in domestic_map,
             'has_agricultural_data': village_code in agricultural_map,
+            'has_industrial_data': village_code in industrial_map,
             'has_trend_data': village_code in trend_map
         }
         
         results.append(result)
     
     return results
-
 
 def calculate_gsr_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Calculate summary statistics for GSR analysis including classification distribution"""
@@ -491,6 +496,7 @@ def calculate_gsr_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_recharge = sum(r['recharge'] for r in results)
     total_domestic = sum(r['domestic_demand'] for r in results)
     total_agricultural = sum(r['agricultural_demand'] for r in results)
+    total_industrial = sum(r['industrial_demand'] for r in results)
     total_demand = sum(r['total_demand'] for r in results)
     
     # Count villages by status
@@ -524,6 +530,7 @@ def calculate_gsr_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         'total_recharge': round(total_recharge, 4),
         'total_domestic_demand': round(total_domestic, 4),
         'total_agricultural_demand': round(total_agricultural, 4),
+        'total_industrial_demand': round(total_industrial, 4),
         'total_demand': round(total_demand, 4),
         'overall_gsr': round(overall_gsr, 4) if overall_gsr is not None else None,
         'average_gsr': round(avg_gsr, 4),

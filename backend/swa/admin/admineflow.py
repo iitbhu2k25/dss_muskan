@@ -22,54 +22,101 @@ class AdmineflowAPI(APIView):
         subdistrict_codes = request.data.get("subdistrict_codes", [])
         vlcodes = request.data.get("vlcodes", [])
 
+        print("\n====================== NEW REQUEST RECEIVED ======================")
+        print("POST Input:")
+        print(f"  • subdistrict_codes received: {subdistrict_codes}")
+        print(f"  • vlcodes received: {vlcodes}")
+
         # --- Input validation ---
         if subdistrict_codes and vlcodes:
+            print("❌ ERROR: Both subdistrict_codes and vlcodes provided.")
             return Response(
                 {"error": "Send either subdistrict_codes or vlcodes, not both."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not subdistrict_codes and not vlcodes:
+            print("❌ ERROR: No input provided.")
             return Response(
                 {"error": "Either subdistrict_codes or vlcodes is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Fetch data based on input type ---
+        # ----------------------------------------------------------------------
+        # CHECK: which codes actually exist in database BEFORE filtering
+        # ----------------------------------------------------------------------
+
+        existing_vlcodes = set(AdminFlow.objects.values_list("vlcode", flat=True).distinct())
+        existing_subcodes = set(AdminFlow.objects.values_list("subdistrict_code_id", flat=True).distinct())
+
+        if vlcodes:
+            input_vlcodes = set(vlcodes)
+            found_vlcodes = list(input_vlcodes & existing_vlcodes)
+            missing_vlcodes = list(input_vlcodes - existing_vlcodes)
+
+            print("\nVillage Code Check:")
+            print(f"  • Total vlcodes received: {len(input_vlcodes)}")
+            print(f"  • Found in DB: {found_vlcodes}")
+            print(f"  • NOT found in DB: {missing_vlcodes}")
+
+        if subdistrict_codes:
+            input_subcodes = set(subdistrict_codes)
+            found_subcodes = list(input_subcodes & existing_subcodes)
+            missing_subcodes = list(input_subcodes - existing_subcodes)
+
+            print("\nSubdistrict Code Check:")
+            print(f"  • Total subdistrict_codes received: {len(input_subcodes)}")
+            print(f"  • Found in DB: {found_subcodes}")
+            print(f"  • NOT found in DB: {missing_subcodes}")
+
+        # ----------------------------------------------------------------------
+        # MAIN QUERY
+        # ----------------------------------------------------------------------
         if subdistrict_codes:
             qs = AdminFlow.objects.filter(subdistrict_code_id__in=subdistrict_codes)
-        else:  # if vlcodes are provided
+        else:
             qs = AdminFlow.objects.filter(vlcode__in=vlcodes)
 
+        print("\nDatabase Query Result:")
+        print(f"  • Records fetched: {qs.count()}")
+
         if not qs.exists():
+            print("⚠️ No matching data found for given input!")
             return Response({}, status=status.HTTP_200_OK)
 
-        # --- Convert to DataFrame ---
+        # ----------------------------------------------------------------------
+        # Convert to DataFrame
+        # ----------------------------------------------------------------------
         df = pd.DataFrame.from_records(
             qs.values("vlcode", "village", "subdistrict_code_id", "year", "mon", "surq_cnt_m3")
         )
 
-        # --- Convert to flow rate (cms) ---
-        # Since surq_cnt_m3 is daily volume and mon represents day of year (1-365)
+        print(f"  • Unique villages found: {df['vlcode'].nunique()}")
+        print(f"  • Village list in result: {sorted(df['vlcode'].unique().tolist())}")
+
+        # Convert daily volume to cms
         seconds_in_day = 86400
         df["flow_out_cms"] = df["surq_cnt_m3"] / seconds_in_day
 
         all_results = {}
 
-        # --- Loop through each village ---
+        # ----------------------------------------------------------------------
+        # PROCESS EACH VILLAGE
+        # ----------------------------------------------------------------------
+        print("\nProcessing each village:")
         for vlcode in df["vlcode"].unique():
+            print(f"  → Processing village vlcode: {vlcode}")
+
             village_df = df[df["vlcode"] == vlcode]
             village_name = village_df["village"].iloc[0]
             subdistrict_code = village_df["subdistrict_code_id"].iloc[0]
 
-            # Group by day of year (mon field: 1-365) and compute average across all years
+            # Compute daily averages, FDC, thresholds, surplus...
             daily_avg = village_df.groupby("mon")["flow_out_cms"].mean().reset_index()
             flows = daily_avg["flow_out_cms"].values
-            days = daily_avg["mon"].values  # Day of year (1-365)
+            days = daily_avg["mon"].values
 
             Qmaf = np.mean(flows)
-
-            # --- Flow Duration Curve (FDC) ---
             flows_sorted = np.sort(flows)[::-1]
             N = len(flows_sorted)
             ranks = np.arange(1, N + 1)
@@ -81,36 +128,18 @@ class AdmineflowAPI(APIView):
             Q95 = flow_duration_curve(flows_sorted, prob, 95)
             Q90 = flow_duration_curve(flows_sorted, prob, 90)
 
-            # --- Eflow thresholds ---
             tennant_10 = 0.1 * Qmaf
             tennant_30 = 0.3 * Qmaf
             tennant_60 = 0.6 * Qmaf
-            Qdaily_avg = np.mean(daily_avg["flow_out_cms"].values)
+            Qdaily_avg = np.mean(flows)
             tessmann = 0.4 * Qmaf if Qmaf > 0.4 * Qdaily_avg else Qdaily_avg
             smakhtin = 0.2 * Qmaf
 
             def compute_surplus(flows_arr, threshold):
-                """
-                Compute annual surplus volume in m³/year.
-                
-                Args:
-                    flows_arr: Array of daily average flows in cms
-                    threshold: Environmental flow threshold in cms
-                
-                Returns:
-                    Annual surplus volume in m³/year
-                """
-                flows_arr = np.array(flows_arr, dtype=float)  # cms
+                flows_arr = np.array(flows_arr, dtype=float)
                 thr = float(threshold)
-                
-                # Calculate surplus flow for each day (in cms)
                 surplus_cms = np.where(flows_arr > thr, flows_arr - thr, 0.0)
-                
-                # Convert to daily volumes (m³/day) and sum for annual total (m³/year)
-                surplus_volume_m3_per_year = np.sum(surplus_cms * seconds_in_day)
-                
-                # Return in m³/year
-                return float(surplus_volume_m3_per_year)
+                return float(np.sum(surplus_cms * seconds_in_day))
 
             results = {
                 "FDC-Q95": compute_surplus(flows, Q95),
@@ -134,8 +163,8 @@ class AdmineflowAPI(APIView):
 
             curves = {
                 method_key: {
-                    "days": days.tolist(),  # Day of year (1-365)
-                    "flows": flows.tolist(),  # Daily average flows in cms
+                    "days": days.tolist(),
+                    "flows": flows.tolist(),
                     "threshold": float(Qe),
                 }
                 for method_key, Qe in thresholds.items()
@@ -145,9 +174,11 @@ class AdmineflowAPI(APIView):
                 "vlcode": int(vlcode),
                 "village": village_name,
                 "subdistrict_code": int(subdistrict_code),
-                "summary": results,  # Surplus volumes in million m³/year
+                "summary": results,
                 "curves": curves,
             }
+
+        print("\n====================== PROCESS COMPLETED ======================\n")
 
         return Response(all_results, status=status.HTTP_200_OK)
 

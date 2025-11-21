@@ -14,7 +14,7 @@ import VillageSurplus from './components/VillageSurplus';
 import Eflow from './components/Eflow';
 import Climate from './components/climate';
 import ResizablePanels from './components/resizable-panels';
-import { BarChart3, Droplets, Leaf, CloudRain } from 'lucide-react';
+import { BarChart3, Droplets, Leaf, CloudRain, ChevronUp, ChevronDown } from 'lucide-react';
 
 type TabType = 'fdc' | 'surplus' | 'eflow' | 'climate';
 
@@ -22,10 +22,11 @@ const MainContent: React.FC = () => {
   const { selectionConfirmed, getConfirmedSubdistrictIds } = useLocationContext();
   const { fetchData: fetchStreamFlowData, hasData: hasStreamFlowData } = useStreamFlowContext();
   const [activeTab, setActiveTab] = useState<TabType>('fdc');
+  const [isLocationVisible, setIsLocationVisible] = useState(true);
 
   const tabs = [
     { id: 'fdc', label: 'Flow Duration Curve', icon: BarChart3, color: 'blue', component: StreamFlow },
-    { id: 'surplus', label: 'Village Surplus', icon: Droplets, color: 'green', component: VillageSurplus },
+    // { id: 'surplus', label: 'Village Surplus', icon: Droplets, color: 'green', component: VillageSurplus },
     { id: 'eflow', label: 'Environmental Flow', icon: Leaf, color: 'purple', component: Eflow },
     { id: 'climate', label: 'Climate Change', icon: CloudRain, color: 'orange', component: Climate },
   ] as const;
@@ -51,9 +52,40 @@ const MainContent: React.FC = () => {
         left={
           <div className="flex-grow overflow-y-auto bg-white m-2 rounded-xl shadow-lg border border-gray-200">
             <div className="p-6 space-y-6">
-              {/* Location Section - Always Visible */}
+              {/* Location Section - Collapsible after confirmation */}
               <div className="sticky top-0 bg-white z-10 pb-4 border-b border-gray-200">
-                <LocationPage />
+                {/* Toggle Button - Only show after confirmation */}
+                {selectionConfirmed && (
+                  <div className="flex justify-end  ">
+                    <button
+                      onClick={() => setIsLocationVisible(!isLocationVisible)}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 
+                               bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200
+                               border border-gray-300 shadow-sm"
+                    >
+                      {isLocationVisible ? (
+                        <>
+                          <ChevronUp className="w-2 h-2" />
+                          Hide Location
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-2 h-2" />
+                          Show Location
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Location Component with smooth collapse animation */}
+                <div
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    isLocationVisible ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <LocationPage />
+                </div>
               </div>
 
               {/* Tab Navigation - Shows after confirmation */}
@@ -94,8 +126,6 @@ const MainContent: React.FC = () => {
                   <ActiveComponent />
                 </div>
               )}
-
-              
             </div>
           </div>
         }
@@ -113,7 +143,7 @@ const SurfaceWaterAssessmentAdmin: React.FC = () => {
   return (
     <LocationProvider>
       <StreamFlowProvider>
-        <VillageSurplusProvider>
+        {/* <VillageSurplusProvider> */}
           <EflowProvider>
             <MapProvider>
               <ClimateAdminProvider>
@@ -121,7 +151,7 @@ const SurfaceWaterAssessmentAdmin: React.FC = () => {
               </ClimateAdminProvider>
             </MapProvider>
           </EflowProvider>
-        </VillageSurplusProvider>
+        {/* </VillageSurplusProvider> */}
       </StreamFlowProvider>
     </LocationProvider>
   );
