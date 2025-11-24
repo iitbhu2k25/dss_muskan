@@ -689,7 +689,7 @@ const GroundwaterTrend: React.FC<GroundwaterTrendProps> = ({ activeTab, step }) 
                                 strokeDasharray="5 5"
                                 dot={false}
                                 activeDot={false}
-                                name="Trend Line (Sen's Slope)"
+                                name="Trend Line "
                               />
                             </LineChart>
                           </ResponsiveContainer>
