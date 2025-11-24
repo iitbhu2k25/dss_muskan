@@ -33,7 +33,7 @@ const MainContent: React.FC = () => {
 
   const handleTabClick = (tabId: TabType) => {
     setActiveTab(tabId);
-    
+
     // Trigger data fetch when clicking FDC tab if data not loaded
     if (tabId === 'fdc' && !hasStreamFlowData && selectionConfirmed) {
       const ids = getConfirmedSubdistrictIds();
@@ -80,12 +80,16 @@ const MainContent: React.FC = () => {
 
                 {/* Location Component with smooth collapse animation */}
                 <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isLocationVisible ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
+                  className={`
+                    transition-all duration-300 ease-in-out overflow-visible
+                    ${isLocationVisible ? 'max-h-[2000px] opacity-100 pointer-events-auto' : 'max-h-0 opacity-0 pointer-events-none'}
+                  `}
                 >
-                  <LocationPage />
+                  <div className="relative z-50">
+                    <LocationPage />
+                  </div>
                 </div>
+
               </div>
 
               {/* Tab Navigation - Shows after confirmation */}
@@ -110,9 +114,7 @@ const MainContent: React.FC = () => {
                           <span className="text-sm font-semibold text-center leading-tight">
                             {tab.label}
                           </span>
-                          {isActive && (
-                            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-800 rounded-full" />
-                          )}
+              
                         </button>
                       );
                     })}
@@ -144,13 +146,13 @@ const SurfaceWaterAssessmentAdmin: React.FC = () => {
     <LocationProvider>
       <StreamFlowProvider>
         {/* <VillageSurplusProvider> */}
-          <EflowProvider>
-            <MapProvider>
-              <ClimateAdminProvider>
-                <MainContent />
-              </ClimateAdminProvider>
-            </MapProvider>
-          </EflowProvider>
+        <EflowProvider>
+          <MapProvider>
+            <ClimateAdminProvider>
+              <MainContent />
+            </ClimateAdminProvider>
+          </MapProvider>
+        </EflowProvider>
         {/* </VillageSurplusProvider> */}
       </StreamFlowProvider>
     </LocationProvider>

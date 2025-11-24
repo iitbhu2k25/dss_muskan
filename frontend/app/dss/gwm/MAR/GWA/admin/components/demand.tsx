@@ -3,7 +3,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDemand, IndustrialSubtype } from '@/contexts/groundwater_assessment/admin/DemandContext';
 import { useLocation } from '@/contexts/groundwater_assessment/admin/LocationContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
-
+import dynamic from "next/dynamic";
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 interface CropData {
   [crop: string]: number[];
 }
@@ -418,126 +419,213 @@ const Demand = () => {
 
   // Chart Display (unchanged)
   const ChartDisplay = () => {
-    if (!chartData) return null;
-    const individualCropsData = chartData.individual_crops.months.map((month, index) => {
-      const dataPoint: any = { month };
-      Object.keys(chartData.individual_crops.crops_data).forEach(crop => {
-        dataPoint[crop] = chartData.individual_crops.crops_data[crop][index];
-      });
-      return dataPoint;
-    });
-    const cumulativeData = chartData.cumulative_demand.months.map((month, index) => ({
-      month,
-      demand: chartData.cumulative_demand.values[index]
-    }));
-    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff00ff', '#00ffff', '#ff0000'];
-    const cropNames = Object.keys(chartData.individual_crops.crops_data);
-    return (
-      <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          Agricultural Water Demand Analysis
-        </h4>
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setSelectedChart('individual')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${selectedChart === 'individual'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Individual Crops
-              </button>
-              <button
-                onClick={() => setSelectedChart('cumulative')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${selectedChart === 'cumulative'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Total Demand
-              </button>
-            </nav>
-          </div>
-        </div>
-        <div className="chart-display bg-white p-4 rounded-lg border border-gray-200">
-          {selectedChart === 'individual' ? (
-            <div>
-              <h5 className="text-md font-semibold text-gray-700 mb-4">
-                {chartData.individual_crops.title}
-              </h5>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart
-                  data={individualCropsData}
-                  margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis
-                    label={{ value: chartData.individual_crops.y_label, angle: -90, position: 'insideLeft', offset: 20, dy: 120 }}
-                  />
-                  <Tooltip
-                    labelFormatter={(label) => `Month: ${label}`}
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        const filteredPayload = payload.filter((entry) => entry.value !== 0);
-                        if (!filteredPayload.length) return null;
-                        return (
-                          <div className="bg-white p-2 shadow-md rounded border text-xs">
-                            <p className="font-semibold">{`Month: ${label}`}</p>
-                            {filteredPayload.map((entry, index) => (
-                              <p key={`item-${index}`} style={{ color: entry.color }}>
-                                {`${entry.name}: ${Number(entry.value).toFixed(2)} mm`}
-                              </p>
-                            ))}
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Legend />
-                  {cropNames.map((crop, index) => (
-                    <Line
-                      key={crop}
-                      type="monotone"
-                      dataKey={crop}
-                      stroke={colors[index % colors.length]}
-                      strokeWidth={0} // Set to 0 to only show dots
-                      strokeOpacity={0} // Hide the line itself
-                      name={crop}
-                      dot={{ fill: colors[index % colors.length], stroke: colors[index % colors.length], r: 4 }}
-                      activeDot={{ fill: colors[index % colors.length], stroke: colors[index % colors.length], r: 6 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div>
-              <h5 className="text-md font-semibold text-gray-700 mb-4 mr-8">
-                {chartData.cumulative_demand.title}
-              </h5>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={cumulativeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis label={{ value: chartData.cumulative_demand.y_label, angle: -90, position: 'insideLeft', dy: 80, offset: 20 }} />
-                  <Tooltip formatter={(value) => [`${Number(value).toFixed(2)} mm`, 'Total Demand']} labelFormatter={(label) => `Month: ${label}`} />
-                  <Area type="monotone" dataKey="demand" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  if (!chartData) return null;
+
+  const colors = [
+    '#8884d8', '#82ca9d', '#ffc658', '#ff7300', 
+    '#00ff00', '#ff00ff', '#00ffff', '#ff0000',
+    '#a855f7', '#ec4899', '#14b8a6', '#f59e0b'
+  ];
+  
+  const cropNames = Object.keys(chartData.individual_crops.crops_data);
+
+  // Individual Crops Chart Data
+  const individualTraces = cropNames.map((crop, index) => ({
+    x: chartData.individual_crops.months,
+    y: chartData.individual_crops.crops_data[crop],
+    type: 'scatter' as const,
+    mode: 'markers' as const,
+    name: crop,
+    marker: {
+      size: 8,
+      color: colors[index % colors.length],
+      line: {
+        color: colors[index % colors.length],
+        width: 2
+      }
+    },
+    hovertemplate: `<b>${crop}</b><br>Month: %{x}<br>Demand: %{y:.2f} mm<extra></extra>`
+  }));
+
+  // Cumulative Demand Chart Data
+  const cumulativeTrace = [{
+    x: chartData.cumulative_demand.months,
+    y: chartData.cumulative_demand.values,
+    type: 'scatter' as const,
+    mode: 'lines' as const,
+    name: 'Total Demand',
+    fill: 'tozeroy' as const,
+    fillcolor: 'rgba(136, 132, 216, 0.3)',
+    line: {
+      color: '#8884d8',
+      width: 3
+    },
+    hovertemplate: '<b>Total Demand</b><br>Month: %{x}<br>Demand: %{y:.2f} mm<extra></extra>'
+  }];
+
+  // Common layout configuration
+  const commonLayout = {
+    font: { family: 'Inter, system-ui, sans-serif' },
+    hovermode: 'closest' as const,
+    dragmode: 'zoom' as const,
+    showlegend: true,
+    legend: {
+      orientation: 'h' as const,
+      yanchor: 'bottom' as const,
+      y: -0.3,
+      xanchor: 'center' as const,
+      x: 0.5
+    },
+    margin: { l: 60, r: 40, t: 40, b: 80 }
   };
 
+  const individualLayout = {
+    ...commonLayout,
+    title: {
+      text: chartData.individual_crops.title,
+      font: { size: 16, color: '#374151' }
+    },
+    xaxis: { 
+      title: { text: chartData.individual_crops.x_label },
+      gridcolor: '#e5e7eb'
+    },
+    yaxis: { 
+      title: { text: chartData.individual_crops.y_label },
+      gridcolor: '#e5e7eb'
+    }
+  };
+
+  const cumulativeLayout = {
+    ...commonLayout,
+    title: {
+      text: chartData.cumulative_demand.title,
+      font: { size: 16, color: '#374151' }
+    },
+    xaxis: { 
+      title: { text: chartData.cumulative_demand.x_label },
+      gridcolor: '#e5e7eb'
+    },
+    yaxis: { 
+      title: { text: chartData.cumulative_demand.y_label },
+      gridcolor: '#e5e7eb'
+    }
+  };
+
+  // Plotly config with modebar buttons
+  const config = {
+    displayModeBar: true,
+    displaylogo: false,
+    modeBarButtonsToAdd: ['toggleSpikelines' as const],
+    modeBarButtonsToRemove: ['lasso2d' as const, 'select2d' as const],
+    toImageButtonOptions: {
+      format: 'png' as const,
+      filename: selectedChart === 'individual' 
+        ? 'individual_crops_demand' 
+        : 'cumulative_demand',
+      height: 800,
+      width: 1200,
+      scale: 2
+    },
+    responsive: true
+  };
+
+ return (
+  <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+    <h4 className="text-lg font-semibold text-gray-800 mb-1 flex items-center gap-2">
+      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        />
+      </svg>
+      Agricultural Water Demand Analysis
+    </h4>
+
+    {/* Tab Navigation */}
+    <div className="mb-6">
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setSelectedChart('individual')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              selectedChart === 'individual'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Individual Crops
+          </button>
+
+          <button
+            onClick={() => setSelectedChart('cumulative')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              selectedChart === 'cumulative'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Total Demand
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    {/* Chart */}
+    <div className="chart-display bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      {selectedChart === 'individual' ? (
+        <Plot
+          data={individualTraces as any}
+          layout={{
+            ...individualLayout,
+            legend: {
+              orientation: 'h',
+              yanchor: 'top',
+              y: -0.35,
+              xanchor: 'center',
+              x: 0.5,
+            },
+            margin: {
+              l: 60,
+              r: 30,
+              t: 50,
+              b: 150,
+            },
+          }}
+          config={config as any}
+          style={{ width: '100%', height: '500px' }}
+          useResizeHandler
+        />
+      ) : (
+        <Plot
+          data={cumulativeTrace as any}
+          layout={{
+            ...cumulativeLayout,
+            legend: {
+              orientation: 'h',
+              yanchor: 'top',
+              y: -0.35,
+              xanchor: 'center',
+              x: 0.5,
+            },
+            margin: {
+              l: 60,
+              r: 30,
+              t: 50,
+              b: 150,
+            },
+          }}
+          config={config as any}
+          style={{ width: '100%', height: '500px' }}
+          useResizeHandler
+        />
+      )}
+    </div>
+  </div>
+);
+
+};
   // Generic Table for Industrial (unchanged)
   const TableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => (
     <div className="mt-4">

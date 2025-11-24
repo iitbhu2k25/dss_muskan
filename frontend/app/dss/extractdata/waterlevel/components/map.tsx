@@ -3,16 +3,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import "ol/ol.css";
 import { useMap } from "@/contexts/extract/Waterlevel/MapContext";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from 'next/dynamic';
+
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
 const WaterLevelMap = () => {
   const {
@@ -97,26 +90,12 @@ const WaterLevelMap = () => {
     }
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
-          <p className="text-xs text-gray-600">{payload[0].payload.timeFormatted}</p>
-          <p className="text-sm font-semibold text-blue-600">
-            Water Level: {payload[0].value.toFixed(2)} m
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   // Prepare chart data
   const chartData = popupData?.allData
     .map((item) => {
       const dateTime = new Date(item.actualTime);
       return {
-        time: dateTime.getTime(),
+        time: dateTime,
         timeFormatted: dateTime.toLocaleString("en-GB", {
           day: "2-digit",
           month: "short",
@@ -127,16 +106,68 @@ const WaterLevelMap = () => {
         waterLevel: parseFloat(item.value.toString()),
       };
     })
-    .sort((a, b) => a.time - b.time) || [];
+    .sort((a, b) => a.time.getTime() - b.time.getTime()) || [];
 
   // Filtered data based on date range
   const filteredData = chartData.filter((item) => {
     if (!filterFrom && !filterTo) return true;
-    const itemDate = new Date(item.time).toISOString().split("T")[0];
+    const itemDate = item.time.toISOString().split("T")[0];
     if (filterFrom && itemDate < filterFrom) return false;
     if (filterTo && itemDate > filterTo) return false;
     return true;
   });
+
+  // Prepare Plotly traces
+  const plotlyTraces: any[] = [];
+
+  if (showWaterLevel && filteredData.length > 0) {
+    plotlyTraces.push({
+      x: filteredData.map(d => d.time),
+      y: filteredData.map(d => d.waterLevel),
+      type: 'scatter',
+      mode: 'lines+markers',
+      name: 'Water Level',
+      line: { color: '#2563eb', width: 3 },
+      marker: { size: 4, color: '#2563eb' },
+      hovertemplate: '<b>%{x|%d %b %Y, %H:%M}</b><br>Water Level: %{y:.2f} m<extra></extra>',
+    });
+  }
+
+  if (showDangerLevel && popupData?.latestData.dangerLevel) {
+    plotlyTraces.push({
+      x: filteredData.map(d => d.time),
+      y: Array(filteredData.length).fill(popupData.latestData.dangerLevel),
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Danger Level',
+      line: { color: '#dc2626', width: 2, dash: 'dash' },
+      hovertemplate: '<b>Danger Level</b><br>%{y:.2f} m<extra></extra>',
+    });
+  }
+
+  if (showWarningLevel && popupData?.latestData.warningLevel) {
+    plotlyTraces.push({
+      x: filteredData.map(d => d.time),
+      y: Array(filteredData.length).fill(popupData.latestData.warningLevel),
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Warning Level',
+      line: { color: '#f97316', width: 2, dash: 'dot' },
+      hovertemplate: '<b>Warning Level</b><br>%{y:.2f} m<extra></extra>',
+    });
+  }
+
+  if (showHighestFlow && popupData?.latestData.highestFlowLevel) {
+    plotlyTraces.push({
+      x: filteredData.map(d => d.time),
+      y: Array(filteredData.length).fill(popupData.latestData.highestFlowLevel),
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Highest Flow',
+      line: { color: '#8b5cf6', width: 2, dash: 'dashdot' },
+      hovertemplate: '<b>Highest Flow</b><br>%{y:.2f} m<extra></extra>',
+    });
+  }
 
   return (
     <div ref={wrapRef} className={`${isFullScreen ? "fixed inset-0 z-50" : "h-screen w-full"} bg-gray-100 p-15`}>
@@ -271,7 +302,7 @@ const WaterLevelMap = () => {
                       </div>
                     )}
 
-                    {/* Trend Tab - With Filters */}
+                    {/* Trend Tab - With Plotly Chart */}
                     {activeTab === "trend" && (
                       <div className="space-y-6">
                         {/* Filter Panel */}
@@ -367,71 +398,55 @@ const WaterLevelMap = () => {
                           </div>
                         </div>
 
-                        {/* Chart */}
+                        {/* Plotly Chart */}
                         {filteredData.length > 0 ? (
                           <>
-                            <ResponsiveContainer width="100%" height={isPopupFullScreen ? 600 : 400}>
-                              <LineChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                                <CartesianGrid strokeDasharray="4 4" stroke="#e0e0e0" />
-                                <XAxis
-                                  dataKey="time"
-                                  type="number"
-                                  domain={["dataMin", "dataMax"]}
-                                  tickFormatter={(ts) =>
-                                    new Date(ts).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
+                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                              <Plot
+                                data={plotlyTraces}
+                                layout={{
+                                  xaxis: {
+                                    title: { text: 'Date & Time' },
+                                    type: 'date',
+                                    gridcolor: '#e5e7eb',
+                                    showgrid: true,
+                                  },
+                                  yaxis: {
+                                    title: { text: 'Water Level (m)' },
+                                    gridcolor: '#e5e7eb',
+                                    showgrid: true,
+                                  },
+                                  hovermode: 'x unified',
+                                  showlegend: true,
+                                  legend: {
+                                    x: 0,
+                                    y: 1.1,
+                                    orientation: 'h',
+                                    yanchor: 'bottom',
+                                    xanchor: 'left',
+                                  },
+                                  margin: { l: 60, r: 30, t: 20, b: 60 },
+                                  paper_bgcolor: 'white',
+                                  plot_bgcolor: 'white',
+                                  autosize: true,
+                                }}
+                                config={{
+                                  displayModeBar: true,
+                                  displaylogo: false,
+                                  modeBarButtonsToAdd: ['select2d', 'lasso2d'],
+                                  responsive: true,
+                                  toImageButtonOptions: {
+                                    format: 'png',
+                                    filename: 'water_level_chart',
+                                    height: 800,
+                                    width: 1200,
+                                    scale: 2
                                   }
-                                  stroke="#666"
-                                />
-                                <YAxis label={{ value: "Water Level (m)", angle: -90, position: "insideLeft" }} stroke="#666" />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend />
-
-                                {showWaterLevel && (
-                                  <Line
-                                    type="monotone"
-                                    dataKey="waterLevel"
-                                    stroke="#2563eb"
-                                    strokeWidth={3}
-                                    dot={{ r: 4 }}
-                                    activeDot={{ r: 6 }}
-                                    name="Water Level"
-                                  />
-                                )}
-                                {showDangerLevel && popupData.latestData.dangerLevel && (
-                                  <Line
-                                    type="monotone"
-                                    dataKey={() => popupData.latestData.dangerLevel}
-                                    stroke="#dc2626"
-                                    strokeWidth={2}
-                                    strokeDasharray="8 5"
-                                    dot={false}
-                                    name="Danger Level"
-                                  />
-                                )}
-                                {showWarningLevel && popupData.latestData.warningLevel && (
-                                  <Line
-                                    type="monotone"
-                                    dataKey={() => popupData.latestData.warningLevel}
-                                    stroke="#f97316"
-                                    strokeWidth={2}
-                                    strokeDasharray="6 4"
-                                    dot={false}
-                                    name="Warning Level"
-                                  />
-                                )}
-                                {showHighestFlow && popupData.latestData.highestFlowLevel && (
-                                  <Line
-                                    type="monotone"
-                                    dataKey={() => popupData.latestData.highestFlowLevel}
-                                    stroke="#8b5cf6"
-                                    strokeWidth={2}
-                                    strokeDasharray="10 6"
-                                    dot={false}
-                                    name="Highest Flow"
-                                  />
-                                )}
-                              </LineChart>
-                            </ResponsiveContainer>
+                                }}
+                                style={{ width: '100%', height: isPopupFullScreen ? '600px' : '400px' }}
+                                useResizeHandler={true}
+                              />
+                            </div>
 
                             {/* Stats */}
                             <div className="grid grid-cols-3 gap-4">
@@ -473,7 +488,7 @@ const WaterLevelMap = () => {
                           {popupData.allData.map((item, i) => (
                             <div
                               key={i}
-                              className={`p-4 rounded-xl border rounded-xl ${
+                              className={`p-4 rounded-xl border ${
                                 i === 0 ? "bg-blue-50 border-blue-300" : "bg-white border-gray-200"
                               }`}
                             >
