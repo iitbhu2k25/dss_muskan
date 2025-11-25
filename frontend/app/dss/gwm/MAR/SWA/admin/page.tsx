@@ -11,7 +11,7 @@ import LocationPage from './components/Location';
 import MapPage from './components/Map';
 import StreamFlow from './components/StreamFlow';
 import VillageSurplus from './components/VillageSurplus';
-import Eflow from './components/Eflow';
+import Eflow from './components/eflow/Eflow';
 import Climate from './components/climate';
 import ResizablePanels from './components/resizable-panels';
 import { BarChart3, Droplets, Leaf, CloudRain, ChevronUp, ChevronDown } from 'lucide-react';

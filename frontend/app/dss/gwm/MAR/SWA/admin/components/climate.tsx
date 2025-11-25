@@ -4,7 +4,7 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useClimateAdmin } from '@/contexts/surfacewater_assessment/admin/ClimateContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
+import Plot from "react-plotly.js";
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const SCENARIO_OPTIONS: { value: number; label: string }[] = [
@@ -542,31 +542,56 @@ export default function ClimateAdmin() {
         </div>
 
         {current?.data?.points && (
-          <ResponsiveContainer width="100%" height={isFullscreen ? '85%' : 420}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="year"
-                ticks={
-                  ([...new Set(chartData.map((d: any) => d.year))] as number[])
-                    .filter(y => y % 2 === 0)
-                }
-                tickFormatter={(val: number) => String(val)}
-              />
-              <YAxis />
-              <Tooltip
-                formatter={(value: any) => [Number(value).toFixed(2), ' Runoff (m³)']}
-                labelFormatter={(_: any, payload: readonly any[]) => {
-                  if (!payload?.length) return '';
-                  const p = payload[0]?.payload;
-                  return `Year ${p.year}, ${p.monthLabel}`;
-                }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="runoff" stroke="#dc2626" dot={{ r: 2 }} name="Surface Water Contributing Runoff (m³)" />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+  <div className="w-full" style={{ height: isFullscreen ? "85vh" : "420px" }}>
+    <Plot
+      data={[
+        {
+          x: chartData.map((d: any) => d.year + "-" + d.mon),
+          y: chartData.map((d: any) => d.runoff),
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Runoff",
+          line: { width: 2 },
+          marker: { size: 5 }
+        }
+      ]}
+      layout={{
+        autosize: true,
+        margin: { l: 60, r: 30, t: 40, b: 60 },
+        xaxis: {
+          title: "Year-Month",
+          tickangle: -45
+        },
+        yaxis: {
+          title: "Runoff (m³)",
+          zeroline: false
+        },
+        hovermode: "closest",
+        showlegend: true,
+        title: {
+          text: current
+            ? `Admin Climate: ${current.village} | Scenario ${current.source_id} | ${current.start_year}-${current.end_year}`
+            : "Admin Climate",
+          font: { size: 16 }
+        }
+      }}
+      config={{
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["lasso2d", "select2d"],
+        toImageButtonOptions: {
+          filename: "climate_chart",
+          height: 800,
+          width: 1200,
+          scale: 2
+        }
+      }}
+      style={{ width: "100%", height: "100%" }}
+      useResizeHandler={true}
+    />
+  </div>
+)}
+
       </div>
 
       <div className="mt-6 p-6 border-t border-gray-200">
