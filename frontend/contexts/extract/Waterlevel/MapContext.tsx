@@ -76,7 +76,7 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
     console.log("[DEBUG] fetchHydrographStationData called with stationCode:", stationCode);
     try {
       const currentDate = new Date().toISOString().split('T')[0];
-      const startDate = "2025-01-01";
+      const startDate = "2016-01-01";
       const apiUrl = "http://localhost:9000/django/extract/level";
       
       console.log("[DEBUG] Sending POST request to:", apiUrl);
@@ -168,7 +168,7 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
       const overlay = new Overlay({
         element: undefined,
         autoPan: true,
-        autoPanAnimation: { duration: 50 },
+        // autoPanAnimation: { duration: 50 },
       });
 
       const initialMap = new Map({
