@@ -96,12 +96,12 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
       
       if (!response.ok) {
         const text = await response.text();
-        console.error("[DEBUG] Non-OK response:", text);
+        // console.error("[DEBUG] Non-OK response:", text);
         throw new Error("Failed to fetch hydrograph station data");
       }
       
       const data = await response.json();
-      console.log("[DEBUG] API response JSON:", data);
+      // console.log("[DEBUG] API response JSON:", data);
       
       if (data.error) {
         throw new Error(data.error);
@@ -294,7 +294,7 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
         try {
           console.log("[DEBUG] Calling backend API for station:", stationCode);
           const hydrographData = await fetchHydrographStationData(stationCode);
-          console.log("[DEBUG] Backend API response:", hydrographData);
+          // console.log("[DEBUG] Backend API response:", hydrographData);
 
           if (!Array.isArray(hydrographData) || hydrographData.length === 0) {
             throw new Error("No valid data received");
