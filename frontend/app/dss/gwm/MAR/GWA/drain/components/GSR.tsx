@@ -55,10 +55,10 @@ const StressIdentification: React.FC = () => {
 
   const STRESS_LABEL_MAP: Record<(typeof STRESS_DISPLAY_FIELDS)[number], string> = {
     village_name: "Village Name",
-    recharge: "Recharge (m³/Year)",
-    total_demand: "Total Demand (m³/Year)",
+    recharge: "Recharge (Million Liters)",
+    total_demand: "Total Demand (Million Liters/Year)",
     injection: "Recoverable Potential",
-    stress_value: "Injection Need (m³/Year)",
+    stress_value: "Injection Need (Million Liters/Year)",
   };
 
   const formatStressLabel = (key: string) =>
@@ -556,8 +556,8 @@ const [gsrSortConfig, setGsrSortConfig] = useState<{
 type GSRField = (typeof GSR_DISPLAY_FIELDS)[number];
   const GSR_LABEL_MAP: Record<(typeof GSR_DISPLAY_FIELDS)[number], string> = {
     village_name: "Village Name",
-    recharge: "Recharge (m³/Year)",
-    total_demand: "Total Demand (m³/Year)",
+    recharge: "Recharge (Million Litres)",
+    total_demand: "Total Demand (Million Litres/Year)",
     gsr: "GSR Ratio",
     trend_status: "Trend Status",
     gsr_classification: "GSR Classification",

@@ -68,14 +68,15 @@ class IndustrialForecastService:
             ratio = forecast_population / total_forecast
             demand = (ratio * groundwater_industrial_demand)/1000
 
+
             final_output.append({
-                "village_code": village_code,
+                # "village_code": village_code,
                 "Village_name": village_name,
-                "Forecast_Population": forecast_population,
-                "Ratio": round(ratio, 6),
+                # "Forecast_Population": forecast_population,
+                # "Ratio": round(ratio, 6),
                 "Industrial_demand_(Million litres/Year)": round(demand, 3)
             })
-
+ 
         return {
             "status": "success",
             "total_forecast": total_forecast,

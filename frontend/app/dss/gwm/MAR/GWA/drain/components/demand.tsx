@@ -523,8 +523,8 @@ const Demand = () => {
               <button
                 onClick={() => setSelectedChart('individual')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedChart === 'individual'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 Individual Crops
@@ -533,8 +533,8 @@ const Demand = () => {
               <button
                 onClick={() => setSelectedChart('cumulative')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedChart === 'cumulative'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 Total Demand
