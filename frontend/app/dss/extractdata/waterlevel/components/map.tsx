@@ -37,6 +37,31 @@ const WaterLevelMap = () => {
   const [showDangerLevel, setShowDangerLevel] = useState(true);
   const [showWarningLevel, setShowWarningLevel] = useState(true);
   const [showHighestFlow, setShowHighestFlow] = useState(true);
+  const downloadCSV = (data: any[]) => {
+  const header = ["Water Level (m)", "Date & Time"];
+  const rows = data.map(item => [
+    item.value.toFixed(2),
+    new Date(item.actualTime).toLocaleString("en-GB")
+  ]);
+
+  const csvContent =
+    "data:text/csv;charset=utf-8," +
+    [header, ...rows].map(e => e.join(",")).join("\n");
+
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csvContent));
+  link.setAttribute("download", "water_level_data.csv");
+  document.body.appendChild(link);
+  link.click();
+};
+useEffect(() => {
+  const today = new Date().toISOString().split("T")[0];
+  const defaultStartDate = "2025-01-01";
+
+  if (!filterFrom) setFilterFrom(defaultStartDate);
+  if (!filterTo) setFilterTo(today);
+}, []);
+
 
   useEffect(() => {
     if (map && mapElement.current && !map.getTarget()) {
@@ -303,213 +328,240 @@ const WaterLevelMap = () => {
                     )}
 
                     {/* Trend Tab - With Plotly Chart */}
-                    {activeTab === "trend" && (
-                      <div className="space-y-6">
-                        {/* Filter Panel */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-200">
-                          <h4 className="font-semibold text-gray-800 mb-4">Filter Data</h4>
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                              <input
-                                type="date"
-                                value={filterFrom}
-                                onChange={(e) => setFilterFrom(e.target.value)}
-                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                              <input
-                                type="date"
-                                value={filterTo}
-                                onChange={(e) => setFilterTo(e.target.value)}
-                                max={new Date().toISOString().split("T")[0]}
-                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              />
-                            </div>
-                          </div>
+{activeTab === "trend" && (
+  <div className="space-y-6">
 
-                          <div className="mb-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2">Show Lines:</p>
-                            <div className="flex flex-wrap gap-4">
-                              <label className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={showWaterLevel}
-                                  onChange={(e) => setShowWaterLevel(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm">Water Level</span>
-                              </label>
-                              {popupData.latestData.dangerLevel && (
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={showDangerLevel}
-                                    onChange={(e) => setShowDangerLevel(e.target.checked)}
-                                    className="w-4 h-4 text-red-600 rounded"
-                                  />
-                                  <span className="text-sm text-red-600 font-medium">Danger Level</span>
-                                </label>
-                              )}
-                              {popupData.latestData.warningLevel && (
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={showWarningLevel}
-                                    onChange={(e) => setShowWarningLevel(e.target.checked)}
-                                    className="w-4 h-4 text-orange-600 rounded"
-                                  />
-                                  <span className="text-sm text-orange-600 font-medium">Warning Level</span>
-                                </label>
-                              )}
-                              {popupData.latestData.highestFlowLevel && (
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={showHighestFlow}
-                                    onChange={(e) => setShowHighestFlow(e.target.checked)}
-                                    className="w-4 h-4 text-purple-600 rounded"
-                                  />
-                                  <span className="text-sm text-purple-600 font-medium">Highest Flow</span>
-                                </label>
-                              )}
-                            </div>
-                          </div>
+    {/* Removed the old date initializer */}
 
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">
-                              Records: <strong>{filteredData.length}</strong>
-                            </span>
-                            <button
-                              onClick={() => {
-                                setFilterFrom("");
-                                setFilterTo("");
-                                setShowWaterLevel(true);
-                                setShowDangerLevel(true);
-                                setShowWarningLevel(true);
-                                setShowHighestFlow(true);
-                              }}
-                              className="text-sm text-blue-600 hover:text-blue-800 underline"
-                            >
-                              Reset Filters
-                            </button>
-                          </div>
-                        </div>
+    {/* Filter Panel */}
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-200">
+      <h4 className="font-semibold text-gray-800 mb-4">Filter Data</h4>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+         <input
+            type="date"
+            value={filterFrom}
+            min="2016-01-01"     // user can go back till 2016
+            max={new Date().toISOString().split("T")[0]}
+            onChange={(e) => setFilterFrom(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+          <input
+            type="date"
+            value={filterTo}
+            min="2016-01-01"
+            max={new Date().toISOString().split("T")[0]}
+            onChange={(e) => setFilterTo(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
 
-                        {/* Plotly Chart */}
-                        {filteredData.length > 0 ? (
-                          <>
-                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                              <Plot
-                                data={plotlyTraces}
-                                layout={{
-                                  xaxis: {
-                                    title: { text: 'Date & Time' },
-                                    type: 'date',
-                                    gridcolor: '#e5e7eb',
-                                    showgrid: true,
-                                  },
-                                  yaxis: {
-                                    title: { text: 'Water Level (m)' },
-                                    gridcolor: '#e5e7eb',
-                                    showgrid: true,
-                                  },
-                                  hovermode: 'x unified',
-                                  showlegend: true,
-                                  legend: {
-                                    x: 0,
-                                    y: 1.1,
-                                    orientation: 'h',
-                                    yanchor: 'bottom',
-                                    xanchor: 'left',
-                                  },
-                                  margin: { l: 60, r: 30, t: 20, b: 60 },
-                                  paper_bgcolor: 'white',
-                                  plot_bgcolor: 'white',
-                                  autosize: true,
-                                }}
-                                config={{
-                                  displayModeBar: true,
-                                  displaylogo: false,
-                                  modeBarButtonsToAdd: ['select2d', 'lasso2d'],
-                                  responsive: true,
-                                  toImageButtonOptions: {
-                                    format: 'png',
-                                    filename: 'water_level_chart',
-                                    height: 800,
-                                    width: 1200,
-                                    scale: 2
-                                  }
-                                }}
-                                style={{ width: '100%', height: isPopupFullScreen ? '600px' : '400px' }}
-                                useResizeHandler={true}
-                              />
-                            </div>
+      <div className="mb-4">
+        <p className="text-sm font-medium text-gray-700 mb-2">Show Lines:</p>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showWaterLevel}
+              onChange={(e) => setShowWaterLevel(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+            <span className="text-sm">Water Level</span>
+          </label>
 
-                            {/* Stats */}
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="bg-blue-50 p-5 rounded-xl text-center">
-                                <p className="text-sm text-gray-600">Current</p>
-                                <p className="text-2xl font-bold text-blue-700">
-                                  {popupData.latestData.value.toFixed(2)} m
-                                </p>
-                              </div>
-                              <div className="bg-green-50 p-5 rounded-xl text-center">
-                                <p className="text-sm text-gray-600">Min (Filtered)</p>
-                                <p className="text-2xl font-bold text-green-700">
-                                  {Math.min(...filteredData.map((d) => d.waterLevel)).toFixed(2)} m
-                                </p>
-                              </div>
-                              <div className="bg-red-50 p-5 rounded-xl text-center">
-                                <p className="text-sm text-gray-600">Max (Filtered)</p>
-                                <p className="text-2xl font-bold text-red-700">
-                                  {Math.max(...filteredData.map((d) => d.waterLevel)).toFixed(2)} m
-                                </p>
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center py-16 text-gray-500 text-lg">
-                            No data matches your filters
-                          </div>
-                        )}
-                      </div>
-                    )}
+          {popupData.latestData.dangerLevel && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showDangerLevel}
+                onChange={(e) => setShowDangerLevel(e.target.checked)}
+                className="w-4 h-4 text-red-600 rounded"
+              />
+              <span className="text-sm text-red-600 font-medium">Danger Level</span>
+            </label>
+          )}
+
+          {popupData.latestData.warningLevel && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showWarningLevel}
+                onChange={(e) => setShowWarningLevel(e.target.checked)}
+                className="w-4 h-4 text-orange-600 rounded"
+              />
+              <span className="text-sm text-orange-600 font-medium">Warning Level</span>
+            </label>
+          )}
+
+          {popupData.latestData.highestFlowLevel && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showHighestFlow}
+                onChange={(e) => setShowHighestFlow(e.target.checked)}
+                className="w-4 h-4 text-purple-600 rounded"
+              />
+              <span className="text-sm text-purple-600 font-medium">Highest Flow</span>
+            </label>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium">
+          Records: <strong>{filteredData.length}</strong>
+        </span>
+        <button
+          onClick={() => {
+            setFilterFrom("2025-01-01");
+            setFilterTo(new Date().toISOString().split("T")[0]);
+            setShowWaterLevel(true);
+            setShowDangerLevel(true);
+            setShowWarningLevel(true);
+            setShowHighestFlow(true);
+          }}
+          className="text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          Reset Filters
+        </button>
+      </div>
+    </div>
+
+    {/* Plotly Chart */}
+    {filteredData.length > 0 ? (
+      <>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <Plot
+            data={plotlyTraces}
+            layout={{
+              xaxis: {
+                title: { text: 'Date & Time' },
+                type: 'date',
+                gridcolor: '#e5e7eb',
+                showgrid: true,
+              },
+              yaxis: {
+                title: { text: 'Water Level (m)' },
+                gridcolor: '#e5e7eb',
+                showgrid: true,
+              },
+              hovermode: 'x unified',
+              showlegend: true,
+              legend: {
+                x: 0,
+                y: 1.1,
+                orientation: 'h',
+                yanchor: 'bottom',
+                xanchor: 'left',
+              },
+              margin: { l: 60, r: 30, t: 20, b: 60 },
+              paper_bgcolor: 'white',
+              plot_bgcolor: 'white',
+              autosize: true,
+            }}
+            config={{
+              displayModeBar: true,
+              displaylogo: false,
+              modeBarButtonsToAdd: ['select2d', 'lasso2d'],
+              responsive: true,
+              toImageButtonOptions: {
+                format: 'png',
+                filename: 'water_level_chart',
+                height: 800,
+                width: 1200,
+                scale: 2
+              }
+            }}
+            style={{ width: '100%', height: isPopupFullScreen ? '600px' : '400px' }}
+            useResizeHandler={true}
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-blue-50 p-5 rounded-xl text-center">
+            <p className="text-sm text-gray-600">Current</p>
+            <p className="text-2xl font-bold text-blue-700">
+              {popupData.latestData.value.toFixed(2)} m
+            </p>
+          </div>
+          <div className="bg-green-50 p-5 rounded-xl text-center">
+            <p className="text-sm text-gray-600">Min (Filtered)</p>
+            <p className="text-2xl font-bold text-green-700">
+              {Math.min(...filteredData.map((d) => d.waterLevel)).toFixed(2)} m
+            </p>
+          </div>
+          <div className="bg-red-50 p-5 rounded-xl text-center">
+            <p className="text-sm text-gray-600">Max (Filtered)</p>
+            <p className="text-2xl font-bold text-red-700">
+              {Math.max(...filteredData.map((d) => d.waterLevel)).toFixed(2)} m
+            </p>
+          </div>
+        </div>
+      </>
+    ) : (
+      <div className="text-center py-16 text-gray-500 text-lg">
+        No data matches your filters
+      </div>
+    )}
+  </div>
+)}
+
 
                     {/* Data Table Tab */}
-                    {activeTab === "data" && (
-                      <div className="space-y-4">
-                        <div className="bg-gray-100 p-4 rounded-xl font-medium">
-                          Showing {popupData.allData.length} records
-                        </div>
-                        <div className="max-h-96 overflow-y-auto space-y-3">
-                          {popupData.allData.map((item, i) => (
-                            <div
-                              key={i}
-                              className={`p-4 rounded-xl border ${
-                                i === 0 ? "bg-blue-50 border-blue-300" : "bg-white border-gray-200"
-                              }`}
-                            >
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <p className="text-xl font-bold">{item.value.toFixed(2)} m</p>
-                                  <p className="text-sm text-gray-600">
-                                    {new Date(item.actualTime).toLocaleString("en-GB")}
-                                  </p>
-                                </div>
-                                {i === 0 && (
-                                  <span className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
-                                    LATEST
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                   {activeTab === "data" && (
+  <div className="space-y-4">
+    <div className="bg-gray-100 p-4 rounded-xl font-medium flex justify-between">
+      <span>Showing {popupData.allData.length} records</span>
+      <button
+        onClick={() => downloadCSV(popupData.allData)}
+        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700"
+      >
+        Download CSV
+      </button>
+    </div>
+
+    <div className="max-h-96 overflow-y-auto">
+      <table className="w-full text-left border">
+        <thead className="bg-gray-200">
+          <tr>
+            <th className="p-3 border">#</th>
+            <th className="p-3 border">Water Level (m)</th>
+            <th className="p-3 border">Date & Time</th>
+            <th className="p-3 border">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {popupData.allData.map((item, i) => (
+            <tr
+              key={i}
+              className={`${i === 0 ? "bg-blue-50" : "bg-white"}`}
+            >
+              <td className="p-3 border">{i + 1}</td>
+              <td className="p-3 border font-semibold">{item.value.toFixed(2)} m</td>
+              <td className="p-3 border">
+                {new Date(item.actualTime).toLocaleString("en-GB")}
+              </td>
+              <td className="p-3 border font-bold">
+                {i === 0 ? (
+                  <span className="text-blue-700">LATEST</span>
+                ) : (
+                  "---"
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
                   </div>
                 ) : null}
               </div>
