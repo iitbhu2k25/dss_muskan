@@ -12,7 +12,7 @@ import XYZ from "ol/source/XYZ";
 import GeoJSON from "ol/format/GeoJSON";
 import { Fill, Stroke, Style } from "ol/style";
 import { fromLonLat } from "ol/proj";
-import { defaults as defaultControls, ScaleLine, FullScreen } from "ol/control";
+import { defaults as defaultControls, ScaleLine } from "ol/control";
 import Overlay from "ol/Overlay";
 import { MapBrowserEvent } from "ol";
 
@@ -194,7 +194,6 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
             text: true,
             minWidth: 140,
           }),
-          new FullScreen(),
         ]),
       });
 
