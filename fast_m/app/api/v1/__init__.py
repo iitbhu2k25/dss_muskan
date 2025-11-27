@@ -11,6 +11,8 @@ __all__ = [
     "forecast",
     "interpolation",
     "gsr",
+    "agriculture",
+    "pdf_api",
     "industrial_api"
 
 ]

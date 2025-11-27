@@ -14,10 +14,12 @@ from app.api.v1.stress import router as stress_router
 from app.api.v1.forecast import router as forecast_router
 from app.api.v1.interpolation import router as interpolation_router
 from app.api.v1.industrial_api import router as industrial_router
+from app.api.v1.pdf_api import router as pdf_router
 
 router = APIRouter()
 
 # Include all versioned routes under /gwa
+router.include_router(pdf_router, prefix="/gwa", tags=["PDF"])
 router.include_router(gsr_router, prefix="/gwa", tags=["GSR"])
 router.include_router(crops_router, prefix="/gwa", tags=["Crops"])
 router.include_router(agri_demand_router, prefix="/gwa", tags=["Agricultural Demand"])

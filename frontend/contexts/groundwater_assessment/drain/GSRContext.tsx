@@ -6,24 +6,10 @@ import { useDemand } from './DemandContext';
 import { useRecharge } from './RechargeContext';
 import { GroundwaterTrendContext } from './TrendContext';
 import { useMap } from '@/contexts/groundwater_assessment/drain/MapContext';
+import pako from 'pako';
 
 interface GSRData {
-  village_code: string;
-  village_name: string;
-  subdistrict_code: string;
-  recharge: number;
-  domestic_demand: number;
-  agricultural_demand: number;
-  total_demand: number;
-  gsr: number | null;
-  gsr_status: string;
-  trend_status: string;
-  gsr_classification: string;
-  classification_color: string;
-  has_recharge_data: boolean;
-  has_domestic_data: boolean;
-  has_agricultural_data: boolean;
-  has_trend_data: boolean;
+  [key: string]: string | number;
 }
 
 interface StressData {
@@ -32,62 +18,31 @@ interface StressData {
 
 interface MergeStatistics {
   total_shapefile_villages: number;
-  total_gsr_villages: number;
-  villages_with_geospatial_data: number;
-  villages_without_geospatial_data: number;
-  match_success_rate: number;
+  villages_with_gsr_data: number;
+  villages_without_gsr_data: number;
+  merge_success_rate: number;
   error?: string;
 }
 
-interface GSRSummary {
-  total_villages: number;
-  total_recharge: number;
-  total_domestic_demand: number;
-  total_agricultural_demand: number;
-  total_demand: number;
-  overall_gsr: number | null;
-  average_gsr: number;
-  sustainable_villages: number;
-  stressed_villages: number;
-  no_demand_villages: number;
-  sustainability_percentage: number;
-  villages_with_trend_data: number;
-  trend_distribution: Record<string, number>;
-  classification_distribution: Record<string, number>;
-}
-
 interface GSRContextType {
-  // GSR State
   gsrTableData: GSRData[];
   gsrLoading: boolean;
   gsrError: string | null;
-  gsrSummary: GSRSummary | null;
-
-  // Stress Identification State
   stressTableData: StressData[];
   stressLoading: boolean;
   stressError: string | null;
-
-  // GeoJSON State
   gsrGeojsonData: any | null;
   mergeStatistics: MergeStatistics | null;
-
-  // Map Image State
   mapImageFilename: string | null;
   mapImageBase64: string | null;
-
-  // Actions
   computeGSR: () => Promise<void>;
   canComputeGSR: () => boolean;
-
-  // Stress Identification Actions
   computeStressIdentification: (yearsCount: number) => Promise<StressData[]>;
   canComputeStressIdentification: () => boolean;
-
-  // Helper methods
   clearGSRData: () => void;
   clearStressData: () => void;
   getMapImageUrl: () => string | null;
+  getMapImageSrc: () => string | null;
 }
 
 export const GSRContext = createContext<GSRContextType | undefined>(undefined);
@@ -97,83 +52,100 @@ interface GSRProviderProps {
 }
 
 export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
-  // GSR State
   const [gsrTableData, setGSRTableData] = useState<GSRData[]>([]);
   const [gsrLoading, setGSRLoading] = useState<boolean>(false);
   const [gsrError, setGSRError] = useState<string | null>(null);
-  const [gsrSummary, setGSRSummary] = useState<GSRSummary | null>(null);
-
-  // Stress Identification State
   const [stressTableData, setStressTableData] = useState<StressData[]>([]);
   const [stressLoading, setStressLoading] = useState<boolean>(false);
   const [stressError, setStressError] = useState<string | null>(null);
-
-  // GeoJSON State
   const [gsrGeojsonData, setGSRGeojsonData] = useState<any | null>(null);
   const [mergeStatistics, setMergeStatistics] = useState<MergeStatistics | null>(null);
-
-  // Map Image State
   const [mapImageFilename, setMapImageFilename] = useState<string | null>(null);
   const [mapImageBase64, setMapImageBase64] = useState<string | null>(null);
 
-  // Context dependencies
   const { selectedVillages } = useLocation();
   const {
     domesticTableData,
     agriculturalTableData,
+    industrialTableData,
+    industrialData,
+    industrialGWShare,
     domesticChecked,
-    agriculturalChecked
+    agriculturalChecked,
+    industrialChecked
   } = useDemand();
+
   const { tableData: rechargeTableData } = useRecharge();
-  const { trendData } = useContext(GroundwaterTrendContext);
+  const { trendData } = React.useContext(GroundwaterTrendContext);
   const { addGsrLayer, removeGsrLayer } = useMap();
 
-  // Get map image URL helper
   const getMapImageUrl = (): string | null => {
     if (!mapImageFilename) return null;
     return `/django/media/temp/${mapImageFilename}`;
   };
 
-  // Clear all GSR data
+  const getMapImageSrc = (): string | null => {
+    if (mapImageBase64) return mapImageBase64;
+    return getMapImageUrl();
+  };
+
   const clearGSRData = () => {
     setGSRTableData([]);
     setGSRGeojsonData(null);
     setMergeStatistics(null);
     setMapImageFilename(null);
     setMapImageBase64(null);
-    setGSRSummary(null);
     setGSRError(null);
     removeGsrLayer();
   };
 
-  // Clear stress data
   const clearStressData = () => {
     setStressTableData([]);
     setStressError(null);
   };
 
-  // Check if GSR computation can be performed
   const canComputeGSR = (): boolean => {
     return !!(
       selectedVillages.length > 0 &&
       rechargeTableData.length > 0 &&
       ((domesticChecked && domesticTableData.length > 0) ||
-        (agriculturalChecked && agriculturalTableData.length > 0))
+        (agriculturalChecked && agriculturalTableData.length > 0) ||
+        (industrialChecked && industrialTableData.length > 0))
     );
   };
 
-  // Check if Stress Identification can be performed
   const canComputeStressIdentification = (): boolean => {
     return gsrTableData.length > 0;
   };
 
-  // Compute GSR function
+  const processIndustrialData = (rawIndustrialData: any[]): any[] => {
+    if (rawIndustrialData.length > 0 && 'village_code' in rawIndustrialData[0] && 'demand_mld' in rawIndustrialData[0]) {
+      return rawIndustrialData;
+    }
+    
+    if (rawIndustrialData.length > 0 && 'village_code' in rawIndustrialData[0] && 'industrial_demand' in rawIndustrialData[0]) {
+      console.log('✅ Converting industrial_demand to demand_mld format for GSR');
+      return rawIndustrialData.map(item => ({
+        village_code: item.village_code,
+        village_name: item.village_name || 'Unknown',
+        demand_mld: item.industrial_demand || 0,
+        original_industrial_demand: item.industrial_demand,
+        forecast_population: item.forecast_population,
+        ratio: item.ratio
+      }));
+    }
+    
+    console.warn('⚠️ Industrial data is not in expected format. GSR calculation may not include industrial demand properly.');
+    console.warn('Expected fields: village_code and either demand_mld or industrial_demand');
+    
+    return [];
+  };
+
   const computeGSR = async () => {
     try {
       setGSRLoading(true);
       setGSRError(null);
 
-      // Validation
       if (selectedVillages.length === 0) {
         throw new Error('Village selection is required. Please select villages first.');
       }
@@ -182,40 +154,101 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         throw new Error('Recharge data is required. Please compute recharge first.');
       }
 
-      if (domesticTableData.length === 0 && agriculturalTableData.length === 0) {
-        throw new Error('No demand data available. Please compute domestic or agricultural demand first.');
+      if (domesticTableData.length === 0 && agriculturalTableData.length === 0 && industrialTableData.length === 0) {
+        throw new Error('No demand data available. Please compute domestic, agricultural, or industrial demand first.');
       }
 
-      // Get trend CSV filename from trend context
       const trendCsvFilename = trendData?.summary_stats?.file_info?.trend_csv_filename || null;
+      const processedIndustrialData = processIndustrialData(industrialTableData);
 
-      if (trendCsvFilename) {
-        console.log('🎯 Using Trend CSV in GSR computation:', trendCsvFilename);
-      } else {
-        console.log('⚠️ No trend CSV available for GSR computation');
-      }
-
-      //Prepare request payload to match API expectations
-      const requestPayload = {
-        rechargeData: rechargeTableData,        
-        domesticData: domesticTableData,       
+      const payload = {
+        selectedVillages: selectedVillages,
+        rechargeData: rechargeTableData,
+        domesticData: domesticTableData,
         agriculturalData: agriculturalTableData,
-        selectedSubDistricts: selectedVillages,
-        trendCsvFilename: trendCsvFilename,     
+        industrialData: processedIndustrialData,
+        industrialDataTable: industrialData,
+        industrialGWShare: industrialGWShare,
         hasDomesticDemand: domesticChecked && domesticTableData.length > 0,
         hasAgriculturalDemand: agriculturalChecked && agriculturalTableData.length > 0,
-        hasRechargeData: rechargeTableData.length > 0
+        hasIndustrialDemand: industrialChecked && processedIndustrialData.length > 0,
+        hasRechargeData: rechargeTableData.length > 0,
+        trendCsvFilename: trendCsvFilename || '',
+        timestamp: new Date().toISOString()
       };
 
-      console.log('Computing GSR with payload:', requestPayload);
+      console.log('═══════════════════════════════════════════════════════════════════════════════');
+      console.log('🏭 GSR PAYLOAD VERIFICATION - INDUSTRIAL DEMAND (DRAIN CASE)');
+      console.log('═══════════════════════════════════════════════════════════════════════════════');
+      console.log('📊 DEMAND DATA SUMMARY:');
+      console.log(`   ✓ Recharge Records: ${rechargeTableData.length}`);
+      console.log(`   ✓ Domestic Records: ${domesticTableData.length} (Checked: ${domesticChecked})`);
+      console.log(`   ✓ Agricultural Records: ${agriculturalTableData.length} (Checked: ${agriculturalChecked})`);
+      console.log(`   ✓ Industrial Records: ${industrialTableData.length} (Checked: ${industrialChecked})`);
+      console.log(`   ✓ Processed Industrial Records: ${processedIndustrialData.length}`);
+      console.log(`   ✓ Industrial Data Table Records: ${industrialData.length}`);
+      console.log(`   ✓ Industrial GW Share: ${industrialGWShare}`);
+      console.log('');
+      console.log('🎯 PAYLOAD FLAGS:');
+      console.log(`   • hasDomesticDemand: ${payload.hasDomesticDemand}`);
+      console.log(`   • hasAgriculturalDemand: ${payload.hasAgriculturalDemand}`);
+      console.log(`   • hasIndustrialDemand: ${payload.hasIndustrialDemand}`);
+      console.log(`   • hasRechargeData: ${payload.hasRechargeData}`);
+      console.log('');
+      
+      if (industrialTableData.length > 0) {
+        console.log('🏭 RAW INDUSTRIAL DATA SAMPLE (First 3 records):');
+        industrialTableData.slice(0, 3).forEach((record, idx) => {
+          console.log(`   ${idx + 1}. Raw Record:`, record);
+        });
+      }
+      
+      if (industrialData.length > 0) {
+        console.log('🏭 INDUSTRIAL DATA TABLE (First 3 records):');
+        industrialData.slice(0, 3).forEach((record, idx) => {
+          console.log(`   ${idx + 1}.`, record);
+        });
+      }
+      
+      if (processedIndustrialData.length > 0) {
+        console.log('🏭 PROCESSED INDUSTRIAL DATA SAMPLE (First 3 records):');
+        processedIndustrialData.slice(0, 3).forEach((record, idx) => {
+          console.log(`   ${idx + 1}. Village: ${record.village_code || 'N/A'}, Demand: ${record.demand_mld || 0} MLD`);
+        });
+        console.log(`   ✅ Industrial demand WILL BE INCLUDED in total demand calculation`);
+      } else if (industrialTableData.length > 0) {
+        console.log('   ⚠️ Industrial data exists but is not in village-wise format');
+        console.log('   ⚠️ Industrial demand MAY NOT BE PROPERLY INCLUDED in GSR calculation');
+        console.log('   ⚠️ Backend API should return village-wise industrial demand data');
+      } else {
+        console.log('   ℹ️ No industrial demand data (optional)');
+      }
+      
+      console.log('');
+      console.log('📍 Selected Villages:', selectedVillages);
+      console.log('📈 Trend CSV:', trendCsvFilename || 'Not provided');
+      console.log('═══════════════════════════════════════════════════════════════════════════════');
 
-      // API call to compute GSR
+      const jsonString = JSON.stringify(payload);
+      const compressed = pako.gzip(jsonString);
+      
+      let binary = '';
+      const len = compressed.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(compressed[i]);
+      }
+      const base64Compressed = btoa(binary);
+
+      console.log('🔄 Sending compressed payload to GSR API...');
+      console.log(`   Payload size: ${jsonString.length} bytes`);
+      console.log(`   Compressed size: ${base64Compressed.length} bytes`);
+
       const response = await fetch('http://localhost:6500/gwa/gsr', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestPayload),
+        body: JSON.stringify({ zipped_data: base64Compressed }),
       });
 
       if (!response.ok) {
@@ -224,80 +257,96 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       }
 
       const result = await response.json();
-      console.log('GSR computation result:', result);
 
-      // Extract table data from API response
+      console.log('✅ GSR API Response received');
+      console.log(`   Success: ${result.success}`);
+      console.log(`   Villages processed: ${result.villages_count || 0}`);
+      
+      if (result.summary) {
+        console.log('');
+        console.log('📊 GSR COMPUTATION SUMMARY:');
+        console.log(`   Total Recharge: ${result.summary.total_recharge || 0} MCM`);
+        console.log(`   Total Domestic: ${result.summary.total_domestic_demand || 0} MCM`);
+        console.log(`   Total Agricultural: ${result.summary.total_agricultural_demand || 0} MCM`);
+        console.log(`   Total Industrial: ${result.summary.total_industrial_demand || 0} MCM`);
+        console.log(`   ─────────────────────────────────────────────────────`);
+        console.log(`   TOTAL DEMAND: ${result.summary.total_demand || 0} MCM`);
+        console.log(`   OVERALL GSR: ${result.summary.overall_gsr || 0}`);
+        
+        if (industrialChecked && processedIndustrialData.length === 0 && (result.summary.total_industrial_demand === 0 || result.summary.total_industrial_demand === undefined)) {
+          console.log('');
+          console.log('⚠️ WARNING: Industrial demand appears to be 0 or missing!');
+          console.log('   This may be because:');
+          console.log('   1. The industrial API is not returning village-wise data');
+          console.log('   2. The GSR API is not processing industrial data correctly');
+          console.log('   Please check the backend implementation.');
+        }
+      }
+      
+      console.log('═══════════════════════════════════════════════════════════════════════════════');
+
       if (result.success && result.data && Array.isArray(result.data)) {
         setGSRTableData(result.data);
-        console.log(` GSR Table Data set: ${result.data.length} villages`);
+      } else if (result.gsr_data && Array.isArray(result.gsr_data)) {
+        setGSRTableData(result.gsr_data);
+      } else if (result.results && Array.isArray(result.results)) {
+        setGSRTableData(result.results);
       } else {
-        throw new Error('Invalid response format from server - missing data array');
+        throw new Error('Invalid response format from server');
       }
 
-      // Extract summary data
-      if (result.summary) {
-        setGSRSummary(result.summary);
-        console.log('GSR Summary set:', result.summary);
-      }
-
-      //  Extract and set GeoJSON data
       if (result.geospatial_data) {
         try {
           addGsrLayer(result.geospatial_data);
           setGSRGeojsonData(result.geospatial_data);
-          console.log(' GSR GeoJSON data set and layer added to map');
+          console.log('✅ GSR layer added to map');
         } catch (e) {
-          console.log('Failed to add GSR layer to map:', e);
+          console.log('⚠️ Failed to add GSR layer to map:', e);
         }
       } else {
         removeGsrLayer();
         setGSRGeojsonData(null);
-        console.log('⚠️ No GeoJSON data received');
       }
 
-      //  Set merge statistics
       if (result.merge_statistics) {
         setMergeStatistics(result.merge_statistics);
-        console.log('📊 Merge statistics:', result.merge_statistics);
+        console.log(`📊 Merge Statistics: ${result.merge_statistics.villages_with_geospatial_data}/${result.merge_statistics.total_gsr_villages} villages merged`);
       }
 
-      // Handle map image data
       if (result.map_image_filename) {
         setMapImageFilename(result.map_image_filename);
-        console.log('📍 GSR map image filename:', result.map_image_filename);
+        console.log('📸 GSR map image generated:', result.map_image_filename);
+      } else {
+        setMapImageFilename(null);
+        console.log('⚠️ No map image generated');
       }
 
       if (result.map_image_base64) {
         setMapImageBase64(result.map_image_base64);
-        console.log('🖼️ GSR map image base64 data received');
+        console.log('📸 GSR map image base64 received');
+      } else {
+        setMapImageBase64(null);
       }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      console.log('Error computing GSR:', errorMessage);
+      console.error('❌ GSR Computation Error:', errorMessage);
       setGSRError(errorMessage);
-
-      // Clear data on error
       setGSRTableData([]);
       setGSRGeojsonData(null);
       setMergeStatistics(null);
       setMapImageFilename(null);
       setMapImageBase64(null);
-      setGSRSummary(null);
-      removeGsrLayer();
-
     } finally {
       setGSRLoading(false);
     }
   };
 
-  // Compute Stress Identification function
   const computeStressIdentification = async (yearsCount: number): Promise<StressData[]> => {
     try {
       setStressLoading(true);
       setStressError(null);
 
-      // Validation
       if (gsrTableData.length === 0) {
         throw new Error('GSR analysis must be completed first. Please compute GSR before stress identification.');
       }
@@ -306,22 +355,20 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
         throw new Error('Please provide a valid number of years between 1 and 50.');
       }
 
-      // Prepare request payload for stress identification
       const requestPayload = {
         gsrData: gsrTableData,
         years_count: yearsCount,
         selectedVillages: selectedVillages,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       };
 
-      console.log('Computing Stress Identification with payload:', requestPayload);
+      console.log('🔄 Computing Stress Identification...');
+      console.log(`   Years: ${yearsCount}`);
+      console.log(`   GSR Records: ${gsrTableData.length}`);
 
-      // API call to compute stress identification
       const response = await fetch('http://localhost:6500/gwa/stress', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload),
       });
 
@@ -331,9 +378,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       }
 
       const result = await response.json();
-      console.log('Stress Identification computation result:', result);
 
-      // Extract and set stress data
       let stressData: StressData[] = [];
       if (result.success && result.data && Array.isArray(result.data)) {
         stressData = result.data;
@@ -346,14 +391,14 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       }
 
       setStressTableData(stressData);
+      console.log(`✅ Stress identification completed for ${stressData.length} villages`);
+      
       return stressData;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred during stress identification';
-      console.log('Error computing Stress Identification:', errorMessage);
+      console.error('❌ Stress Identification Error:', errorMessage);
       setStressError(errorMessage);
-
-      // Clear data on error
       setStressTableData([]);
       throw err;
     } finally {
@@ -362,37 +407,24 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
   };
 
   const value: GSRContextType = {
-    // GSR State
     gsrTableData,
     gsrLoading,
     gsrError,
-    gsrSummary,
-
-    // Stress Identification State
     stressTableData,
     stressLoading,
     stressError,
-
-    // GeoJSON State
     gsrGeojsonData,
     mergeStatistics,
-
-    // Map Image State
     mapImageFilename,
     mapImageBase64,
-
-    // Actions
     computeGSR,
     canComputeGSR,
-
-    // Stress Identification Actions
     computeStressIdentification,
     canComputeStressIdentification,
-
-    // Helper methods
     clearGSRData,
     clearStressData,
     getMapImageUrl,
+    getMapImageSrc,
   };
 
   return (

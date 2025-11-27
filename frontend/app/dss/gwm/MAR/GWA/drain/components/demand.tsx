@@ -1,23 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
-import { useDemand } from '@/contexts/groundwater_assessment/drain/DemandContext';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useDemand, IndustrialSubtype } from '@/contexts/groundwater_assessment/drain/DemandContext';
 import { useLocation } from '@/contexts/groundwater_assessment/drain/LocationContext';
 import { useWell } from '@/contexts/groundwater_assessment/drain/WellContext';
 import dynamic from "next/dynamic";
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from 'recharts';
 
 // Field Definitions & Labels (like Recharge.tsx)
 const DOMESTIC_DISPLAY_FIELDS: string[] = [
@@ -65,6 +53,8 @@ const Demand = () => {
     cropsLoading,
     cropsError,
     groundwaterFactor,
+    industrialData,
+    industrialGWShare,
     chartData,
     chartsError,
     domesticTableData,
@@ -81,6 +71,8 @@ const Demand = () => {
     setIndustrialChecked,
     setPerCapitaConsumption,
     setGroundwaterFactor,
+    setIndustrialGWShare,
+    updateIndustrialProduction,
     clearChartData,
     setKharifChecked,
     setRabiChecked,
@@ -309,7 +301,6 @@ const Demand = () => {
             Showing <strong>{tableData.length}</strong> record{tableData.length !== 1 ? "s" : ""}
             {(sortConfig?.key || isSearched) ? ` (filtered)` : ""}
           </span>
-          {/* Optional: Add total demand summary here */}
         </div>
       </div>
     );
@@ -399,16 +390,12 @@ const Demand = () => {
             Showing <strong>{tableData.length}</strong> village{tableData.length !== 1 ? "s" : ""}
             {(sortConfig?.key || isSearched) ? ` (filtered)` : ""}
           </span>
-          {/* You can add a summary stat here if needed */}
         </div>
       </div>
     );
   };
 
-
-
-  // 2. Then replace your existing ChartDisplay component with this:
-
+  // Chart Display Component
   const ChartDisplay = () => {
     if (!chartData) return null;
 
@@ -521,88 +508,83 @@ const Demand = () => {
     };
 
     return (
-  <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-    <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-      Agricultural Water Demand Analysis
-    </h4>
+      <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Agricultural Water Demand Analysis
+        </h4>
 
-    {/* Tabs */}
-    <div className="mb-6">
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setSelectedChart('individual')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              selectedChart === 'individual'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Individual Crops
-          </button>
+        {/* Tabs */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setSelectedChart('individual')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedChart === 'individual'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Individual Crops
+              </button>
 
-          <button
-            onClick={() => setSelectedChart('cumulative')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              selectedChart === 'cumulative'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Total Demand
-          </button>
-        </nav>
+              <button
+                onClick={() => setSelectedChart('cumulative')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedChart === 'cumulative'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Total Demand
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Chart Container */}
+        <div className="chart-display bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          {selectedChart === 'individual' ? (
+            <Plot
+              data={individualTraces as any}
+              layout={{
+                ...individualLayout,
+                legend: {
+                  orientation: "h",
+                  x: 0.5,
+                  xanchor: "center",
+                  y: -0.35,
+                  yanchor: "top",
+                },
+                margin: { l: 60, r: 30, t: 50, b: 150 }
+              }}
+              config={config as any}
+              style={{ width: "100%", height: "500px" }}
+              useResizeHandler
+            />
+          ) : (
+            <Plot
+              data={cumulativeTrace as any}
+              layout={{
+                ...cumulativeLayout,
+                legend: {
+                  orientation: "h",
+                  x: 0.5,
+                  xanchor: "center",
+                  y: -0.35,
+                  yanchor: "top",
+                },
+                margin: { l: 60, r: 30, t: 50, b: 150 }
+              }}
+              config={config as any}
+              style={{ width: "100%", height: "500px" }}
+              useResizeHandler
+            />
+          )}
+        </div>
       </div>
-    </div>
-
-    {/* Chart Container */}
-    <div className="chart-display bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-
-      {selectedChart === 'individual' ? (
-        <Plot
-          data={individualTraces as any}
-          layout={{
-            ...individualLayout,
-            legend: {
-              orientation: "h",
-              x: 0.5,
-              xanchor: "center",
-              y: -0.35,
-              yanchor: "top",
-            },
-            margin: { l: 60, r: 30, t: 50, b: 150 }
-          }}
-          config={config as any}
-          style={{ width: "100%", height: "500px" }}
-          useResizeHandler
-        />
-      ) : (
-        <Plot
-          data={cumulativeTrace as any}
-          layout={{
-            ...cumulativeLayout,
-            legend: {
-              orientation: "h",
-              x: 0.5,
-              xanchor: "center",
-              y: -0.35,
-              yanchor: "top",
-            },
-            margin: { l: 60, r: 30, t: 50, b: 150 }
-          }}
-          config={config as any}
-          style={{ width: "100%", height: "500px" }}
-          useResizeHandler
-        />
-      )}
-
-    </div>
-  </div>
-);
-
+    );
   };
 
   // Generic Table for Industrial (unchanged)
@@ -620,7 +602,7 @@ const Demand = () => {
             <tr>
               {Object.keys(tableData[0] || {}).map((header) => (
                 <th key={header} className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                  {header}
+                  {header.replace(/_/g, ' ')}
                 </th>
               ))}
             </tr>
@@ -644,6 +626,280 @@ const Demand = () => {
     </div>
   );
 
+  // Industrial Demand Input Table Component
+  const IndustrialDemandInputTable = () => {
+    // Local state for input values to avoid re-render issues
+    const [localInputs, setLocalInputs] = useState<Record<string, string>>({});
+
+    // Initialize local inputs from context data
+    useEffect(() => {
+      const initialInputs: Record<string, string> = {};
+      industrialData.forEach(item => {
+        const key = `${item.industry}-${item.subtype}`;
+        initialInputs[key] = item.production === 0 ? "" : item.production.toString();
+      });
+      setLocalInputs(initialInputs);
+    }, [industrialData]);
+
+    const groupedData = industrialData.reduce((acc, item) => {
+      if (!acc[item.industry]) {
+        acc[item.industry] = [];
+      }
+      acc[item.industry].push(item);
+      return acc;
+    }, {} as Record<string, IndustrialSubtype[]>);
+
+    const totalAnnualDemand = industrialData.reduce((sum, item) => {
+      return sum + (item.production * item.consumptionValue);
+    }, 0);
+
+    const totalGWIndustrialDemand = totalAnnualDemand * industrialGWShare;
+
+    const getInputLabel = (item: IndustrialSubtype): string => {
+      return item.industry === "Thermal Power Plants" ? "MW" : "MT";
+    };
+
+    const formatConsumptionValue = (item: IndustrialSubtype): string => {
+      const unit = item.industry === "Thermal Power Plants" ? "MW" : "MT";
+      return `${item.consumptionValue} m³/${unit}`;
+    };
+
+    // Handle input change with local state
+    const handleInputChange = (industry: string, subtype: string, value: string) => {
+      const key = `${industry}-${subtype}`;
+
+      // Allow empty string, numbers, and decimal points
+      if (value === "" || /^\d*\.?\d*$/.test(value)) {
+        setLocalInputs(prev => ({
+          ...prev,
+          [key]: value
+        }));
+      }
+    };
+
+    // Handle blur to update context (prevents repeated re-renders)
+    const handleInputBlur = (industry: string, subtype: string) => {
+      const key = `${industry}-${subtype}`;
+      const value = localInputs[key];
+
+      if (value === undefined || value.trim() === "") {
+        updateIndustrialProduction(industry, subtype, 0);
+        setLocalInputs(prev => ({
+          ...prev,
+          [key]: ""
+        }));
+        return;
+      }
+
+      const num = parseFloat(value);
+      if (!isNaN(num) && num >= 0) {
+        updateIndustrialProduction(industry, subtype, num);
+      } else {
+        // Reset to previous valid value
+        const currentItem = industrialData.find(
+          item => item.industry === industry && item.subtype === subtype
+        );
+        setLocalInputs(prev => ({
+          ...prev,
+          [key]: currentItem?.production === 0 ? "" : (currentItem?.production.toString() || "")
+        }));
+      }
+    };
+
+    // Handle Enter key press to move to next input
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, industry: string, subtype: string) => {
+      if (e.key === 'Enter') {
+        handleInputBlur(industry, subtype);
+        // Optional: Move focus to next input
+        const form = e.currentTarget.form;
+        if (form) {
+          const inputs = Array.from(form.querySelectorAll('input'));
+          const currentIndex = inputs.indexOf(e.currentTarget);
+          if (currentIndex < inputs.length - 1) {
+            (inputs[currentIndex + 1] as HTMLInputElement).focus();
+          }
+        }
+      }
+    };
+
+    // Handle GW Share input with local state
+    const [localGWShare, setLocalGWShare] = useState<string>((industrialGWShare * 100).toString());
+
+    const handleGWShareChange = (value: string) => {
+      // Allow empty string, numbers, and decimal points
+      if (value === "" || /^\d*\.?\d*$/.test(value)) {
+        setLocalGWShare(value);
+      }
+    };
+
+    const handleGWShareBlur = () => {
+      if (localGWShare.trim() === "") {
+        setIndustrialGWShare(0);
+        setLocalGWShare("0");
+        return;
+      }
+
+      const num = parseFloat(localGWShare);
+      if (!isNaN(num)) {
+        const clamped = Math.max(0, Math.min(100, num));
+        setIndustrialGWShare(clamped / 100);
+        setLocalGWShare(clamped.toFixed(2));
+      } else {
+        setLocalGWShare((industrialGWShare * 100).toFixed(2));
+      }
+    };
+
+    const handleGWShareKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        handleGWShareBlur();
+        e.currentTarget.blur();
+      }
+    };
+
+    return (
+      <div className="mt-6 p-6 bg-white border border-gray-300 rounded-xl shadow-sm">
+        <h5 className="text-lg font-bold text-gray-800 mb-6">
+          Industrial Water Demand Input
+        </h5>
+
+        <form onSubmit={(e) => e.preventDefault()}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Industry
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Sub-Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Default Water Use
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Annual Production
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Calculated Demand (m³)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {Object.entries(groupedData).map(([industry, subtypes]) =>
+                  subtypes.map((item, subIndex) => {
+                    const key = `${item.industry}-${item.subtype}`;
+                    return (
+                      <tr
+                        key={key}
+                        className={subIndex === 0 ? "border-t-4 border-purple-400" : ""}
+                      >
+                        {subIndex === 0 && (
+                          <td
+                            rowSpan={subtypes.length}
+                            className="px-6 py-4 text-sm font-bold text-purple-800 bg-purple-50 whitespace-nowrap align-top"
+                          >
+                            {industry}
+                          </td>
+                        )}
+
+                        <td className="px-6 py-4 text-sm text-gray-800">
+                          {item.subtype}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {formatConsumptionValue(item)}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={localInputs[key] || ""}
+                              onChange={(e) => handleInputChange(item.industry, item.subtype, e.target.value)}
+                              onBlur={() => handleInputBlur(item.industry, item.subtype)}
+                              onKeyPress={(e) => handleKeyPress(e, item.industry, item.subtype)}
+                              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                              placeholder="0"
+                              autoComplete="off"
+                            />
+                            <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
+                              {getInputLabel(item)}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-700 text">
+                          {(item.production * item.consumptionValue).toLocaleString(undefined, {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-5 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm font-medium text-blue-800">
+                Total Industrial Water Demand
+              </p>
+              <p className="text-2xl font-bold text-blue-900 mt-1">
+                {totalAnnualDemand.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}{" "}
+                m³
+              </p>
+            </div>
+
+            <div className="p-5 bg-green-50 border border-green-200 rounded-lg space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Share of Groundwater in Industrial Use (%)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={localGWShare}
+                    onChange={(e) => handleGWShareChange(e.target.value)}
+                    onBlur={handleGWShareBlur}
+                    onKeyPress={handleGWShareKeyPress}
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm text font-medium focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    placeholder="0"
+                    autoComplete="off"
+                  />
+                  <span className="text-lg font-semibold text-gray-700">%</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Default: 50% (Range: 0-100)</p>
+              </div>
+
+              <div className="pt-3 border-t border-green-200">
+                <p className="text-sm font-medium text-green-800">
+                  Groundwater Industrial Demand
+                </p>
+                <p className="text-2xl font-bold text-green-900 mt-1">
+                  {totalGWIndustrialDemand.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  m³
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center text-sm text-gray-600">
+            This groundwater demand will be used in the final assessment.
+          </div>
+        </form>
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 bg-green-50 border border-green-200 rounded-md">
       <h3 className="text-lg font-semibold text-green-800 mb-3">Groundwater Demand Assessment</h3>
@@ -665,16 +921,16 @@ const Demand = () => {
           </label>
         </div>
       </div>
+
       {/* 1. DOMESTIC DEMAND SECTION*/}
       {domesticChecked && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          {/* ---------- Loading overlay ---------- */}
+          {/* Loading overlay */}
           {domesticLoading && (
             <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center bg-white rounded-xl shadow-2xl p-8">
                 <div className="inline-block relative">
                   <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    {/* …gradient defs… */}
                     <circle className="opacity-20" cx="12" cy="12" r="10" stroke="url(#spinner-gradient-domestic)" strokeWidth="3" />
                     <path className="opacity-90" fill="url(#spinner-gradient-2-domestic)" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -690,7 +946,7 @@ const Demand = () => {
             </div>
           )}
           <h4 className="text-md font-semibold text-blue-800 mb-3">Domestic Demand Parameters</h4>
-          {/* ---------- Per Capita Input ---------- */}
+          {/* Per Capita Input */}
           <div className="mb-4 max-w-sm">
             <div className="flex items-center gap-2 mb-1">
               <label className="block text-sm font-medium text-gray-700">
@@ -723,13 +979,14 @@ const Demand = () => {
               min="1"
             />
           </div>
-          {/* ---------- Error message ---------- */}
+          {/* Error message */}
           {domesticError && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-              {/* …error… */}
+              <p className="font-medium">Computation Failed</p>
+              <p className="text-sm mt-1">{domesticError}</p>
             </div>
           )}
-          {/* ---------- Action Buttons ---------- */}
+          {/* Action Buttons */}
           <div className="mb-4 flex flex-col sm:flex-row gap-4 items-start">
             <button
               onClick={computeDomesticDemand}
@@ -743,7 +1000,7 @@ const Demand = () => {
             >
               {domesticLoading ? "Computing..." : "Compute Domestic Demand"}
             </button>
-            {/* ---------- Search (kept) ---------- */}
+            {/* Search */}
             {domesticTableData.length > 0 && (
               <div className="flex flex-col sm:flex-row gap-3 ml-auto">
                 <div className="flex gap-2">
@@ -765,7 +1022,7 @@ const Demand = () => {
                     Search
                   </button>
                 </div>
-                {/* ---------- Table toggle (kept) ---------- */}
+                {/* Table toggle */}
                 <button
                   onClick={toggleDomesticTable}
                   className="p-2 rounded-full hover:bg-gray-200 transition-colors"
@@ -790,7 +1047,7 @@ const Demand = () => {
               </div>
             )}
           </div>
-          {/* ---------- Active filters ---------- */}
+          {/* Active filters */}
           {(domesticAppliedSearch || domesticAppliedSort) && (
             <div className="mb-3 flex flex-wrap gap-2 text-sm">
               {domesticAppliedSearch && (
@@ -815,7 +1072,7 @@ const Demand = () => {
               )}
             </div>
           )}
-          {/* ---------- Domestic Table (with inline sorting) ---------- */}
+          {/* Domestic Table (with inline sorting) */}
           {showDomesticTable && domesticTableData.length > 0 && (
             <DomesticTable
               tableData={processedDomesticData}
@@ -833,13 +1090,13 @@ const Demand = () => {
           )}
         </div>
       )}
+
       {/* 2. AGRICULTURAL DEMAND SECTION */}
       {agriculturalChecked && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           {agriculturalLoading && (
             <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center bg-white rounded-xl shadow-2xl p-8">
-                {/* ... Loading Spinner SVG ... */}
                 <div className="inline-block relative">
                   <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <defs>
@@ -887,7 +1144,6 @@ const Demand = () => {
                   />
                 </svg>
               </span>
-              {/* Tooltip – visible on hover */}
               <div
                 className="absolute left-1/2 -translate-x-1/2 mt-1 w-64 bg-gray-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-50 pointer-events-none"
               >
@@ -897,7 +1153,6 @@ const Demand = () => {
           </div>
           {/* Season Selection */}
           <div className="mb-4">
-            {/* ... Season Checkboxes ... */}
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Seasons:</label>
             <div className="grid grid-cols-3 gap-4">
               <label className="flex items-center">
@@ -917,7 +1172,6 @@ const Demand = () => {
           {/* 3-Column Grid for Season Crops */}
           {(kharifChecked || rabiChecked || zaidChecked) && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              {/* ... Kharif, Rabi, Zaid crop selection blocks ... */}
               {kharifChecked && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                   <div className="flex items-center justify-between mb-3">
@@ -1093,7 +1347,6 @@ const Demand = () => {
                     />
                   </svg>
                 </span>
-                {/* Tooltip – visible on hover */}
                 <div
                   className="absolute left-1/2 -translate-x-1/2 mt-1 w-64 bg-gray-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg z-50 pointer-events-none"
                 >
@@ -1132,7 +1385,7 @@ const Demand = () => {
               <span className="text-sm font-medium">Please select at least one season and one crop.</span>
             </div>
           )}
-          {/* --- Action Buttons (Compute, Search, Toggle) --- */}
+          {/* Action Buttons (Compute, Search, Toggle) */}
           <div className="mt-4 mb-4 flex flex-col sm:flex-row gap-4 items-start">
             <button
               onClick={handleAgriculturalClick}
@@ -1190,7 +1443,7 @@ const Demand = () => {
               </div>
             )}
           </div>
-          {/* Active Filters Indicator (like Recharge.tsx) */}
+          {/* Active Filters Indicator */}
           {(agriculturalAppliedSearch || agriculturalAppliedSort) && (
             <div className="mb-3 flex flex-wrap gap-2 text-sm">
               {agriculturalAppliedSearch && (
@@ -1242,13 +1495,13 @@ const Demand = () => {
           )}
         </div>
       )}
+
       {/* 3. INDUSTRIAL DEMAND SECTION */}
       {industrialChecked && (
         <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
           {industrialLoading && (
             <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center bg-white rounded-xl shadow-2xl p-8">
-                {/* ... Loading Spinner SVG ... */}
                 <div className="inline-block relative">
                   <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <defs>
@@ -1291,23 +1544,29 @@ const Demand = () => {
               </div>
             </div>
           )}
-          <button
-            onClick={computeIndustrialDemand}
-            disabled={industrialLoading || !canComputeIndustrialDemand()}
-            className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
-          >
-            {industrialLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Computing Industrial Demand...</span>
-              </>
-            ) : (
-              <span>Compute Industrial Demand</span>
-            )}
-          </button>
+
+          {/* Industrial Input Table Component Integration */}
+          <IndustrialDemandInputTable />
+
+          <div className="mt-4">
+            <button
+              onClick={computeIndustrialDemand}
+              disabled={industrialLoading || !canComputeIndustrialDemand()}
+              className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
+            >
+              {industrialLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Computing Industrial Demand...</span>
+                </>
+              ) : (
+                <span>Compute Industrial Demand</span>
+              )}
+            </button>
+          </div>
           {industrialTableData.length > 0 && (
             <TableDisplay tableData={industrialTableData} title="Industrial Demand Results" />
           )}
