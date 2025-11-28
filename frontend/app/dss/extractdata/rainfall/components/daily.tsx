@@ -186,97 +186,87 @@ export const DailyRainfallTable = () => {
   }
 
   // State table (existing structure - kept as is)
-  return (
-    <motion.div
-      className="p-4 bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-          <Droplets className="text-blue-500" />
-          State Rainfall Statistics
-        </h3>
-        <span className="flex items-center text-gray-500 text-sm gap-1">
-          {(() => {
-            const feature = rainfallData.features?.[0];
-            if (!feature) return null;
+ return (
+  <motion.div
+    className="p-4 bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.4 }}
+  >
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+        <Droplets className="text-blue-500" />
+        State Rainfall Statistics
+      </h3>
+      <span className="flex items-center text-gray-500 text-sm gap-1">
+        {rainfallData.features?.[0]?.properties?.last_updated
+          ? `Last Updated: ${rainfallData.features[0].properties.last_updated}`
+          : null}
+      </span>
+    </div>
 
-            const { last_updated } = feature.properties;
+    <div className="overflow-x-auto max-h-[60vh] rounded-xl border border-gray-200 shadow-inner">
+      <table className="min-w-full text-sm text-gray-700">
+        <thead className="sticky top-0 bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-200 text-gray-700 font-semibold">
+          <tr>
+            <th className="px-4 py-3 text-left">State</th>
+            <th className="px-4 py-3 text-right">Actual Rainfall (mm)</th>
+            <th className="px-4 py-3 text-right">Normal Rainfall (mm)</th>
+            <th className="px-4 py-3 text-right">Departure (%)</th>
+            <th className="px-4 py-3 text-center">Category</th>
+            <th className="px-4 py-3 text-center">Last Updated</th>
+          </tr>
+        </thead>
 
+        <tbody>
+          {rainfallData.features.map((feature, i) => {
+            const {
+              state,
+              actual_rainfall,
+              normal_rainfall,
+              departure,
+              category: cat,
+              last_updated,
+            } = feature.properties;
             return (
-               <span className="flex items-center text-gray-500 text-sm gap-1">
-              <td className="px-4 py-3 text-center text-gray-500 text-sm">
-                Last Updated : {last_updated}
-              </td>
-              </span>
-            );
-          })()}
-        </span>
-      </div>
-
-      <div className="overflow-x-auto max-h-[60vh] rounded-xl border border-gray-200 shadow-inner">
-        <table className="min-w-full text-sm text-gray-700">
-          <thead className="sticky top-0 bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-200 text-gray-700 font-semibold">
-            <tr>
-              <th className="px-4 py-3 text-left">State</th>
-              <th className="px-4 py-3 text-right">Actual Rainfall (mm)</th>
-              <th className="px-4 py-3 text-right">Normal Rainfall (mm)</th>
-              <th className="px-4 py-3 text-right">Departure (%)</th>
-              <th className="px-4 py-3 text-center">Category</th>
-              <th className="px-4 py-3 text-center">Last Updated</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rainfallData.features.map((feature, i) => {
-              const {
-                state,
-                actual_rainfall,
-                normal_rainfall,
-                departure,
-                category: cat,
-                last_updated,
-              } = feature.properties;
-              return (
-                <motion.tr
-                  key={i}
-                  className={`hover:bg-blue-50 transition-all duration-200 ${
-                    i % 2 === 0 ? "bg-white" : "bg-gray-50"
+              <motion.tr
+                key={i}
+                className={`hover:bg-blue-50 transition-all duration-200 ${
+                  i % 2 === 0 ? "bg-white" : "bg-gray-50"
+                }`}
+                whileHover={{ scale: 1.01 }}
+              >
+                <td className="px-4 py-3 font-medium text-gray-800">{state}</td>
+                <td className="px-4 py-3 text-right">{actual_rainfall ?? "-"}</td>
+                <td className="px-4 py-3 text-right">{normal_rainfall ?? "-"}</td>
+                <td
+                  className={`px-4 py-3 text-right font-semibold ${
+                    departure && parseFloat(departure) > 0
+                      ? "text-green-600"
+                      : "text-red-600"
                   }`}
-                  whileHover={{ scale: 1.01 }}
                 >
-                  <td className="px-4 py-3 font-medium text-gray-800">{state}</td>
-                  <td className="px-4 py-3 text-right">{actual_rainfall ?? "-"}</td>
-                  <td className="px-4 py-3 text-right">{normal_rainfall ?? "-"}</td>
-                  <td
-                    className={`px-4 py-3 text-right font-semibold ${
-                      departure && parseFloat(departure) > 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
+                  {departure ?? "-"}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span
+                    className={`px-3 py-1 rounded-full font-semibold text-xs ${getCategoryColor(
+                      cat
+                    )}`}
                   >
-                    {departure ?? "-"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`px-3 py-1 rounded-full font-semibold text-xs ${getCategoryColor(
-                        cat
-                      )}`}
-                    >
-                      {cat || "N/A"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center text-gray-500 text-sm">
-                    {last_updated}
-                  </td>
-                </motion.tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </motion.div>
-  );
+                    {cat || "N/A"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center text-gray-500 text-sm">
+                  {last_updated}
+                </td>
+              </motion.tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </motion.div>
+);
+
 };

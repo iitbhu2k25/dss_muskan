@@ -6,7 +6,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from bs4 import BeautifulSoup
-
+from shapely.geometry import shape, mapping
+from shapely.ops import transform
+import pyproj
 
 CACHE_KEY = "imd_rainfall_areas"
 CACHE_TIMEOUT = 60 * 15  # 15 minutes
@@ -33,33 +35,22 @@ class DistrictRainfallBaseAPIView(APIView):
         
         url = "https://mausam.imd.gov.in/imd_latest/contents/index_rainfall_state_new.php?msg=D"
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0'
         }
         
         try:
             response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
             html_content = response.text
-            
             soup = BeautifulSoup(html_content, 'html.parser')
-            
-            # Find all radio inputs
             radio_inputs = soup.find_all('input', {'type': 'radio', 'name': 'group'})
             
             period_dates = {}
             for radio in radio_inputs:
                 value = radio.get('value', '')
-                # Get the text after the input tag
                 label_text = radio.next_sibling
                 if label_text and isinstance(label_text, str):
                     label_text = label_text.strip()
-                    # Extract the date information
-                    # Examples:
-                    # "Daily (03-11-2025)"
-                    # "Weekly (23-10-2025 To 29-10-2025)"
-                    # "Monthly (01-11-2025 To 03-11-2025)"
-                    # "Cumulative (01-10-2025 To 03-11-2025)"
-                    
                     match = re.search(r'\(([^)]+)\)', label_text)
                     if match:
                         date_info = match.group(1).strip()
@@ -68,7 +59,6 @@ class DistrictRainfallBaseAPIView(APIView):
                             'date_range': date_info
                         }
             
-            # Cache the period dates for 1 hour
             cache.set(cache_key, period_dates, 3600)
             return period_dates
             
@@ -93,7 +83,7 @@ class DistrictRainfallBaseAPIView(APIView):
             return None
         start_pos = start_match.end()
 
-        brace_count = 1  # Start with 1 for the [
+        brace_count = 1
         i = start_pos
         while i < len(target_script) and brace_count > 0:
             if target_script[i] == '[':
@@ -104,8 +94,6 @@ class DistrictRainfallBaseAPIView(APIView):
         end_pos = i - 1
 
         areas_str = target_script[start_pos:end_pos].strip()
-
-        # Remove trailing commas & quote unquoted keys
         areas_str = re.sub(r',\s*([}\]]|\s*$)', r'\1', areas_str)
         areas_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', areas_str)
 
@@ -118,26 +106,38 @@ class DistrictRainfallBaseAPIView(APIView):
             return None
 
     def fetch_geojson(self):
+        """Fetch the IMD district GeoJSON and reproject to EPSG:4326"""
         geojson_url = "https://mausam.imd.gov.in/imd_latest/contents/district_shapefiles/DISTRICT_F-2.json"
         try:
             response = requests.get(geojson_url, timeout=10)
             response.raise_for_status()
             data = response.json()
-            
-            # Log CRS information for debugging (optional)
-            crs = data.get('crs', {}).get('properties', {}).get('name', 'EPSG:4326 (default)')
-            print(f"GeoJSON CRS: {crs}")
-            
+
+            # Reproject geometries to EPSG:4326
+            # Determine source CRS from GeoJSON or default
+            source_crs = data.get('crs', {}).get('properties', {}).get('name', 'EPSG:32644')
+            transformer = pyproj.Transformer.from_crs(source_crs, 'EPSG:3857', always_xy=True)
+
+            for feature in data.get('features', []):
+                geom = shape(feature['geometry'])
+                reprojected_geom = transform(transformer.transform, geom)
+                feature['geometry'] = mapping(reprojected_geom)
+
+            # Set CRS property to 4326
+            data['crs'] = {
+                "type": "name",
+                "properties": {"name": "EPSG:4326"}
+            }
+
+            print(f"GeoJSON CRS transformed to: EPSG:4326")
             return data
         except Exception as e:
-            print(f"GeoJSON fetch failed: {e}")
+            print(f"GeoJSON fetch/reprojection failed: {e}")
             return None
 
     def get_rainfall_data(self, param):
         url = f"https://mausam.imd.gov.in/imd_latest/contents/rainfallinformation.php?msg={param}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+        headers = {'User-Agent': 'Mozilla/5.0'}
         try:
             response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
@@ -176,18 +176,15 @@ class DistrictRainfallBaseAPIView(APIView):
                     'rainfall_balloonText': f"{district_name} : <br/> Departure : No Data <br/> Actual : 0 mm <br/> Normal : 0 mm"
                 })
 
-            # GeoJSON from IMD is already in EPSG:4326, no transformation needed
-            # Frontend will handle transformation to EPSG:3857 for display
             features.append({
                 'type': 'Feature',
                 'properties': enhanced_props,
-                'geometry': feature.get('geometry')  # Use original geometry as-is
+                'geometry': feature.get('geometry')
             })
 
-        # Extract period date information
         period_dates = self.extract_period_dates(param)
         period_info = period_dates.get(param, {})
-        
+
         metadata = {
             "title": "India District-wise Rainfall Data",
             "source": "India Meteorological Department",
@@ -212,6 +209,7 @@ class DistrictRainfallBaseAPIView(APIView):
             "metadata": metadata,
             "features": features
         }
+
 
 
 class DistrictDailyRainfallAPIView(DistrictRainfallBaseAPIView):

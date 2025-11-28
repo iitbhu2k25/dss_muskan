@@ -71,16 +71,7 @@ const MapComponent: React.FC<MapProps> = ({
           </select>
 
           {/* Zoom Buttons */}
-          <button onClick={handleZoomIn} className="p-3 bg-white rounded-xl shadow-lg border hover:bg-gray-50 transition" disabled={!map}>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </button>
-          <button onClick={handleZoomOut} className="p-3 bg-white rounded-xl shadow-lg border hover:bg-gray-50 transition" disabled={!map}>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-            </svg>
-          </button>
+         
         </div>
 
         {/* Base Map Toggle */}
@@ -92,6 +83,18 @@ const MapComponent: React.FC<MapProps> = ({
           >
             {isSatellite ? "Street Map" : "Satellite"}
           </button>
+          <div className="absolute top-16 right-0 flex flex-col gap-2 mt-1">
+           <button onClick={handleZoomIn} className="p-3 bg-white rounded-xl shadow-lg border hover:bg-gray-50 transition" disabled={!map}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </button>
+          <button onClick={handleZoomOut} className="p-3 bg-white rounded-xl shadow-lg border hover:bg-gray-50 transition" disabled={!map}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+            </svg>
+          </button>
+          </div>
         </div>
 
         {/* Fullscreen */}

@@ -128,29 +128,39 @@ const RainfallPage = () => {
         rainfallSubCategory === "state" ||
         rainfallSubCategory === "district"
       ) {
-        return (
-          <DailyProvider>
-            <MapProvider>
-              <div className="flex h-full bg-gradient-to-br from-white via-slate-100 to-gray-100">
-                <div className="flex-[6] flex flex-col bg-white border-r border-gray-300 shadow-lg overflow-auto">
-                  <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-                    <RainfallSelector
-                      forcedCategory={rainfallSubCategory}
-                      selectedPeriod={selectedPeriod}
-                      onPeriodChange={setSelectedPeriod}
-                    />
-                  </div>
-                  <div className="p-4 flex-1 overflow-auto">
-                    <DailyRainfallTable />
-                  </div>
-                </div>
-                <div className="flex-[4] rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                  <RainfallMap />
-                </div>
-              </div>
-            </MapProvider>
-          </DailyProvider>
-        );
+       return (
+  <DailyProvider>
+    <MapProvider>
+      <div className="flex h-full bg-gradient-to-br from-white via-slate-100 to-gray-100">
+        
+        {/* LEFT PANEL */}
+        <div className="flex-[6] flex flex-col bg-white border-r border-gray-300 shadow-lg overflow-hidden">
+          
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+            <RainfallSelector
+              forcedCategory={rainfallSubCategory}
+              selectedPeriod={selectedPeriod}
+              onPeriodChange={setSelectedPeriod}
+            />
+          </div>
+
+          {/* Table Wrapper (NO HYDRATION ERROR HERE) */}
+          <div className="p-4 flex-1 overflow-auto">
+            {/* This will NOT cause hydration issues IF table component is fixed */}
+            <DailyRainfallTable />
+          </div>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div className="flex-[4] rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          <RainfallMap />
+        </div>
+      </div>
+    </MapProvider>
+  </DailyProvider>
+);
+
       }
     }
 

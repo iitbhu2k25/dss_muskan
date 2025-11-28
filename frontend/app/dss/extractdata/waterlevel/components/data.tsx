@@ -89,11 +89,10 @@ const Data: React.FC<DataProps> = ({
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-3 font-medium capitalize transition-colors ${
-                      activeTab === tab
-                        ? "text-blue-600 border-b-4 border-blue-600"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`px-6 py-3 font-medium capitalize transition-colors ${activeTab === tab
+                      ? "text-blue-600 border-b-4 border-blue-600"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                   >
                     {tab === "current" ? "Current Status" : tab === "trend" ? "Trend Graph" : "Data Table"}
                   </button>
@@ -105,13 +104,21 @@ const Data: React.FC<DataProps> = ({
                 <div className="space-y-5">
                   <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-8 rounded-2xl text-center">
                     <p className="text-lg opacity-90">Current Water Level</p>
+
                     <p className="text-5xl font-bold mt-3">
-                      {popupData.latestData.value.toFixed(2)} <span className="text-2xl">m</span>
+                      {popupData?.latestData?.value !== null && popupData?.latestData?.value !== undefined
+                        ? popupData.latestData.value.toFixed(2)
+                        : "N/A"}{" "}
+                      <span className="text-2xl">m</span>
                     </p>
+
                     <p className="mt-4 text-sm opacity-90">
-                      {new Date(popupData.latestData.actualTime).toLocaleString("en-GB")}
+                      {popupData?.latestData?.actualTime
+                        ? new Date(popupData.latestData.actualTime).toLocaleString("en-GB")
+                        : "Unknown time"}
                     </p>
                   </div>
+
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 p-4 rounded-xl">
@@ -120,32 +127,35 @@ const Data: React.FC<DataProps> = ({
                     </div>
                     <div className="bg-gray-50 p-4 rounded-xl">
                       <p className="text-sm text-gray-600">Type</p>
-                      <p className="font-bold text-lg">{popupData.latestData.stationType}</p>
+                      <p className="font-bold text-lg">
+                        {popupData?.latestData?.stationType ?? "N/A"}
+                      </p>
+
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     {[
-                      { label: "Danger Level", value: popupData.latestData.dangerLevel, color: "red" },
-                      { label: "Warning Level", value: popupData.latestData.warningLevel, color: "orange" },
-                      { label: "Highest Flow", value: popupData.latestData.highestFlowLevel, color: "purple" },
-                      { label: "FRL", value: popupData.latestData.frl, color: "gray" },
-                      { label: "MWL", value: popupData.latestData.mwl, color: "gray" },
-                    ].map(
-                      (item) =>
-                        item.value && (
-                          <div
-                            key={item.label}
-                            className={`flex justify-between p-4 rounded-xl bg-${item.color}-50 border-l-4 border-${item.color}-500`}
-                          >
-                            <span className="font-medium text-gray-700">{item.label}</span>
-                            <span className={`font-bold text-${item.color}-700`}>
-                              {item.value.toFixed(2)} m
-                            </span>
-                          </div>
-                        )
+                      { label: "Danger Level", value: popupData?.latestData?.dangerLevel, bg: "bg-red-50", border: "border-red-500", text: "text-red-700" },
+                      { label: "Warning Level", value: popupData?.latestData?.warningLevel, bg: "bg-orange-50", border: "border-orange-500", text: "text-orange-700" },
+                      { label: "Highest Flow", value: popupData?.latestData?.highestFlowLevel, bg: "bg-purple-50", border: "border-purple-500", text: "text-purple-700" },
+                      { label: "FRL", value: popupData?.latestData?.frl, bg: "bg-gray-50", border: "border-gray-500", text: "text-gray-700" },
+                      { label: "MWL", value: popupData?.latestData?.mwl, bg: "bg-gray-50", border: "border-gray-500", text: "text-gray-700" },
+                    ].map((item) =>
+                      item.value !== null && item.value !== undefined ? (
+                        <div
+                          key={item.label}
+                          className={`flex justify-between p-4 rounded-xl ${item.bg} border-l-4 ${item.border}`}
+                        >
+                          <span className="font-medium text-gray-700">{item.label}</span>
+                          <span className={`font-bold ${item.text}`}>
+                            {item.value?.toFixed ? item.value.toFixed(2) : "N/A"} m
+                          </span>
+                        </div>
+                      ) : null
                     )}
                   </div>
+
                 </div>
               )}
 
@@ -180,7 +190,7 @@ const Data: React.FC<DataProps> = ({
                       </div>
                     </div>
 
-             
+
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">
                         Records: <strong>{filteredData.length}</strong>
@@ -255,21 +265,45 @@ const Data: React.FC<DataProps> = ({
                       <div className="grid grid-cols-3 gap-4">
                         <div className="bg-blue-50 p-5 rounded-xl text-center">
                           <p className="text-sm text-gray-600">Current</p>
-                          <p className="text-2xl font-bold text-blue-700">
-                            {popupData.latestData.value.toFixed(2)} m
-                          </p>
+                          {popupData?.latestData?.value == null
+                            ? "N/A"
+                            : popupData.latestData.value.toFixed(2)
+                          } m
+
                         </div>
                         <div className="bg-green-50 p-5 rounded-xl text-center">
                           <p className="text-sm text-gray-600">Min (Filtered)</p>
                           <p className="text-2xl font-bold text-green-700">
-                            {Math.min(...filteredData.map((d) => d.waterLevel)).toFixed(2)} m
+                            {(() => {
+                              const levels = filteredData
+                                ?.map(d => d?.waterLevel)
+                                .filter(v => v != null && !isNaN(v));
+
+                              if (!levels || levels.length === 0) {
+                                return "N/A";
+                              }
+
+                              return Math.min(...levels).toFixed(2);
+                            })()} m
                           </p>
+
                         </div>
                         <div className="bg-red-50 p-5 rounded-xl text-center">
                           <p className="text-sm text-gray-600">Max (Filtered)</p>
                           <p className="text-2xl font-bold text-red-700">
-                            {Math.max(...filteredData.map((d) => d.waterLevel)).toFixed(2)} m
+                            {(() => {
+                              const levels = filteredData
+                                ?.map(d => d?.waterLevel)
+                                .filter(v => v != null && !isNaN(v));
+
+                              if (!levels || levels.length === 0) {
+                                return "N/A";
+                              }
+
+                              return Math.max(...levels).toFixed(2);
+                            })()} m
                           </p>
+
                         </div>
                       </div>
                     </>
@@ -311,7 +345,12 @@ const Data: React.FC<DataProps> = ({
                             className={`${i === 0 ? "bg-blue-50" : "bg-white"}`}
                           >
                             <td className="p-3 border">{i + 1}</td>
-                            <td className="p-3 border font-semibold">{item.value.toFixed(2)} m</td>
+                            <td className="p-3 border font-semibold">
+                              {item?.value != null && !isNaN(item.value)
+                                ? item.value.toFixed(2)
+                                : "N/A"} m
+                            </td>
+
                             <td className="p-3 border">
                               {new Date(item.actualTime).toLocaleString("en-GB")}
                             </td>

@@ -3,13 +3,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import "ol/ol.css";
 import { useMap } from "@/contexts/extract/Waterlevel/MapContext";
-import MapComponent from "./map";  // Renamed to avoid conflict
+import MapComponent from "./map";
 import Data from "./data";
 
 const WaterLevelMap = () => {
   const mapContext = useMap();
-  
-  // Provide default values if context is not available
+
   const {
     map = null,
     toggleBaseMap = () => {},
@@ -33,7 +32,6 @@ const WaterLevelMap = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeTab, setActiveTab] = useState<'current' | 'trend' | 'data'>('current');
 
-  // Filter states for Trend tab
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [showWaterLevel, setShowWaterLevel] = useState(true);
@@ -42,9 +40,12 @@ const WaterLevelMap = () => {
   const [showHighestFlow, setShowHighestFlow] = useState(true);
 
   const downloadCSV = (data: any[]) => {
+    // SAFELY filter out null/undefined values
+    const validData = data.filter(item => item.value != null && item.actualTime);
+
     const header = ["Water Level (m)", "Date & Time"];
-    const rows = data.map(item => [
-      item.value.toFixed(2),
+    const rows = validData.map(item => [
+      Number(item.value).toFixed(2),
       new Date(item.actualTime).toLocaleString("en-GB")
     ]);
 
@@ -88,7 +89,6 @@ const WaterLevelMap = () => {
     }
   }, [popupOverlay, popupRef]);
 
-  // Fullscreen listener
   useEffect(() => {
     const handler = () => setIsFullScreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handler);
@@ -108,10 +108,24 @@ const WaterLevelMap = () => {
     }
   };
 
-  // Prepare chart data
+  // FIXED: Safe handling of null/undefined values
   const chartData = popupData?.allData
     ?.map((item) => {
+      // Skip invalid entries
+      if (item.value == null || item.actualTime == null) {
+        return null;
+      }
+
+      const numValue = Number(item.value);
+      if (isNaN(numValue)) {
+        return null; // skip non-numeric values
+      }
+
       const dateTime = new Date(item.actualTime);
+      if (isNaN(dateTime.getTime())) {
+        return null; // invalid date
+      }
+
       return {
         time: dateTime,
         timeFormatted: dateTime.toLocaleString("en-GB", {
@@ -121,9 +135,10 @@ const WaterLevelMap = () => {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        waterLevel: parseFloat(item.value.toString()),
+        waterLevel: numValue,
       };
     })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
     ?.sort((a, b) => a.time.getTime() - b.time.getTime()) || [];
 
   // Filtered data based on date range
@@ -135,7 +150,7 @@ const WaterLevelMap = () => {
     return true;
   });
 
-  // Prepare Plotly traces
+  // Prepare Plotly traces (also safe)
   const plotlyTraces: any[] = [];
 
   if (showWaterLevel && filteredData.length > 0) {
@@ -151,7 +166,7 @@ const WaterLevelMap = () => {
     });
   }
 
-  if (showDangerLevel && popupData?.latestData?.dangerLevel) {
+  if (showDangerLevel && popupData?.latestData?.dangerLevel != null) {
     plotlyTraces.push({
       x: filteredData.map(d => d.time),
       y: Array(filteredData.length).fill(popupData.latestData.dangerLevel),
@@ -163,7 +178,7 @@ const WaterLevelMap = () => {
     });
   }
 
-  if (showWarningLevel && popupData?.latestData?.warningLevel) {
+  if (showWarningLevel && popupData?.latestData?.warningLevel != null) {
     plotlyTraces.push({
       x: filteredData.map(d => d.time),
       y: Array(filteredData.length).fill(popupData.latestData.warningLevel),
@@ -175,7 +190,7 @@ const WaterLevelMap = () => {
     });
   }
 
-  if (showHighestFlow && popupData?.latestData?.highestFlowLevel) {
+  if (showHighestFlow && popupData?.latestData?.highestFlowLevel != null) {
     plotlyTraces.push({
       x: filteredData.map(d => d.time),
       y: Array(filteredData.length).fill(popupData.latestData.highestFlowLevel),
@@ -187,7 +202,6 @@ const WaterLevelMap = () => {
     });
   }
 
-  // Fallback if context not ready
   if (!mapContext) {
     return (
       <div className="h-screen w-full bg-gray-100 p-10 pt-15 flex items-center justify-center">
@@ -203,7 +217,6 @@ const WaterLevelMap = () => {
   return (
     <div ref={wrapRef} className={`${isFullScreen ? "fixed inset-0 z-50 bg-white" : "h-screen w-full"} bg-gray-100 p-10 pt-15`}>
       <div className="h-full w-full flex rounded-xl overflow-hidden shadow-2xl">
-        {/* LEFT COLUMN - MAP */}
         <MapComponent
           mapElement={mapElement}
           popupRef={popupRef}
@@ -220,7 +233,6 @@ const WaterLevelMap = () => {
           setSelectedStateCode={setSelectedStateCode}
         />
 
-        {/* RIGHT COLUMN - DETAILS PANEL */}
         <Data
           isPopupVisible={isPopupVisible}
           isLoading={isLoading}
