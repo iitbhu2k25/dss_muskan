@@ -10,7 +10,7 @@ import { RainfallStatistics } from "./rainfall/components/statistics";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { WaterLevelMapProvider } from "@/contexts/extract/Waterlevel/MapContext";
-import WaterLevelMap from "./waterlevel/components/map";
+import WaterLevelMap from "./waterlevel/components/level";
 import {
   CloudRain,
   Cloud,
