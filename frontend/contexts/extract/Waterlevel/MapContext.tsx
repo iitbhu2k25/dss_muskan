@@ -84,6 +84,13 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
       const startDate = "2016-01-01";
       const apiUrl = "http://localhost:9000/django/extract/level";
 
+      console.log("[DEBUG] Fetching data for station:", stationCode);
+      console.log("[DEBUG] Request payload:", {
+        stationCode: `'${stationCode}'`,
+        startDate,
+        endDate: currentDate,
+      });
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,8 +101,16 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to fetch data");
+      console.log("[DEBUG] Response status:", response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[ERROR] Server response:", errorText);
+        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log("[DEBUG] Response data:", data);
 
       if (data.error || !Array.isArray(data) || data.length === 0) {
         throw new Error("No data available");
@@ -208,10 +223,10 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
           const props = f.getProperties();
           const label = props.State || props.state || "Unknown";
           const code = props.state_code || props.STATE_CODE || props.StateCode;
-          return code ? { label, state_code: code } : null;
+          return { label, state_code: code } as StateOption;
         })
-        .filter(Boolean)
-        .sort((a, b) => a!.label.localeCompare(b!.label));
+        .filter((item): item is StateOption => item !== null)
+        .sort((a, b) => a.label.localeCompare(b.label));
 
       setStates([{ label: "All India", state_code: "" }, ...stateList]);
 
@@ -241,7 +256,7 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
     if (!selectedStateCode || selectedStateCode === "") {
       delete params.CQL_FILTER;
     } else {
-      params.CQL_FILTER = `STATE_1 = '${selectedStateCode}'`;
+      params.CQL_FILTER = `STATE_CODE = '${selectedStateCode}'`;
     }
 
     source.updateParams({ ...params, t: Date.now() }); // Force refresh
@@ -265,7 +280,8 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
     if (feature) {
       const geometry = feature.getGeometry();
       if (geometry) {
-        map.getView().fit(geometry, {
+        const extent = geometry.getExtent();
+        map.getView().fit(extent, {
           duration: 1000,
           padding: [100, 100, 100, 100],
           maxZoom: 10,
@@ -275,7 +291,6 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
   }, [selectedStateCode, map]);
 
   const handleMapClick = async (evt: MapBrowserEvent<any>) => {
-    // ... (same as before, unchanged)
     if (!map || !popupOverlay) return;
 
     const resolution = map.getView().getResolution();
@@ -298,19 +313,25 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
     }
 
     try {
+      console.log("[DEBUG] GetFeatureInfo URL:", url);
       const res = await fetch(url);
       const data = await res.json();
+      console.log("[DEBUG] GetFeatureInfo response:", data);
 
       if (data.features?.length > 0) {
         const props = data.features[0].properties;
-        const stationCode = props.stationCod || props.StationCod || props.stationcod;
+        console.log("[DEBUG] Feature properties:", props);
+
+        const stationCode = props.stationCod || props.StationCod || props.stationcod || props.STATIONCOD;
 
         if (!stationCode) {
+          console.warn("[WARN] No station code found in properties");
           popupOverlay.setPosition(undefined);
           setIsPopupVisible(false);
           return;
         }
 
+        console.log("[DEBUG] Station code found:", stationCode);
         setIsLoading(true);
         setIsPopupVisible(true);
 
@@ -321,7 +342,7 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
           );
 
           setPopupData({
-            stationName: props.name || stationCode,
+            stationName: props.name || props.NAME || stationCode,
             stationCode,
             latestData: sorted[0],
             allData: sorted,
@@ -331,10 +352,13 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
         } catch (err) {
           console.error("Failed to load station data", err);
           setPopupData(null);
+          setIsPopupVisible(false);
+          popupOverlay.setPosition(undefined);
         }
 
         setIsLoading(false);
       } else {
+        console.log("[DEBUG] No features found at click location");
         popupOverlay.setPosition(undefined);
         setIsPopupVisible(false);
       }
