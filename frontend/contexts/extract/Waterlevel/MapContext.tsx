@@ -77,62 +77,51 @@ export const WaterLevelMapProvider = ({ children }: { children: ReactNode }) => 
     fill: new Fill({ color: "rgba(0, 0, 0, 0.01)" }),
     stroke: new Stroke({ color: "blue", width: 2 }),
   });
-const fetchHydrographStationData = async (stationCode: string) => {
-  try {
-    const currentDate = new Date().toISOString().split("T")[0];
-    const startDate = "2016-01-01";
-    const apiUrl = "http://localhost:9000/django/extract/level";
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  const fetchHydrographStationData = async (stationCode: string) => {
+    try {
+      const currentDate = new Date().toISOString().split("T")[0];
+      const startDate = "2016-01-01";
+      const apiUrl = "http://localhost:9000/django/extract/level";
+
+      console.log("[DEBUG] Fetching data for station:", stationCode);
+      console.log("[DEBUG] Request payload:", {
         stationCode: `'${stationCode}'`,
         startDate,
         endDate: currentDate,
-      }),
-    });
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[ERROR] Server response:", errorText);
-      throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stationCode: `'${stationCode}'`,
+          startDate,
+          endDate: currentDate,
+        }),
+      });
+
+      console.log("[DEBUG] Response status:", response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[ERROR] Server response:", errorText);
+        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("[DEBUG] Response data:", data);
+
+      if (data.error || !Array.isArray(data) || data.length === 0) {
+        throw new Error("No data available");
+      }
+
+      return data;
+    } catch (error) {
+      console.error("[ERROR] fetchHydrographStationData:", error);
+      throw error;
     }
-
-    let data = {};
-
-    try {
-      data = await response.json();
-    } catch (e) {
-      // ✔ If API returns 200 OK but body is empty → return empty list
-      console.warn("[WARN] Empty JSON response, returning empty data");
-      return [];
-    }
-
-    // ✔ If backend sends { error: "..."}
-    if ((data as any).error) {
-      throw new Error((data as any).error);
-    }
-
-    // ✔ If backend sends { message: "...", data: [] }
-    if ((data as any).data && Array.isArray((data as any).data)) {
-      return (data as any).data;
-    }
-
-    // ✔ If backend returns array directly
-    if (Array.isArray(data)) {
-      return data; // even if empty
-    }
-
-    // ✔ Any other unknown format → return empty array safely
-    return [];
-
-  } catch (error) {
-    console.error("[ERROR] fetchHydrographStationData:", error);
-    throw error;
-  }
-};
-
+  };
 
   const updatePopupPosition = (coordinate: number[]) => {
     if (!map || !popupOverlay) return;
