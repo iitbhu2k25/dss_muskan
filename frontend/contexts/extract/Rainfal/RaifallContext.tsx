@@ -1,20 +1,17 @@
 // frontend/contexts/extract/Rainfal/RainfallContext.tsx
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useRef } from 'react';
 
 export type RainfallFeature = {
   type: string;
   geometry: { type: string; coordinates: any };
   properties: {
-    // District fields
     DISTRICT?: string;
     rainfall_balloonText?: string;
     rainfall_title?: string;
     rainfall_color?: string;
     rainfall_info?: string;
-    
-    // State fields
     state?: string;
     state_id?: string;
     district?: string;
@@ -24,8 +21,6 @@ export type RainfallFeature = {
     departure?: string;
     category?: string;
     last_updated?: string;
-    
-    // River Basin fields
     OBJECTID?: number;
     Basin_1?: string;
     Subbasin_1?: string;
@@ -36,8 +31,6 @@ export type RainfallFeature = {
     fmo_precip?: string;
     precipitation?: string;
     date?: string;
-    
-    // Common fields
     color: string;
     data_source?: string;
   };
@@ -87,19 +80,33 @@ export const DailyProvider = ({ children }: { children: ReactNode }) => {
   const [rainfallData, setRainfallData] = useState<RainfallData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastEndpointRef = useRef<string>('');
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    
     let endpoint = '';
     if (category === 'riverbasin') {
       endpoint = `http://localhost:9000/django/extract/rainfall/riverbasin/${riverBasinDay}`;
     } else {
       endpoint = `http://localhost:9000/django/extract/${category}/rainfall/${period}`;
     }
+
+    // Don't call if same endpoint
+    if (endpoint === lastEndpointRef.current) return;
     
-    fetch(endpoint)
+    // Abort previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    lastEndpointRef.current = endpoint;
+    abortControllerRef.current = new AbortController();
+    
+    setLoading(true);
+    setError(null);
+    
+    fetch(endpoint, { signal: abortControllerRef.current.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch ${category} rainfall data`);
         return res.json();
@@ -109,9 +116,16 @@ export const DailyProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       })
       .catch((e) => {
+        if (e.name === 'AbortError') return;
         setError(e.message);
         setLoading(false);
       });
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [period, category, riverBasinDay]);
 
   return (

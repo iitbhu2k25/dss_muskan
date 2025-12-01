@@ -50,7 +50,7 @@ class RiverBasinAPIView(APIView):
                     date = parts[3].replace(" Date:", "").strip() if len(parts) > 3 else ""
                     
                     precip_dict[area_id] = {
-                        "title": title,  # Keep full title with <br> tags
+                        "title": title,
                         "basin_name": basin_name,
                         "fmo": fmo,
                         "precip": precip,
@@ -60,9 +60,9 @@ class RiverBasinAPIView(APIView):
         
         return precip_dict
 
-    def transform_geojson_to_4326(self, geojson_data):
+    def transform_geojson_to_3857(self, geojson_data):
         """
-        Transform GeoJSON coordinates to EPSG:4326 if needed
+        Transform GeoJSON coordinates to EPSG:3857 if needed
         """
         # Check if CRS is defined in the GeoJSON
         crs = geojson_data.get("crs", {})
@@ -79,23 +79,69 @@ class RiverBasinAPIView(APIView):
                 if epsg_match:
                     source_epsg = int(epsg_match.group(1))
         
-        # If no CRS specified or already EPSG:4326, assume it's already correct
-        if source_epsg is None or source_epsg == 4326:
-            # Still set the CRS explicitly to EPSG:4326
+        # If already EPSG:3857, return as is
+        if source_epsg == 3857:
             geojson_data["crs"] = {
                 "type": "name",
                 "properties": {
-                    "name": "EPSG:4326"
+                    "name": "EPSG:3857"
                 }
             }
             return geojson_data
         
-        # Create transformer from source CRS to EPSG:4326
-        transformer = Transformer.from_crs(
-            f"EPSG:{source_epsg}", 
-            "EPSG:4326", 
-            always_xy=True
-        )
+        # Auto-detect CRS from coordinate values if not specified
+        if source_epsg is None:
+            features = geojson_data.get("features", [])
+            if features and features[0].get("geometry"):
+                coords = features[0]["geometry"].get("coordinates", [])
+                
+                # Flatten nested arrays to get first coordinate pair
+                def get_first_coord(c):
+                    while isinstance(c, list) and len(c) > 0:
+                        if isinstance(c[0], (int, float)):
+                            return c
+                        c = c[0]
+                    return c
+                
+                first_coord = get_first_coord(coords)
+                
+                if len(first_coord) >= 2:
+                    x, y = first_coord[0], first_coord[1]
+                    
+                    # Check if coordinates are in degrees (WGS84) or meters (Web Mercator)
+                    if abs(x) <= 180 and abs(y) <= 90:
+                        # Looks like degrees (EPSG:4326)
+                        source_epsg = 4326
+                    elif abs(x) > 200 and abs(y) > 200:
+                        # Looks like meters (EPSG:3857 already)
+                        geojson_data["crs"] = {
+                            "type": "name",
+                            "properties": {
+                                "name": "EPSG:3857"
+                            }
+                        }
+                        return geojson_data
+                    else:
+                        # Default to WGS84
+                        source_epsg = 4326
+                else:
+                    # Default to WGS84
+                    source_epsg = 4326
+            else:
+                # No features, default to WGS84
+                source_epsg = 4326
+        
+        # Create transformer from source CRS to EPSG:3857
+        try:
+            transformer = Transformer.from_crs(
+                f"EPSG:{source_epsg}", 
+                "EPSG:3857", 
+                always_xy=True
+            )
+        except Exception as e:
+            print(f"Error creating transformer: {e}")
+            # Return original data if transformation fails
+            return geojson_data
         
         # Transform each feature's geometry
         for feature in geojson_data.get("features", []):
@@ -113,11 +159,11 @@ class RiverBasinAPIView(APIView):
                     print(f"Error transforming feature: {e}")
                     continue
         
-        # Update CRS to EPSG:4326
+        # Update CRS to EPSG:3857
         geojson_data["crs"] = {
             "type": "name",
             "properties": {
-                "name": "EPSG:4326"
+                "name": "EPSG:3857"
             }
         }
         
@@ -156,8 +202,8 @@ class RiverBasinAPIView(APIView):
             geojson_resp.raise_for_status()
             geojson_data = geojson_resp.json()
 
-            # Transform to EPSG:4326
-            geojson_data = self.transform_geojson_to_4326(geojson_data)
+            # Transform to EPSG:3857
+            geojson_data = self.transform_geojson_to_3857(geojson_data)
 
             # Merge areas data into GeoJSON features
             for feature in geojson_data.get("features", []):
