@@ -166,42 +166,49 @@ export const WellProvider: React.FC<WellProviderProps> = ({
     }
   };
 
-  // Fixed handleWellsModeChange function
-  const handleWellsModeChange = (mode: 'existing_and_new' | 'upload_csv', forceRemoveWells?: () => void) => {
-    console.log("=== handleWellsModeChange called ===");
-    console.log("Attempting to change well mode to:", mode);
+// Fixed handleWellsModeChange function
+const handleWellsModeChange = (mode: 'existing_and_new' | 'upload_csv', forceRemoveWells?: () => void) => {
+  console.log("=== handleWellsModeChange called ===");
+  console.log("Current mode:", wellSelectionMode);
+  console.log("Attempting to change well mode to:", mode);
+  
+  // Only prevent mode change if wells are already saved
+  if (isWellTableSaved) {
+    console.log("Cannot change mode: wells are already saved");
+    alert("Cannot change well selection mode: wells are already saved. Please reset wells first.");
+    return;
+  }
+  
+  // If clicking the same mode, do nothing (don't remove wells or reset data)
+  if (wellSelectionMode === mode) {
+    console.log("Same mode clicked, no action needed");
+    return;
+  }
+  
+  // Force remove wells from map when switching modes (different modes)
+  if (forceRemoveWells) {
+    console.log("Force removing wells from map due to mode change");
+    forceRemoveWells();
+  }
     
-    // Only prevent mode change if wells are already saved
-    if (isWellTableSaved) {
-      console.log("Cannot change mode: wells are already saved");
-      alert("Cannot change well selection mode: wells are already saved. Please reset wells first.");
-      return;
-    }
-    
-    // Force remove wells from map when switching modes
-    if (forceRemoveWells) {
-      console.log("Force removing wells from map due to mode change");
-      forceRemoveWells();
-    }
-      
-    console.log("Changing well mode to:", mode);
-    setWellSelectionMode(mode);
-    setWellsData([]);
-    setWellsError(null);
-    setIsWellTableSaved(false);
-    setCsvUploadSuccess(false);
-    setCsvUploadMessage('');
-    setSelectedFile(null);
-    setCustomColumns([]);
-    setNewColumnName('');
+  console.log("Changing well mode to:", mode);
+  setWellSelectionMode(mode);
+  setWellsData([]);
+  setWellsError(null);
+  setIsWellTableSaved(false);
+  setCsvUploadSuccess(false);
+  setCsvUploadMessage('');
+  setSelectedFile(null);
+  setCustomColumns([]);
+  setNewColumnName('');
 
-    // Clear file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    
-    console.log("Mode change completed successfully");
-  };
+  // Clear file input
+  if (fileInputRef.current) {
+    fileInputRef.current.value = '';
+  }
+  
+  console.log("Mode change completed successfully");
+};
 
   // Mandatory columns to display
 

@@ -270,19 +270,19 @@ const WellSelection: React.FC<WellSelectionProps> = ({ onWellsConfirmed, onReset
     }
   };
 
-  // Handle radio button change with better logging
-  const handleRadioChange = (mode: 'existing_and_new' | 'upload_csv') => {
-    console.log("=== Radio button clicked ===");
-    console.log("Selected mode:", mode);
+// Handle radio button change with better logging
+const handleRadioChange = (mode: 'existing_and_new' | 'upload_csv') => {
+  console.log("=== Radio button clicked ===");
+  console.log("Selected mode:", mode);
 
-    try {
-      // Pass the force removal function to handle mode changes
-      handleWellsModeChange(mode, forceRemoveWellPointsLayer);
-      console.log("Mode change successful");
-    } catch (error) {
-      console.log("Error changing mode:", error);
-    }
-  };
+  try {
+    // Pass the force removal function - it will only be called if switching modes
+    handleWellsModeChange(mode, forceRemoveWellPointsLayer);
+    console.log("Mode change successful");
+  } catch (error) {
+    console.log("Error changing mode:", error);
+  }
+};
 
   if (!areaConfirmed) {
     return (
