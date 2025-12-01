@@ -17,7 +17,7 @@ import Climate from './components/climate';
 import ResizablePanels from './components/resizable-panels';
 import { BarChart3, Droplets, Leaf, CloudRain } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import ExportPDF from './components/Export/page';
+import ExportPDF from './components/Export/ExportPDF';
 import { usePdf, PdfProvider } from './components/pdfprovider';
 
 type TabType = 'streamflow' | 'surfacewater' | 'eflow' | 'climate';

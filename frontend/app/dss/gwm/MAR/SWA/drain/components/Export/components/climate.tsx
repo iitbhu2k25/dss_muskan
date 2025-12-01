@@ -233,7 +233,7 @@ const ClimateSection: React.FC<ClimateSectionProps> = ({ climateResults }) => {
         return (
           <View
             key={scenario}
-            style={[styles.scenarioSection, { pageBreakBefore: index !== 0 }]} // Each scenario starts on new page
+            style={[styles.scenarioSection, { marginBottom: index !== 0 ? '2rem' : '0' }]}
             wrap={true}
           >
             <Text style={styles.scenarioHeader}>{info?.name || `Scenario ${scenario}`}</Text>

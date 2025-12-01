@@ -542,55 +542,56 @@ export default function ClimateAdmin() {
         </div>
 
         {current?.data?.points && (
-  <div className="w-full" style={{ height: isFullscreen ? "85vh" : "420px" }}>
-    <Plot
-      data={[
-        {
-          x: chartData.map((d: any) => d.year + "-" + d.mon),
-          y: chartData.map((d: any) => d.runoff),
-          type: "scatter",
-          mode: "lines+markers",
-          name: "Runoff",
-          line: { width: 2 },
-          marker: { size: 5 }
-        }
-      ]}
-      layout={{
-        autosize: true,
-        margin: { l: 60, r: 30, t: 40, b: 60 },
-        xaxis: {
-          title: "Year-Month",
-          tickangle: -45
-        },
-        yaxis: {
-          title: "Runoff (m³)",
-          zeroline: false
-        },
-        hovermode: "closest",
-        showlegend: true,
-        title: {
-          text: current
-            ? `Admin Climate: ${current.village} | Scenario ${current.source_id} | ${current.start_year}-${current.end_year}`
-            : "Admin Climate",
-          font: { size: 16 }
-        }
-      }}
-      config={{
-        responsive: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ["lasso2d", "select2d"],
-        toImageButtonOptions: {
-          filename: "climate_chart",
-          height: 800,
-          width: 1200,
-          scale: 2
-        }
-      }}
-      style={{ width: "100%", height: "100%" }}
-      useResizeHandler={true}
-    />
-  </div>
-)}
+          <div className="w-full" style={{ height: isFullscreen ? "85vh" : "420px" }}>
+            <Plot
+              data={[
+                {
+                  x: chartData.map((d: any) => d.year + "-" + d.mon),
+                  y: chartData.map((d: any) => d.runoff),
+                  type: "scatter",
+                  mode: "lines+markers",
+                  name: "Runoff",
+                  line: { width: 2 },
+                  marker: { size: 5 }
+                }
+              ]}
+              layout={{
+                autosize: true,
+                margin: { l: 60, r: 30, t: 40, b: 60 },
+                xaxis: {
+                  title: { text: "Year-Month" },
+                  tickangle: -45
+                },
+                yaxis: {
+                  title: { text: "Runoff (m³)" },
+                  zeroline: false
+                },
+                hovermode: "closest",
+                showlegend: true,
+                title: {
+                  text: current
+                    ? `Admin Climate: ${current.village} | Scenario ${current.source_id} | ${current.start_year}-${current.end_year}`
+                    : "Admin Climate",
+                  font: { size: 16 }
+                }
+              }}
+
+              config={{
+                responsive: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ["lasso2d", "select2d"],
+                toImageButtonOptions: {
+                  filename: "climate_chart",
+                  height: 800,
+                  width: 1200,
+                  scale: 2
+                }
+              }}
+              style={{ width: "100%", height: "100%" }}
+              useResizeHandler={true}
+            />
+          </div>
+        )}
 
       </div>
 

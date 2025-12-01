@@ -96,13 +96,17 @@ export default function EflowPlot({
         marker: { size: 6 }
     });
 
-    const layout = {
-        title: `${methodLabel} • ${villageName}`,
+    const layout: Partial<Plotly.Layout> = {
+        title: {
+            text: `${methodLabel} • ${villageName}`
+        },
         height,
         margin: { l: 85, r: 30, t: 60, b: 60 },
 
         xaxis: {
-            title: 'Month Index',
+            title: {
+                text: 'Month Index'
+            },
             showgrid: false
         },
         yaxis: {
@@ -110,10 +114,8 @@ export default function EflowPlot({
                 text: "Flow (L/s)<br><span style='font-size:12px'>x × 10⁻⁶ ML = x µL (micro-liters)</span>",
                 standoff: 20     // <-- adds spacing to avoid overlap
             },
-            gridcolor: 'rgba(200,200,20 0,0.15)',
+            gridcolor: 'rgba(200,200,200,0.15)',
         },
-
-
 
         legend: { orientation: 'h', x: 0, y: 1.12 },
         hovermode: 'x unified'
@@ -122,7 +124,7 @@ export default function EflowPlot({
     return (
         <Plot
             data={traces}
-            layout={{ ...layout }}
+            layout={layout}
             style={{ width: width, height }}
             useResizeHandler
             config={{ displaylogo: false }}
