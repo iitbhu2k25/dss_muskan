@@ -76,6 +76,7 @@ interface DemandContextType {
   domesticTableData: TableData[];
   agriculturalTableData: TableData[];
   industrialTableData: TableData[];
+  combinedDemandData: TableData[]; // ADDED: Combined demand data
   domesticLoading: boolean;
   agriculturalLoading: boolean;
   industrialLoading: boolean;
@@ -130,6 +131,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   const [domesticTableData, setDomesticTableData] = useState<TableData[]>([]);
   const [agriculturalTableData, setAgriculturalTableData] = useState<TableData[]>([]);
   const [industrialTableData, setIndustrialTableData] = useState<TableData[]>([]);
+  const [combinedDemandData, setCombinedDemandData] = useState<TableData[]>([]); // ADDED: Combined demand state
   const [domesticLoading, setDomesticLoading] = useState<boolean>(false);
   const [agriculturalLoading, setAgriculturalLoading] = useState<boolean>(false);
   const [industrialLoading, setIndustrialLoading] = useState<boolean>(false);
@@ -137,9 +139,10 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   const [agriculturalError, setAgriculturalError] = useState<string | null>(null);
   const [industrialError, setIndustrialError] = useState<string | null>(null);
 
-  const { selectedVillages } = useLocation();
+  const { selectedVillages } = useLocation(); // Drain context uses selectedVillages
   const { csvFilename } = useWell();
 
+  // Update production for a specific sub-type
   const updateIndustrialProduction = (industry: string, subtype: string, production: number) => {
     setIndustrialData(prevData =>
       prevData.map(item =>
@@ -155,6 +158,113 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     setChartsError(null);
   };
 
+// ADDED: Logic to generate combined demand data based on village_code
+const generateCombinedDemandData = () => {
+  const villageMap = new Map<string | number, any>();
+
+  // Use a helper function to standardize the key and fallback logic
+  const standardizeKey = (row: any) => row.village_code || row.Village_code || String(row.village_name) || String(row.village) || 'Unknown_Code';
+  const getVillageName = (row: any) => row.village_name || row.Village_name || row.village || 'Unknown';
+
+
+  // Add domestic data
+  domesticTableData.forEach(row => {
+    const key = standardizeKey(row);
+    if (key === 'Unknown_Code') return; 
+    
+    const villageName = getVillageName(row);
+    if (!villageMap.has(key)) {
+      villageMap.set(key, {
+        village_code: key,
+        village_name: villageName,
+        domestic_demand: 0,
+        agricultural_demand: 0,
+        industrial_demand: 0,
+      });
+    }
+    const village = villageMap.get(key);
+    if (village) {
+      village.domestic_demand = row.demand_mld || 0;
+      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+        village.village_name = villageName;
+      }
+    }
+  });
+
+  // Add agricultural data
+  agriculturalTableData.forEach(row => {
+    const key = standardizeKey(row);
+    if (key === 'Unknown_Code') return; 
+
+    const villageName = getVillageName(row);
+    if (!villageMap.has(key)) {
+      villageMap.set(key, {
+        village_code: key,
+        village_name: villageName,
+        domestic_demand: 0,
+        agricultural_demand: 0,
+        industrial_demand: 0,
+      });
+    }
+    const village = villageMap.get(key);
+    if (village) {
+      // Assuming 'village_demand' is the correct field for agricultural demand
+      if (row.village_demand !== undefined) {
+        village.agricultural_demand = row.village_demand;
+      }
+      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+        village.village_name = villageName;
+      }
+    }
+  });
+
+  // Add industrial data
+  industrialTableData.forEach(row => {
+    const key = standardizeKey(row);
+    if (key === 'Unknown_Code') return; 
+
+    const villageName = getVillageName(row);
+    if (!villageMap.has(key)) {
+      villageMap.set(key, {
+        village_code: key,
+        village_name: villageName,
+        domestic_demand: 0,
+        agricultural_demand: 0,
+        industrial_demand: 0,
+      });
+    }
+    const village = villageMap.get(key);
+    if (village) {
+      // Assuming industrial demand is in a column named 'Industrial_demand_(Million litres/Year)' as per the admin file
+      if (row['Industrial_demand_(Million litres/Year)'] !== undefined) {
+        village.industrial_demand = row['Industrial_demand_(Million litres/Year)'];
+      }
+      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+        village.village_name = villageName;
+      }
+    }
+  });
+
+  // Calculate totals and convert to array
+  const combined = Array.from(villageMap.values()).map(village => ({
+    ...village,
+    total_demand: Number(village.domestic_demand) + Number(village.agricultural_demand) + Number(village.industrial_demand),
+  }));
+
+  setCombinedDemandData(combined);
+  // console.log('✅ Drain Combined demand data generated:', combined.length, 'villages');
+};
+
+  // ADDED: Regenerate combined data when any demand changes
+  useEffect(() => {
+    if (domesticTableData.length > 0 || agriculturalTableData.length > 0 || industrialTableData.length > 0) {
+      generateCombinedDemandData();
+    } else {
+      setCombinedDemandData([]);
+    }
+  }, [domesticTableData, agriculturalTableData, industrialTableData]);
+
+  // Fetch crops when seasons are checked
   useEffect(() => {
     if (kharifChecked && !availableCrops.Kharif) {
       fetchCropsForSeason('Kharif');
@@ -188,11 +298,11 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`API error: ${response.status} - ${errorText}`);
+        throw new Error(`API error: ${response.status} - ${response.statusText || errorText}`);
       }
 
       const result = await response.json();
-      console.log(`${season} crops fetched:`, result);
+      // console.log(`${season} crops fetched:`, result);
 
       if (result.success && result.data && result.data.crops && Array.isArray(result.data.crops)) {
         setAvailableCrops(prev => ({
@@ -211,7 +321,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      console.log(`Error fetching ${season} crops:`, errorMessage);
+      // console.log(`Error fetching ${season} crops:`, errorMessage);
       setCropsError(prev => ({ ...prev, [season]: errorMessage }));
     } finally {
       setCropsLoading(prev => ({ ...prev, [season]: false }));
@@ -274,7 +384,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
         lpcd: perCapitaConsumption,
       };
 
-      console.log('Computing domestic demand via forecast-population with payload:', requestPayload);
+      // console.log('Computing domestic demand via forecast-population with payload:', requestPayload);
 
       const response = await fetch('http://localhost:6500/gwa/forecast-population', {
         method: 'POST',
@@ -290,7 +400,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       }
 
       const result = await response.json();
-      console.log('Domestic demand computation result:', result);
+      // console.log('Domestic demand computation result:', result);
 
       if (result.forecasts && Array.isArray(result.forecasts)) {
         setDomesticTableData(result.forecasts);
@@ -299,7 +409,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      console.log('Error computing domestic demand:', errorMessage);
+      // console.log('Error computing domestic demand:', errorMessage);
       setDomesticError(errorMessage);
       setDomesticTableData([]);
     } finally {
@@ -336,7 +446,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
         include_charts: true
       };
 
-      console.log('Computing agricultural demand with payload:', requestPayload);
+      // console.log('Computing agricultural demand with payload:', requestPayload);
 
       const response = await fetch('http://localhost:6500/gwa/agricultural', {
         method: 'POST',
@@ -352,7 +462,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       }
 
       const result = await response.json();
-      console.log('Agricultural demand computation result:', result);
+      // console.log('Agricultural demand computation result:', result);
 
       if (result.data && Array.isArray(result.data)) {
         setAgriculturalTableData(result.data);
@@ -363,20 +473,20 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       if (result.charts) {
         if (result.charts_error) {
           setChartsError(result.charts_error);
-          console.warn('Chart generation error:', result.charts_error);
+          // console.warn('Chart generation error:', result.charts_error);
         } else {
           setChartData(result.charts);
-          console.log('Charts data received:', {
-            hasIndividualChart: !!result.charts.individual_crops,
-            hasCumulativeChart: !!result.charts.cumulative_demand,
-            summary: result.charts.summary_stats
-          });
+          // console.log('Charts data received:', {
+          //   hasIndividualChart: !!result.charts.individual_crops,
+          //   hasCumulativeChart: !!result.charts.cumulative_demand,
+          //   summary: result.charts.summary_stats
+          // });
         }
       }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      console.log('Error computing agricultural demand:', errorMessage);
+      // console.log('Error computing agricultural demand:', errorMessage);
       setAgriculturalError(errorMessage);
       setAgriculturalTableData([]);
       clearChartData();
@@ -424,7 +534,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
         village_codes: villageCodes,
       };
 
-      console.log('Computing industrial demand with payload:', requestPayload);
+      // console.log('Computing industrial demand with payload:', requestPayload);
 
       const response = await fetch('http://localhost:6500/gwa/industrial', {
         method: 'POST',
@@ -440,7 +550,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       }
 
       const result = await response.json();
-      console.log('Industrial demand computation result:', result);
+      // console.log('Industrial demand computation result:', result);
 
       if (result.data && Array.isArray(result.data)) {
         setIndustrialTableData(result.data);
@@ -457,7 +567,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      console.log('Error computing industrial demand:', errorMessage);
+      // console.log('Error computing industrial demand:', errorMessage);
       setIndustrialError(errorMessage);
       setIndustrialTableData([]);
     } finally {
@@ -485,6 +595,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     domesticTableData,
     agriculturalTableData,
     industrialTableData,
+    combinedDemandData, // EXPOSED: Combined demand data
     domesticLoading,
     agriculturalLoading,
     industrialLoading,
