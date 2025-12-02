@@ -132,7 +132,14 @@ const Demand = () => {
   const [agriculturalSearchInput, setAgriculturalSearchInput] = useState("");
   const [agriculturalAppliedSearch, setAgriculturalAppliedSearch] = useState("");
   const [agriculturalAppliedSort, setAgriculturalAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-  
+    // Industrial Table States for Search & Sort
+  const [industrialSearchInput, setIndustrialSearchInput] = useState("");
+  const [industrialAppliedSearch, setIndustrialAppliedSearch] = useState("");
+  const [industrialAppliedSort, setIndustrialAppliedSort] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>(null);
+
   // Handle Agricultural Compute with Validation
   const handleAgriculturalClick = () => {
     const isAnySeasonSelected = kharifChecked || rabiChecked || zaidChecked;
@@ -225,6 +232,56 @@ const Demand = () => {
     return data;
   }, [agriculturalTableData, agriculturalAppliedSearch, agriculturalAppliedSort]);
 
+
+    const processedIndustrialData = useMemo(() => {
+    let data = [...industrialTableData];
+
+    // Search on all string fields
+    if (industrialAppliedSearch) {
+      const search = industrialAppliedSearch.toLowerCase();
+      data = data.filter((row) =>
+        Object.values(row).some((val) =>
+          String(val ?? "")
+            .toLowerCase()
+            .includes(search)
+        )
+      );
+    }
+
+    // Sort on selected column
+    if (industrialAppliedSort) {
+      const { key, direction } = industrialAppliedSort;
+      data.sort((a: any, b: any) => {
+        const aValue = a[key];
+        const bValue = b[key];
+
+        if (aValue == null) return direction === "asc" ? -1 : 1;
+        if (bValue == null) return direction === "asc" ? 1 : -1;
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return direction === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return direction === "asc" ? aValue - bValue : bValue - aValue;
+        }
+
+        const numA = parseFloat(String(aValue));
+        const numB = parseFloat(String(bValue));
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return direction === "asc" ? numA - numB : numB - numA;
+        }
+
+        return 0;
+      });
+    }
+
+    return data;
+  }, [industrialTableData, industrialAppliedSearch, industrialAppliedSort]);
+
+
   // Domestic Handlers
   const handleDomesticApplySearch = () => {
     setDomesticAppliedSearch(domesticSearchInput.trim());
@@ -242,6 +299,16 @@ const Demand = () => {
   const handleAgriculturalResetSort = () => {
     setAgriculturalAppliedSort(null);
   };
+
+
+  const handleIndustrialApplySearch = () => {
+    setIndustrialAppliedSearch(industrialSearchInput.trim());
+  };
+
+  const handleIndustrialResetSort = () => {
+    setIndustrialAppliedSort(null);
+  };
+
 
   // Domestic Table Component (Table only)
   type DomesticTableProps = {
@@ -426,7 +493,7 @@ const Demand = () => {
     );
   };
 
-  // Combined Demand Table Component
+
 // Combined Demand Table Component
 type CombinedDemandTableProps = {
   domesticData: any[];
@@ -520,15 +587,206 @@ const CombinedDemandTable = ({
   }, [domesticData, agriculturalData, industrialData]);
 
   const grandTotal = combinedData.villages.reduce((sum, row) => sum + row.total_demand, 0);
+  
 
-  return (
+  // Combined Table States for Search & Sort
+  const [combinedSearchInput, setCombinedSearchInput] = React.useState("");
+  const [combinedAppliedSearch, setCombinedAppliedSearch] = React.useState("");
+  const [combinedAppliedSort, setCombinedAppliedSort] = React.useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>(null);
+
+  // Processed Combined Data (search + sort)
+  const processedCombinedVillages = React.useMemo(() => {
+    let data = [...combinedData.villages];
+
+    // Search on village_code + village_name
+    if (combinedAppliedSearch) {
+      const search = combinedAppliedSearch.toLowerCase();
+      data = data.filter((row) => {
+        const name = String(row.village_name ?? "").toLowerCase();
+        const code = String(row.village_code ?? "").toLowerCase();
+        return name.includes(search) || code.includes(search);
+      });
+    }
+
+    // Sort on selected column
+    if (combinedAppliedSort) {
+      const { key, direction } = combinedAppliedSort;
+      data.sort((a: any, b: any) => {
+        const aValue = a[key];
+        const bValue = b[key];
+
+        if (aValue == null) return direction === "asc" ? -1 : 1;
+        if (bValue == null) return direction === "asc" ? 1 : -1;
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return direction === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return direction === "asc" ? aValue - bValue : bValue - aValue;
+        }
+
+        const numA = parseFloat(String(aValue));
+        const numB = parseFloat(String(bValue));
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return direction === "asc" ? numA - numB : numB - numA;
+        }
+
+        return 0;
+      });
+    }
+
+    return data;
+  }, [combinedData.villages, combinedAppliedSearch, combinedAppliedSort]);
+
+    const handleCombinedApplySearch = () => {
+    setCombinedAppliedSearch(combinedSearchInput.trim());
+  };
+
+  const handleCombinedResetSort = () => {
+    setCombinedAppliedSort(null);
+  };
+
+  const handleCombinedSort = (field: string) => {
+    setCombinedAppliedSort((prev) => {
+      if (prev?.key === field) {
+        return {
+          key: field,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return { key: field, direction: "asc" };
+    });
+  };
+
+  const getCombinedSortIcon = (field: string) => {
+    if (combinedAppliedSort?.key !== field) return null;
+    return combinedAppliedSort.direction === "asc" ? (
+      <span className="ml-1 text-blue-600">▲</span>
+    ) : (
+      <span className="ml-1 text-blue-600">▼</span>
+    );
+  };
+
+
+    return (
     <div className="mt-6">
       <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          className="w-5 h-5 text-green-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         {title}
       </h4>
+
+      {/* Search controls */}
+      <div className="mb-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="flex gap-2 ml-auto">
+          <input
+            type="text"
+            placeholder="Search village code / name..."
+            value={combinedSearchInput}
+            onChange={(e) => setCombinedSearchInput(e.target.value)}
+            onKeyPress={(e) =>
+              e.key === "Enter" && handleCombinedApplySearch()
+            }
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <button
+            onClick={handleCombinedApplySearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            Search
+          </button>
+        </div>
+      </div>
+
+      {/* Active filters */}
+      {(combinedAppliedSearch || combinedAppliedSort) && (
+        <div className="mb-3 flex flex-wrap gap-2 text-sm">
+          {combinedAppliedSearch && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+              Search: "{combinedAppliedSearch}"
+              <button
+                onClick={() => {
+                  setCombinedAppliedSearch("");
+                  setCombinedSearchInput("");
+                }}
+                className="ml-1 hover:text-blue-900"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          )}
+          {combinedAppliedSort && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
+              Sort: {combinedAppliedSort.key.replace(/_/g, " ")} (
+              {combinedAppliedSort.direction === "asc"
+                ? "Ascending"
+                : "Descending"}
+              )
+              <button
+                onClick={handleCombinedResetSort}
+                className="ml-1 hover:text-green-900"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50 sticky top-0 z-10">
@@ -536,31 +794,69 @@ const CombinedDemandTable = ({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider bg-gray-50 border-b-2 border-gray-200">
                 S.No.
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                Village Code
+              <th
+                onClick={() => handleCombinedSort("village_code")}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+              >
+                <div className="flex items-center">
+                  Village Code
+                  {getCombinedSortIcon("village_code")}
+                </div>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                Village Name
+              <th
+                onClick={() => handleCombinedSort("village_name")}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+              >
+                <div className="flex items-center">
+                  Village Name
+                  {getCombinedSortIcon("village_name")}
+                </div>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                Domestic Demand (Million litres/Year)
+              <th
+                onClick={() => handleCombinedSort("domestic_demand")}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+              >
+                <div className="flex items-center">
+                  Domestic Demand (Million litres/Year)
+                  {getCombinedSortIcon("domestic_demand")}
+                </div>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                Agricultural Demand (Million litres/Year)
+              <th
+                onClick={() => handleCombinedSort("agricultural_demand")}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+              >
+                <div className="flex items-center">
+                  Agricultural Demand (Million litres/Year)
+                  {getCombinedSortIcon("agricultural_demand")}
+                </div>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                Industrial Demand (Million litres/Year)
+              <th
+                onClick={() => handleCombinedSort("industrial_demand")}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+              >
+                <div className="flex items-center">
+                  Industrial Demand (Million litres/Year)
+                  {getCombinedSortIcon("industrial_demand")}
+                </div>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                Total Village Demand (Million litres/Year)
+              <th
+                onClick={() => handleCombinedSort("total_demand")}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+              >
+                <div className="flex items-center">
+                  Total Village Demand (Million litres/Year)
+                  {getCombinedSortIcon("total_demand")}
+                </div>
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {combinedData.villages.map((row, index) => (
+            {processedCombinedVillages.map((row, index) => (
               <tr
                 key={row.village_code}
-                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 transition-colors`}
+                className={`${
+                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                } hover:bg-blue-50 transition-colors`}
               >
                 <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
                   {index + 1}
@@ -587,7 +883,10 @@ const CombinedDemandTable = ({
             ))}
             {/* Grand Total Row */}
             <tr className="bg-gray-100 border-t-2 border-gray-300">
-              <td className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap" colSpan={6}>
+              <td
+                className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap"
+                colSpan={6}
+              >
                 Grand Total Demand
               </td>
               <td className="px-4 py-3 text-sm text-indigo-900 font-bold whitespace-nowrap">
@@ -597,9 +896,12 @@ const CombinedDemandTable = ({
           </tbody>
         </table>
       </div>
+
       <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <span>
-          Showing <strong>{combinedData.villages.length}</strong> village{combinedData.villages.length !== 1 ? "s" : ""}
+          Showing <strong>{processedCombinedVillages.length}</strong> village
+          {processedCombinedVillages.length !== 1 ? "s" : ""}
+          {(combinedAppliedSearch || combinedAppliedSort) ? " (filtered)" : ""}
         </span>
         <span className="font-semibold text-indigo-700">
           Total Demand: {grandTotal.toFixed(3)} Million litres/Year
@@ -607,6 +909,7 @@ const CombinedDemandTable = ({
       </div>
     </div>
   );
+
 };
   // Chart Display (unchanged)
   const ChartDisplay = () => {
@@ -816,45 +1119,101 @@ const CombinedDemandTable = ({
   </div>
 );
 
-};
+  };
   // Generic Table for Industrial (unchanged)
-  const TableDisplay = ({ tableData, title }: { tableData: any[]; title: string }) => (
-    <div className="mt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <h4 className="text-md font-semibold text-gray-800">{title}</h4>
-      </div>
-      <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0">
-            <tr>
-              {Object.keys(tableData[0] || {}).map((header) => (
-                <th key={header} className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
-                  {header.replace(/_/g, ' ')} {/* Simple header formatting */}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {tableData.map((row, index) => (
-              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                {Object.values(row).map((value, cellIndex) => (
-                  <td key={cellIndex} className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                    {String(value)}
-                  </td>
+  const TableDisplay = ({
+    tableData,
+    title,
+    sortConfig,
+    onSort,
+    isSearched,
+  }: {
+    tableData: any[];
+    title: string;
+    sortConfig?: { key?: string; direction?: "asc" | "desc" };
+    onSort?: (field: string) => void;
+    isSearched?: boolean;
+  }) => {
+    const handleSort = (field: string) => {
+      onSort?.(field);
+    };
+
+    const getSortIcon = (field: string) => {
+      if (sortConfig?.key !== field) return null;
+      return sortConfig.direction === "asc" ? (
+        <span className="ml-1 text-blue-600">▲</span>
+      ) : (
+        <span className="ml-1 text-blue-600">▼</span>
+      );
+    };
+
+    const headers = Object.keys(tableData[0] || {});
+
+    return (
+      <div className="mt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <svg
+            className="w-5 h-5 text-green-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h4 className="text-md font-semibold text-gray-800">{title}</h4>
+        </div>
+
+        <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                {headers.map((header) => (
+                  <th
+                    key={header}
+                    onClick={() => handleSort(header)}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  >
+                    <div className="flex items-center">
+                      {header.replace(/_/g, " ")}
+                      {getSortIcon(header)}
+                    </div>
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {tableData.map((row, index) => (
+                <tr
+                  key={index}
+                  className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                >
+                  {Object.values(row).map((value, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap"
+                    >
+                      {String(value)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-2 text-sm text-gray-600">
+          Showing {tableData.length} record{tableData.length !== 1 ? "s" : ""}
+          {(sortConfig?.key || isSearched) ? " (filtered)" : ""}
+        </div>
       </div>
-      <div className="mt-2 text-sm text-gray-600">
-        Showing {tableData.length} record{tableData.length !== 1 ? 's' : ''}
-      </div>
-    </div>
-  );
+    );
+  };
+
 
   const IndustrialDemandInputTable = () => {
   // Local state for input values to avoid re-render issues
@@ -1127,7 +1486,7 @@ const CombinedDemandTable = ({
       </form>
     </div>
   );
-};
+  };
 
 
 
@@ -1731,95 +2090,208 @@ const CombinedDemandTable = ({
         </div>
       )}
        {/* 3. INDUSTRIAL DEMAND SECTION */}
-  {industrialChecked && (
-    <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
-      {industrialLoading && (
-        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="text-center bg-white rounded-xl shadow-2xl p-8">
-            {/* ... Loading Spinner SVG ... */}
-            <div className="inline-block relative">
-              <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <defs>
-                  <linearGradient id="spinner-gradient-industrial" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#3B82F6" />
-                    <stop offset="50%" stopColor="#8B5CF6" />
-                    <stop offset="100%" stopColor="#EC4899" />
-                  </linearGradient>
-                  <linearGradient id="spinner-gradient-2-industrial" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#10B981" />
-                    <stop offset="50%" stopColor="#3B82F6" />
-                    <stop offset="100%" stopColor="#6366F1" />
-                  </linearGradient>
-                </defs>
-                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="url(#spinner-gradient-industrial)" strokeWidth="3" />
-                <path className="opacity-90" fill="url(#spinner-gradient-2-industrial)" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3 h-3 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full animate-pulse"></div>
+      {industrialChecked && (
+        <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
+          {industrialLoading && (
+            <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
+              <div className="text-center bg-white rounded-xl shadow-2xl p-8">
+                {/* ... Loading Spinner SVG ... */}
+                <div className="inline-block relative">
+                  <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <defs>
+                      <linearGradient id="spinner-gradient-industrial" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#3B82F6" />
+                        <stop offset="50%" stopColor="#8B5CF6" />
+                        <stop offset="100%" stopColor="#EC4899" />
+                      </linearGradient>
+                      <linearGradient id="spinner-gradient-2-industrial" x1="100%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#10B981" />
+                        <stop offset="50%" stopColor="#3B82F6" />
+                        <stop offset="100%" stopColor="#6366F1" />
+                      </linearGradient>
+                    </defs>
+                    <circle className="opacity-20" cx="12" cy="12" r="10" stroke="url(#spinner-gradient-industrial)" strokeWidth="3" />
+                    <path className="opacity-90" fill="url(#spinner-gradient-2-industrial)" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-3 h-3 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+                <p className="text-xl font-semibold mt-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Computing Industrial Demand...
+                </p>
+                <p className="text-sm text-gray-500 mt-2">Please wait while we calculate industrial water requirements</p>
               </div>
             </div>
-            <p className="text-xl font-semibold mt-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Computing Industrial Demand...
-            </p>
-            <p className="text-sm text-gray-500 mt-2">Please wait while we calculate industrial water requirements</p>
-          </div>
-        </div>
-      )}
-      <h4 className="text-md font-semibold text-purple-800 mb-3">Industrial Demand Parameters</h4>
-      {industrialError && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-          <div className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <p className="font-medium">Computation Failed</p>
-              <p className="text-sm mt-1">{industrialError}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NEW: Industrial Input Table Component Integration */}
-      <IndustrialDemandInputTable />
-
-      <div className="mt-4">
-        <button
-          onClick={computeIndustrialDemand}
-          disabled={industrialLoading || !canComputeIndustrialDemand()}
-          className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
-        >
-          {industrialLoading ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>Computing Industrial Demand...</span>
-            </>
-          ) : (
-            <span>Compute Industrial Demand</span>
           )}
-        </button>
-      </div>
-      {industrialTableData.length > 0 && (
-        <TableDisplay tableData={industrialTableData} title="Industrial Demand Results" />
-      )}
-    </div>
-  )}
+          <h4 className="text-md font-semibold text-purple-800 mb-3">Industrial Demand Parameters</h4>
+          {industrialError && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="font-medium">Computation Failed</p>
+                  <p className="text-sm mt-1">{industrialError}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
-  {/* Combined Demand Summary Table - Show only if at least one demand type has data */}
-{/* Combined Demand Summary Table - Show only if at least one demand type has data */}
-{(domesticTableData.length > 0 || agriculturalTableData.length > 0 || industrialTableData.length > 0) && (
-  <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-gray-300 rounded-lg">
-    <CombinedDemandTable
-      domesticData={domesticTableData}
-      agriculturalData={agriculturalTableData}
-      industrialData={industrialTableData}
-      title="Combined Groundwater Demand Summary"
-    />
-  </div>
-)}        
+          {/* NEW: Industrial Input Table Component Integration */}
+          <IndustrialDemandInputTable />
+
+          <div className="mt-4">
+            <button
+              onClick={computeIndustrialDemand}
+              disabled={industrialLoading || !canComputeIndustrialDemand()}
+              className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
+            >
+              {industrialLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Computing Industrial Demand...</span>
+                </>
+              ) : (
+                <span>Compute Industrial Demand</span>
+              )}
+            </button>
+          </div>
+                {industrialTableData.length > 0 && (
+            <>
+              {/* Search controls */}
+              <div className="mt-4 mb-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div className="flex gap-2 ml-auto">
+                  <input
+                    type="text"
+                    placeholder="Search industrial table..."
+                    value={industrialSearchInput}
+                    onChange={(e) => setIndustrialSearchInput(e.target.value)}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && handleIndustrialApplySearch()
+                    }
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    onClick={handleIndustrialApplySearch}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              {/* Active filters */}
+              {(industrialAppliedSearch || industrialAppliedSort) && (
+                <div className="mb-3 flex flex-wrap gap-2 text-sm">
+                  {industrialAppliedSearch && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+                      Search: "{industrialAppliedSearch}"
+                      <button
+                        onClick={() => {
+                          setIndustrialAppliedSearch("");
+                          setIndustrialSearchInput("");
+                        }}
+                        className="ml-1 hover:text-blue-900"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </span>
+                  )}
+                  {industrialAppliedSort && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
+                      Sort: {industrialAppliedSort.key.replace(/_/g, " ")} (
+                      {industrialAppliedSort.direction === "asc"
+                        ? "Ascending"
+                        : "Descending"}
+                      )
+                      <button
+                        onClick={handleIndustrialResetSort}
+                        className="ml-1 hover:text-green-900"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <TableDisplay
+                tableData={processedIndustrialData}
+                title="Industrial Demand Results"
+                sortConfig={industrialAppliedSort || undefined}
+                onSort={(field: string) => {
+                  setIndustrialAppliedSort((prev) => {
+                    if (prev?.key === field) {
+                      return {
+                        key: field,
+                        direction: prev.direction === "asc" ? "desc" : "asc",
+                      };
+                    }
+                    return { key: field, direction: "asc" };
+                  });
+                }}
+                isSearched={!!industrialAppliedSearch}
+              />
+            </>
+          )}
+
+        </div>
+      )}
+
+      {/* Combined Demand Summary Table - Show only if at least one demand type has data */}
+      {/* Combined Demand Summary Table - Show only if at least one demand type has data */}
+      {(domesticTableData.length > 0 || agriculturalTableData.length > 0 || industrialTableData.length > 0) && (
+        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-gray-300 rounded-lg">
+          <CombinedDemandTable
+            domesticData={domesticTableData}
+            agriculturalData={agriculturalTableData}
+            industrialData={industrialTableData}
+            title="Combined Groundwater Demand Summary"
+          />
+        </div>
+      )}        
 
     </div>
   );
