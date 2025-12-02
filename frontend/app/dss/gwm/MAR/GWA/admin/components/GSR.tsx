@@ -399,22 +399,23 @@ const GSRAnalysis: React.FC = () => {
 
   // --- Field Definitions & Labels ---
   const GSR_DISPLAY_FIELDS: string[] = [
-    'village_name',
-    'recharge',
-    'total_demand',
-    'gsr',
-    'trend_status',
-    'gsr_classification',
-  ];
-
+  'village_code',
+  'village_name',
+  'recharge',
+  'total_demand',
+  'gsr',
+  'trend_status',
+  'gsr_classification',
+];
   const GSR_LABEL_MAP: Record<string, string> = {
-    'village_name': 'Village Name',
-    'recharge': 'Recharge (Million Litres/Year)',
-    'total_demand': 'Total Demand (Million Litres/Year)',
-    'gsr': 'GSR Ratio',
-    'trend_status': 'Trend Status',
-    'gsr_classification': 'GSR Classification',
-  };
+  'village_code': 'Village Code',
+  'village_name': 'Village Name',
+  'recharge': 'Recharge (Million Litres/Year)',
+  'total_demand': 'Total Demand (Million Litres/Year)',
+  'gsr': 'GSR Ratio',
+  'trend_status': 'Trend Status',
+  'gsr_classification': 'GSR Classification',
+};
 
   const formatGsrLabel = (key: string) => GSR_LABEL_MAP[key] || key.replace(/_/g, " ");
   

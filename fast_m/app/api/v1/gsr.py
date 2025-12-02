@@ -8,7 +8,7 @@ import gzip
 import io
 
 from app.services.gsr_service import (
-    match_village_data,
+    match_village_data_combined,
     merge_gsr_with_shapefile,
     generate_gsr_map_image,
     calculate_gsr_summary,
@@ -21,7 +21,7 @@ router = APIRouter()
 async def compute_gsr(request: Request):
     """
     Compute GSR (Groundwater Supply-Requirement) analysis with geospatial data
-    Includes domestic, agricultural, and industrial demand
+    Receives combined demand data (domestic + agricultural + industrial already aggregated)
     """
     try:
         # Handle different content types
@@ -49,14 +49,14 @@ async def compute_gsr(request: Request):
         
         # Log received data for debugging
         print("\n" + "=" * 80)
-        print("📥 GSR API - RECEIVED DATA")
+        print("📥 GSR API - RECEIVED DATA (COMBINED DEMAND)")
         print("=" * 80)
         print(f"Content-Type: {content_type}")
         print(f"Data type: {type(data)}")
         print(f"Data keys: {list(data.keys())}")
         
-        # Parse JSON strings if needed (like Django does)
-        for key in ["rechargeData", "domesticData", "agriculturalData", "industrialData", "selectedSubDistricts"]:
+        # Parse JSON strings if needed
+        for key in ["rechargeData", "combinedDemandData", "selectedSubDistricts"]:
             if key in data and isinstance(data.get(key), str):
                 try:
                     data[key] = json.loads(data[key])
@@ -65,9 +65,7 @@ async def compute_gsr(request: Request):
         
         # Extract data arrays
         recharge_data = data.get('rechargeData', [])
-        domestic_data = data.get('domesticData', [])
-        agricultural_data = data.get('agriculturalData', [])
-        industrial_data = data.get('industrialData', [])
+        combined_demand_data = data.get('combinedDemandData', [])
         selected_subdistricts = data.get('selectedSubDistricts', [])
         trend_csv_filename = data.get('trendCsvFilename')
         
@@ -84,36 +82,32 @@ async def compute_gsr(request: Request):
         else:
             print("   ⚠️ No recharge data received")
         
-        print("\n🏠 DOMESTIC DEMAND DATA TABLE:")
-        print(f"   Total records: {len(domestic_data)}")
-        if domestic_data:
+        print("\n🏭 COMBINED DEMAND DATA TABLE (Pre-Aggregated):")
+        print(f"   Total records: {len(combined_demand_data)}")
+        if combined_demand_data:
             print(f"   Sample (first 3 records):")
-            for idx, item in enumerate(domestic_data[:3], 1):
-                print(f"   {idx}. Village: {item.get('village_code', 'N/A')}, "
-                      f"Demand: {item.get('demand_mld', 0)} MLD")
+            for idx, item in enumerate(combined_demand_data[:3], 1):
+                print(f"   {idx}. Village: {item.get('village_name', 'N/A')} (Code: {item.get('village_code', 'N/A')})")
+                print(f"      - Domestic: {item.get('domestic_demand', 0)} MLD")
+                print(f"      - Agricultural: {item.get('agricultural_demand', 0)} MLD")
+                print(f"      - Industrial: {item.get('industrial_demand', 0)} MLD")
+                print(f"      - TOTAL (Pre-calculated): {item.get('total_demand', 0)} MLD")
+            
+            # Calculate total demand across all villages
+            total_demand_all = sum(float(item.get('total_demand', 0)) for item in combined_demand_data)
+            total_domestic_all = sum(float(item.get('domestic_demand', 0)) for item in combined_demand_data)
+            total_agricultural_all = sum(float(item.get('agricultural_demand', 0)) for item in combined_demand_data)
+            total_industrial_all = sum(float(item.get('industrial_demand', 0)) for item in combined_demand_data)
+            
+            print(f"\n   📈 AGGREGATE TOTALS:")
+            print(f"      Domestic: {total_domestic_all:.3f} MLD")
+            print(f"      Agricultural: {total_agricultural_all:.3f} MLD")
+            print(f"      Industrial: {total_industrial_all:.3f} MLD")
+            print(f"      ─────────────────────────────────────────────")
+            print(f"      TOTAL DEMAND: {total_demand_all:.3f} MLD")
+            print(f"   ✅ Using pre-calculated total_demand from frontend (no recalculation needed)")
         else:
-            print("   ⚠️ No domestic demand data received")
-        
-        print("\n🌾 AGRICULTURAL DEMAND DATA TABLE:")
-        print(f"   Total records: {len(agricultural_data)}")
-        if agricultural_data:
-            print(f"   Sample (first 3 records):")
-            for idx, item in enumerate(agricultural_data[:3], 1):
-                print(f"   {idx}. Village: {item.get('village_code', 'N/A')}, "
-                      f"Demand: {item.get('village_demand', 0)} MCM")
-        else:
-            print("   ⚠️ No agricultural demand data received")
-        
-        print("\n🏭 INDUSTRIAL DEMAND DATA TABLE:")
-        print(f"   Total records: {len(industrial_data)}")
-        if industrial_data:
-            print(f"   Sample (first 3 records):")
-            for idx, item in enumerate(industrial_data[:3], 1):
-                print(f"   {idx}. Village: {item.get('village_code', 'N/A')}, "
-                      f"Demand: {item.get('demand_mld', 0)} MLD")
-            print(f"   ✅ Industrial demand WILL BE INCLUDED in total demand calculation")
-        else:
-            print("   ℹ️ No industrial demand data received (optional)")
+            print("   ⚠️ No combined demand data received")
         
         print("\n📍 SELECTED SUBDISTRICTS:")
         print(f"   Total: {len(selected_subdistricts)}")
@@ -125,11 +119,9 @@ async def compute_gsr(request: Request):
         else:
             print("   ⚠️ No trend CSV filename provided")
         
-        print("\n🎯 DEMAND FLAGS:")
-        print(f"   Has Domestic: {data.get('hasDomesticDemand', False)}")
-        print(f"   Has Agricultural: {data.get('hasAgriculturalDemand', False)}")
-        print(f"   Has Industrial: {data.get('hasIndustrialDemand', False)}")
-        print(f"   Has Recharge: {data.get('hasRechargeData', False)}")
+        print("\n🎯 DATA FLAGS:")
+        print(f"   Has Recharge Data: {data.get('hasRechargeData', False)}")
+        print(f"   Has Demand Data (Combined): {data.get('hasDemandData', False)}")
         print("=" * 80 + "\n")
         
         # Validation
@@ -139,19 +131,17 @@ async def compute_gsr(request: Request):
                 "error": "Recharge data is required for GSR analysis"
             }
         
-        if not domestic_data and not agricultural_data and not industrial_data:
+        if not combined_demand_data:
             return {
                 "success": False,
-                "error": "At least one demand dataset (domestic, agricultural, or industrial) is required"
+                "error": "Combined demand data is required for GSR analysis"
             }
         
-        # Match village data across all datasets including trend data and industrial data
-        print("🔄 Matching village data across all datasets...")
-        matched_results = match_village_data(
+        # Match village data using combined demand
+        print("🔄 Matching village data between recharge and combined demand datasets...")
+        matched_results = match_village_data_combined(
             recharge_data, 
-            domestic_data, 
-            agricultural_data,
-            industrial_data,
+            combined_demand_data,
             trend_csv_filename
         )
         
@@ -243,7 +233,7 @@ async def compute_gsr(request: Request):
             print(f"   Agricultural Demand: {sample_result['agricultural_demand']} MCM")
             print(f"   Industrial Demand: {sample_result['industrial_demand']} MCM")
             print(f"   ─────────────────────────────────────────────")
-            print(f"   TOTAL DEMAND: {sample_result['total_demand']} MCM")
+            print(f"   TOTAL DEMAND (from frontend): {sample_result['total_demand']} MCM")
             print(f"   GSR Ratio: {sample_result['gsr']}")
             print(f"   GSR Status: {sample_result['gsr_status']}")
             print(f"   Trend Status: {sample_result['trend_status']}")
@@ -256,28 +246,25 @@ async def compute_gsr(request: Request):
             'computation_timestamp': pd.Timestamp.now().isoformat(),
             'input_datasets': {
                 'recharge_villages': len(recharge_data),
-                'domestic_villages': len(domestic_data),
-                'agricultural_villages': len(agricultural_data),
-                'industrial_villages': len(industrial_data)
+                'combined_demand_villages': len(combined_demand_data)
             },
             'selected_subdistricts': selected_subdistricts,
             'trend_csv_filename': trend_csv_filename,
             'map_image_filename': map_image_filename,
             'flags': {
-                'has_domestic_demand': data.get('hasDomesticDemand', False),
-                'has_agricultural_demand': data.get('hasAgriculturalDemand', False),
-                'has_industrial_demand': data.get('hasIndustrialDemand', False),
                 'has_recharge_data': data.get('hasRechargeData', False),
+                'has_demand_data': data.get('hasDemandData', False),
                 'has_trend_data': trend_csv_filename is not None,
                 'has_geospatial_data': geospatial_result['geojson'] is not None,
                 'has_map_image': map_image_filename is not None
-            }
+            },
+            'notes': 'Using pre-aggregated combined demand data (domestic + agricultural + industrial)'
         }
         
         # Response matching Django structure exactly
         response_data = {
             "success": True,
-            "message": f"GSR analysis completed successfully for {len(matched_results)} villages (including industrial demand)",
+            "message": f"GSR analysis completed successfully for {len(matched_results)} villages (using combined demand data)",
             "data": matched_results,
             "summary": summary,
             "metadata": metadata,
@@ -311,25 +298,21 @@ async def gsr_health_check():
     GET endpoint for API documentation/health check
     """
     return {
-        "service": "GSR Computation API with Geospatial Integration and Map Image Generation",
-        "version": "2.2",
-        "description": "Computes GSR analysis with comprehensive classification including industrial demand",
+        "service": "GSR Computation API with Combined Demand Data",
+        "version": "3.0",
+        "description": "Computes GSR analysis using pre-aggregated combined demand data from frontend",
         "expected_payload": {
             "rechargeData": "Array of recharge data with 'village_co' and 'recharge' fields",
-            "domesticData": "Array of domestic demand data with 'village_code' and 'demand_mld' fields", 
-            "agriculturalData": "Array of agricultural demand data with 'village_code' and 'village_demand' fields",
-            "industrialData": "Array of industrial demand data with 'village_code' and 'demand_mld' fields",
+            "combinedDemandData": "Array of combined demand data with pre-calculated domestic, agricultural, industrial, and total_demand fields", 
             "selectedSubDistricts": "Array of selected subdistrict codes",
             "trendCsvFilename": "Optional filename of trend CSV (stored in media/temp/) with Village_ID field",
-            "hasDomesticDemand": "Boolean flag",
-            "hasAgriculturalDemand": "Boolean flag",
-            "hasIndustrialDemand": "Boolean flag",
-            "hasRechargeData": "Boolean flag"
+            "hasRechargeData": "Boolean flag",
+            "hasDemandData": "Boolean flag for combined demand data"
         },
         "response_format": {
             "success": "Boolean",
             "data": "Array of village GSR results with trend_status, gsr_classification and classification_color fields",
-            "summary": "Summary statistics including trend and classification distribution with industrial demand",
+            "summary": "Summary statistics including trend and classification distribution",
             "metadata": "Additional computation metadata including map_image_filename",
             "geospatial_data": "GeoJSON FeatureCollection with village polygons and GSR data merged",
             "merge_statistics": "Statistics about shapefile-GSR data merge success",
@@ -337,12 +320,14 @@ async def gsr_health_check():
             "map_image_base64": "Base64 encoded map image string"
         },
         "demand_calculation": {
-            "formula": "Total Demand = Domestic Demand + Agricultural Demand + Industrial Demand",
+            "note": "Total demand is pre-calculated on frontend and included in combinedDemandData",
+            "formula": "Total Demand = Domestic + Agricultural + Industrial (calculated in frontend)",
             "gsr_formula": "GSR = Total Recharge / Total Demand",
             "components": {
                 "domestic": "Water demand from domestic/residential use",
                 "agricultural": "Water demand from crop irrigation",
-                "industrial": "Water demand from industrial facilities"
+                "industrial": "Water demand from industrial facilities",
+                "total": "Pre-aggregated total from frontend (no recalculation needed)"
             }
         },
         "classifications": {

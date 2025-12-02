@@ -29,20 +29,25 @@ interface ChartData {
 // Field Definitions & Labels (like Recharge.tsx)
 const DOMESTIC_DISPLAY_FIELDS: string[] = [
   'village_name',
+  'village_code',
   'demand_mld',
   'forecast_population',
   'target_year',
   'lpcd'
+
+      
 ];
 
 const AGRICULTURAL_DISPLAY_FIELDS: string[] = [
   'village',
+  'village_code',
   'cropland',
   'village_demand'
 ];
 
 const DOMESTIC_LABEL_MAP: Record<string, string> = {
   village_name: "Village Name",
+  village_code: "Village Code",
   demand_mld: "Demand (Million litres/Year)",
   forecast_population: "Forecasted Population",
   target_year: "Target Year",
@@ -51,6 +56,7 @@ const DOMESTIC_LABEL_MAP: Record<string, string> = {
 
 const AGRICULTURAL_LABEL_MAP: Record<string, string> = {
   village: "Village Name",
+  village_code: "Village Code",
   cropland: "Cropland (M²)",
   village_demand: "Agriculture Demand (Million litres/Year)",
 };
@@ -126,7 +132,7 @@ const Demand = () => {
   const [agriculturalSearchInput, setAgriculturalSearchInput] = useState("");
   const [agriculturalAppliedSearch, setAgriculturalAppliedSearch] = useState("");
   const [agriculturalAppliedSort, setAgriculturalAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-
+  
   // Handle Agricultural Compute with Validation
   const handleAgriculturalClick = () => {
     const isAnySeasonSelected = kharifChecked || rabiChecked || zaidChecked;
@@ -396,6 +402,9 @@ const Demand = () => {
                     {row.village || 'N/A'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {row.village_code? Number(row.village_code): 'N/A'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                     {row.cropland ? Number(row.cropland).toFixed(2) : 'N/A'}
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-green-700 whitespace-nowrap">
@@ -417,6 +426,188 @@ const Demand = () => {
     );
   };
 
+  // Combined Demand Table Component
+// Combined Demand Table Component
+type CombinedDemandTableProps = {
+  domesticData: any[];
+  agriculturalData: any[];
+  industrialData: any[];
+  title: string;
+};
+
+const CombinedDemandTable = ({ 
+  domesticData, 
+  agriculturalData, 
+  industrialData, 
+  title 
+}: CombinedDemandTableProps) => {
+  // Aggregate data by village_code (not village_name)
+  const combinedData = React.useMemo(() => {
+    const villageMap = new Map<string | number, any>();
+
+    // Add domestic data
+    domesticData.forEach(row => {
+      const villageCode = row.village_code || row.Village_code;
+      if (!villageCode) return; // Skip if no village code
+      
+      const villageName = row.village_name || 'Unknown';
+      if (!villageMap.has(villageCode)) {
+        villageMap.set(villageCode, {
+          village_code: villageCode,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
+      }
+      const village = villageMap.get(villageCode);
+      if (village) {
+        village.domestic_demand = row.demand_mld || 0;
+      }
+    });
+
+    // Add agricultural data
+    agriculturalData.forEach(row => {
+      const villageCode = row.village_code || row.Village_code;
+      if (!villageCode) return; // Skip if no village code
+      
+      const villageName = row.village || row.village_name || 'Unknown';
+      if (!villageMap.has(villageCode)) {
+        villageMap.set(villageCode, {
+          village_code: villageCode,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
+      }
+      const village = villageMap.get(villageCode);
+      if (village) {
+        village.agricultural_demand = row.village_demand || 0;
+      }
+    });
+
+    // Add industrial data
+    industrialData.forEach(row => {
+      const villageCode = row.village_code || row.Village_code;
+      if (!villageCode) return; // Skip if no village code
+      
+      const villageName = row.Village_name || row.village_name || 'Unknown';
+      if (!villageMap.has(villageCode)) {
+        villageMap.set(villageCode, {
+          village_code: villageCode,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
+      }
+      const village = villageMap.get(villageCode);
+      if (village) {
+        village.industrial_demand = row['Industrial_demand_(Million litres/Year)'] || 0;
+      }
+    });
+
+    // Convert map to array and calculate totals
+    const result = Array.from(villageMap.values()).map(village => ({
+      ...village,
+      total_demand: Number(village.domestic_demand) + Number(village.agricultural_demand) + Number(village.industrial_demand),
+    }));
+
+    return {
+      villages: result,
+    };
+  }, [domesticData, agriculturalData, industrialData]);
+
+  const grandTotal = combinedData.villages.reduce((sum, row) => sum + row.total_demand, 0);
+
+  return (
+    <div className="mt-6">
+      <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {title}
+      </h4>
+      <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                S.No.
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                Village Code
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                Village Name
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                Domestic Demand (Million litres/Year)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                Agricultural Demand (Million litres/Year)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                Industrial Demand (Million litres/Year)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                Total Village Demand (Million litres/Year)
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {combinedData.villages.map((row, index) => (
+              <tr
+                key={row.village_code}
+                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 transition-colors`}
+              >
+                <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
+                  {index + 1}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 font-semibold whitespace-nowrap">
+                  {row.village_code}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                  {row.village_name}
+                </td>
+                <td className="px-4 py-3 text-sm text-blue-700 font-semibold whitespace-nowrap">
+                  {Number(row.domestic_demand).toFixed(3)}
+                </td>
+                <td className="px-4 py-3 text-sm text-green-700 font-semibold whitespace-nowrap">
+                  {Number(row.agricultural_demand).toFixed(3)}
+                </td>
+                <td className="px-4 py-3 text-sm text-purple-700 font-semibold whitespace-nowrap">
+                  {Number(row.industrial_demand).toFixed(3)}
+                </td>
+                <td className="px-4 py-3 text-sm text-indigo-900 font-bold whitespace-nowrap">
+                  {Number(row.total_demand).toFixed(3)}
+                </td>
+              </tr>
+            ))}
+            {/* Grand Total Row */}
+            <tr className="bg-gray-100 border-t-2 border-gray-300">
+              <td className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap" colSpan={6}>
+                Grand Total Demand
+              </td>
+              <td className="px-4 py-3 text-sm text-indigo-900 font-bold whitespace-nowrap">
+                {grandTotal.toFixed(3)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <span>
+          Showing <strong>{combinedData.villages.length}</strong> village{combinedData.villages.length !== 1 ? "s" : ""}
+        </span>
+        <span className="font-semibold text-indigo-700">
+          Total Demand: {grandTotal.toFixed(3)} Million litres/Year
+        </span>
+      </div>
+    </div>
+  );
+};
   // Chart Display (unchanged)
   const ChartDisplay = () => {
   if (!chartData) return null;
@@ -1539,86 +1730,98 @@ const Demand = () => {
           )}
         </div>
       )}
-      {/* 3. INDUSTRIAL DEMAND SECTION */}
-      {industrialChecked && (
-        <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
-          {industrialLoading && (
-            <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
-              <div className="text-center bg-white rounded-xl shadow-2xl p-8">
-                {/* ... Loading Spinner SVG ... */}
-                <div className="inline-block relative">
-                  <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <defs>
-                      <linearGradient id="spinner-gradient-industrial" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#3B82F6" />
-                        <stop offset="50%" stopColor="#8B5CF6" />
-                        <stop offset="100%" stopColor="#EC4899" />
-                      </linearGradient>
-                      <linearGradient id="spinner-gradient-2-industrial" x1="100%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#10B981" />
-                        <stop offset="50%" stopColor="#3B82F6" />
-                        <stop offset="100%" stopColor="#6366F1" />
-                      </linearGradient>
-                    </defs>
-                    <circle className="opacity-20" cx="12" cy="12" r="10" stroke="url(#spinner-gradient-industrial)" strokeWidth="3" />
-                    <path className="opacity-90" fill="url(#spinner-gradient-2-industrial)" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-3 h-3 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full animate-pulse"></div>
-                  </div>
-                </div>
-                <p className="text-xl font-semibold mt-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Computing Industrial Demand...
-                </p>
-                <p className="text-sm text-gray-500 mt-2">Please wait while we calculate industrial water requirements</p>
+       {/* 3. INDUSTRIAL DEMAND SECTION */}
+  {industrialChecked && (
+    <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
+      {industrialLoading && (
+        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="text-center bg-white rounded-xl shadow-2xl p-8">
+            {/* ... Loading Spinner SVG ... */}
+            <div className="inline-block relative">
+              <svg className="animate-spin h-20 w-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <defs>
+                  <linearGradient id="spinner-gradient-industrial" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3B82F6" />
+                    <stop offset="50%" stopColor="#8B5CF6" />
+                    <stop offset="100%" stopColor="#EC4899" />
+                  </linearGradient>
+                  <linearGradient id="spinner-gradient-2-industrial" x1="100%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#10B981" />
+                    <stop offset="50%" stopColor="#3B82F6" />
+                    <stop offset="100%" stopColor="#6366F1" />
+                  </linearGradient>
+                </defs>
+                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="url(#spinner-gradient-industrial)" strokeWidth="3" />
+                <path className="opacity-90" fill="url(#spinner-gradient-2-industrial)" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3 h-3 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full animate-pulse"></div>
               </div>
             </div>
-          )}
-          <h4 className="text-md font-semibold text-purple-800 mb-3">Industrial Demand Parameters</h4>
-          {industrialError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="font-medium">Computation Failed</p>
-                  <p className="text-sm mt-1">{industrialError}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* NEW: Industrial Input Table Component Integration */}
-          <IndustrialDemandInputTable />
-
-          <div className="mt-4">
-            <button
-              onClick={computeIndustrialDemand}
-              disabled={industrialLoading || !canComputeIndustrialDemand()}
-              className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
-            >
-              {industrialLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Computing Industrial Demand...</span>
-                </>
-              ) : (
-                <span>Compute Industrial Demand</span>
-              )}
-            </button>
+            <p className="text-xl font-semibold mt-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Computing Industrial Demand...
+            </p>
+            <p className="text-sm text-gray-500 mt-2">Please wait while we calculate industrial water requirements</p>
           </div>
-          {industrialTableData.length > 0 && (
-            <TableDisplay tableData={industrialTableData} title="Industrial Demand Results" />
-          )}
         </div>
       )}
-    
+      <h4 className="text-md font-semibold text-purple-800 mb-3">Industrial Demand Parameters</h4>
+      {industrialError && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="font-medium">Computation Failed</p>
+              <p className="text-sm mt-1">{industrialError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Industrial Input Table Component Integration */}
+      <IndustrialDemandInputTable />
+
+      <div className="mt-4">
+        <button
+          onClick={computeIndustrialDemand}
+          disabled={industrialLoading || !canComputeIndustrialDemand()}
+          className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
+        >
+          {industrialLoading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Computing Industrial Demand...</span>
+            </>
+          ) : (
+            <span>Compute Industrial Demand</span>
+          )}
+        </button>
+      </div>
+      {industrialTableData.length > 0 && (
+        <TableDisplay tableData={industrialTableData} title="Industrial Demand Results" />
+      )}
+    </div>
+  )}
+
+  {/* Combined Demand Summary Table - Show only if at least one demand type has data */}
+{/* Combined Demand Summary Table - Show only if at least one demand type has data */}
+{(domesticTableData.length > 0 || agriculturalTableData.length > 0 || industrialTableData.length > 0) && (
+  <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-gray-300 rounded-lg">
+    <CombinedDemandTable
+      domesticData={domesticTableData}
+      agriculturalData={agriculturalTableData}
+      industrialData={industrialTableData}
+      title="Combined Groundwater Demand Summary"
+    />
+  </div>
+)}        
+
     </div>
   );
 };
-
 export default Demand;

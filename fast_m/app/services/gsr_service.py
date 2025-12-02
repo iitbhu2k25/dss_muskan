@@ -349,24 +349,21 @@ def get_classification_color(classification: str) -> str:
     }
     return color_map.get(classification, 'gray')
 
-def match_village_data(
+def match_village_data_combined(
     recharge_data: List[Dict[str, Any]],
-    domestic_data: List[Dict[str, Any]], 
-    agricultural_data: List[Dict[str, Any]],
-    industrial_data: List[Dict[str, Any]],
+    combined_demand_data: List[Dict[str, Any]],
     trend_csv_filename: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    Match village data across recharge, domestic, agricultural, industrial datasets, and trend data
+    Match village data between recharge and combined demand datasets, and trend data
+    Combined demand data already has domestic, agricultural, and industrial demand aggregated
     """
     # Load trend data if filename is provided
     trend_map = load_trend_data(trend_csv_filename) if trend_csv_filename else {}
     
     # Create mappings for each dataset
     recharge_map = {}
-    domestic_map = {}
-    agricultural_map = {}
-    industrial_map = {}
+    demand_map = {}
     
     # Process recharge data - using village_co as key
     for item in recharge_data:
@@ -374,55 +371,51 @@ def match_village_data(
         if village_code:
             recharge_map[village_code] = {
                 'recharge': float(item.get('recharge', 0) or 0),
+                'village_name': item.get('village_name', 'N/A'),
+                'subdistrict_code': item.get('subdis_cod', item.get('subdistrict_code', 'N/A')),
                 'raw_data': item
             }
     
-    # Process domestic data - using village_code as key
-    for item in domestic_data:
+    # Process combined demand data - using village_code as key
+    for item in combined_demand_data:
         village_code = str(item.get('village_code', '')).strip()
         if village_code:
-            domestic_map[village_code] = {
-                'domestic_demand': float(item.get('demand_mld', 0) or 0),
+            demand_map[village_code] = {
+                'village_name': item.get('village_name', 'N/A'),
+                'domestic_demand': float(item.get('domestic_demand', 0) or 0),
+                'agricultural_demand': float(item.get('agricultural_demand', 0) or 0),
+                'industrial_demand': float(item.get('industrial_demand', 0) or 0),
+                'total_demand': float(item.get('total_demand', 0) or 0),  # Use pre-calculated total
                 'raw_data': item
             }
     
-    # Process agricultural data - using village_code as key
-    for item in agricultural_data:
-        village_code = str(item.get('village_code', '')).strip()
-        if village_code:
-            agricultural_map[village_code] = {
-                'agricultural_demand': float(item.get('village_demand', 0) or 0),
-                'raw_data': item
-            }
-    
-    # Process industrial data - using village_code as key
-    for item in industrial_data:
-        village_code = str(item.get('village_code', '')).strip()
-        if village_code:
-            industrial_map[village_code] = {
-                'industrial_demand': float(item.get('demand_mld', 0) or 0),
-                'raw_data': item
-            }
-    
-    # Get all unique village codes
-    all_village_codes = set(recharge_map.keys()) | set(domestic_map.keys()) | set(agricultural_map.keys()) | set(industrial_map.keys())
+    # Get all unique village codes from both datasets
+    all_village_codes = set(recharge_map.keys()) | set(demand_map.keys())
     
     results = []
     
     for village_code in all_village_codes:
         # Get data for this village
         recharge_info = recharge_map.get(village_code, {})
-        domestic_info = domestic_map.get(village_code, {})
-        agricultural_info = agricultural_map.get(village_code, {})
-        industrial_info = industrial_map.get(village_code, {})
+        demand_info = demand_map.get(village_code, {})
         
+        # Extract values
         recharge = recharge_info.get('recharge', 0)
-        domestic_demand = domestic_info.get('domestic_demand', 0)
-        agricultural_demand = agricultural_info.get('agricultural_demand', 0)
-        industrial_demand = industrial_info.get('industrial_demand', 0)
+        domestic_demand = demand_info.get('domestic_demand', 0)
+        agricultural_demand = demand_info.get('agricultural_demand', 0)
+        industrial_demand = demand_info.get('industrial_demand', 0)
+        total_demand = demand_info.get('total_demand', 0)  # Use pre-calculated total from frontend
         
-        # Calculate total demand (including industrial)
-        total_demand = domestic_demand + agricultural_demand + industrial_demand
+        # Get village info (prefer from recharge data, fallback to demand data)
+       
+        village_name = demand_info.get('village_name') or recharge_info.get('village_name', 'N/A')
+        subdistrict_code = recharge_info.get('subdistrict_code', 'N/A')
+
+        # Debug: Log name matching
+        if village_name == 'N/A':
+            print(f"⚠️ No village name found for code {village_code}")
+            print(f"   Recharge info: {recharge_info.get('village_name', 'missing')}")
+            print(f"   Demand info: {demand_info.get('village_name', 'missing')}")
         
         # Calculate GSR (avoiding division by zero)
         if total_demand > 0:
@@ -441,30 +434,11 @@ def match_village_data(
         # Get color for the classification
         classification_color = get_classification_color(gsr_classification)
         
-        # Get additional village information from raw data
-        village_info = {
-            'village_name': 'N/A',
-            'subdistrict_code': 'N/A'
-        }
-        
-        # Try to get village name and other info from any available dataset
-        for raw_data in [recharge_info.get('raw_data', {}), 
-                        domestic_info.get('raw_data', {}), 
-                        agricultural_info.get('raw_data', {}),
-                        industrial_info.get('raw_data', {})]:
-            if raw_data:
-                if village_info['village_name'] == 'N/A':
-                    village_info['village_name'] = raw_data.get('village_name', 
-                                                             raw_data.get('village', 'N/A'))
-                if village_info['subdistrict_code'] == 'N/A':
-                    village_info['subdistrict_code'] = raw_data.get('subdistrict_code', 
-                                                                  raw_data.get('subdis_cod', 'N/A'))
-        
         # Create result record with classification and color fields
         result = {
             'village_code': village_code,
-            'village_name': village_info['village_name'],
-            'subdistrict_code': village_info['subdistrict_code'],
+            'village_name': village_name,
+            'subdistrict_code': subdistrict_code,
             'recharge': round(recharge, 4),
             'domestic_demand': round(domestic_demand, 4),
             'agricultural_demand': round(agricultural_demand, 4),
@@ -476,9 +450,7 @@ def match_village_data(
             'gsr_classification': gsr_classification,       
             'classification_color': classification_color,    
             'has_recharge_data': village_code in recharge_map,
-            'has_domestic_data': village_code in domestic_map,
-            'has_agricultural_data': village_code in agricultural_map,
-            'has_industrial_data': village_code in industrial_map,
+            'has_demand_data': village_code in demand_map,
             'has_trend_data': village_code in trend_map
         }
         

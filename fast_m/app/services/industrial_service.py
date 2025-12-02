@@ -70,7 +70,7 @@ class IndustrialForecastService:
 
 
             final_output.append({
-                # "village_code": village_code,
+                "village_code": village_code,
                 "Village_name": village_name,
                 # "Forecast_Population": forecast_population,
                 # "Ratio": round(ratio, 6),
