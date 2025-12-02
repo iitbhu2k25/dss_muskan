@@ -6,6 +6,10 @@ import { useLocation } from '@/contexts/groundwater_assessment/drain/LocationCon
 import dynamic from "next/dynamic";
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
+interface EyeIconProps {
+  isVisible: boolean;
+}
+
 // Field Definitions & Labels (ALIGNED WITH ADMIN CASE)
 const DOMESTIC_DISPLAY_FIELDS: string[] = [
     'village_name',
@@ -95,10 +99,7 @@ const Demand = () => {
 
     // State for chart selection
     const [selectedChart, setSelectedChart] = useState<'individual' | 'cumulative'>('individual');
-    const [showDomesticTable, setShowDomesticTable] = useState(true);
-    const toggleDomesticTable = () => setShowDomesticTable((prev) => !prev);
-    const [showAgriculturalTable, setShowAgriculturalTable] = useState(true);
-    const toggleAgriculturalTable = () => setShowAgriculturalTable((prev) => !prev);
+
     const [showSelectionWarning, setShowSelectionWarning] = useState(false);
 
     // Domestic Table States for Search & Sort
@@ -110,7 +111,7 @@ const Demand = () => {
     const [agriculturalSearchInput, setAgriculturalSearchInput] = useState("");
     const [agriculturalAppliedSearch, setAgriculturalAppliedSearch] = useState("");
     const [agriculturalAppliedSort, setAgriculturalAppliedSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-    
+
     // Industrial Table States for Search & Sort (NEW)
     const [industrialSearchInput, setIndustrialSearchInput] = useState("");
     const [industrialAppliedSearch, setIndustrialAppliedSearch] = useState("");
@@ -118,6 +119,19 @@ const Demand = () => {
         key: string;
         direction: "asc" | "desc";
     } | null>(null);
+    /* Add these state variables at the top of your component */
+    const [showDomesticTable, setShowDomesticTable] = useState(true);
+    const [showAgriculturalTable, setShowAgriculturalTable] = useState(true);
+    const [showIndustrialTable, setShowIndustrialTable] = useState(true);
+    const [showCombinedTable, setShowCombinedTable] = useState(true);
+
+    /* Toggle functions */
+    const toggleDomesticTable = () => setShowDomesticTable(!showDomesticTable);
+    const toggleAgriculturalTable = () => setShowAgriculturalTable(!showAgriculturalTable);
+    const toggleIndustrialTable = () => setShowIndustrialTable(!showIndustrialTable);
+    const toggleCombinedTable = () => setShowCombinedTable(!showCombinedTable);
+
+
 
     // Handle Agricultural Compute with Validation
     const handleAgriculturalClick = () => {
@@ -130,7 +144,21 @@ const Demand = () => {
         setShowSelectionWarning(false);
         computeAgriculturalDemand();
     };
-
+   const EyeIcon: React.FC<EyeIconProps> = ({ isVisible }) => (
+        isVisible ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+        ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+        )
+    );
     // --- Table Processing Logic (Same as Admin Case) ---
 
     const sortData = (data: any[], sortConfig: typeof domesticAppliedSort) => {
@@ -169,7 +197,7 @@ const Demand = () => {
         );
         return sortData(data, agriculturalAppliedSort);
     }, [agriculturalTableData, agriculturalAppliedSearch, agriculturalAppliedSort]);
-    
+
     // Industrial Table Processing
     const processedIndustrialData = useMemo(() => {
         let data = industrialTableData.filter((row: any) =>
@@ -187,7 +215,7 @@ const Demand = () => {
     const handleAgriculturalResetSort = () => setAgriculturalAppliedSort(null);
     const handleIndustrialApplySearch = () => setIndustrialAppliedSearch(industrialSearchInput.trim());
     const handleIndustrialResetSort = () => setIndustrialAppliedSort(null);
-    
+
     // --- Table Components (Re-implemented with Updates) ---
 
     // Domestic Table Component
@@ -411,7 +439,7 @@ const Demand = () => {
                     </svg>
                     <h4 className="text-md font-semibold text-gray-800">{title}</h4>
                 </div>
-                
+
                 <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0">
@@ -959,6 +987,16 @@ const Demand = () => {
                             </svg>
                             Search
                         </button>
+
+                        <button
+                            onClick={toggleCombinedTable}
+                            className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                            title={showCombinedTable ? "Hide Table" : "Show Table"}
+                        >
+                            <EyeIcon isVisible={showCombinedTable} />
+                        </button>
+
+
                     </div>
                 </div>
 
@@ -1020,116 +1058,116 @@ const Demand = () => {
                         )}
                     </div>
                 )}
-
-                <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider bg-gray-50 border-b-2 border-gray-200">
-                                    S.No.
-                                </th>
-                                <th
-                                    onClick={() => handleCombinedSort("village_code")}
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
-                                >
-                                    <div className="flex items-center">
-                                        Village Code
-                                        {getCombinedSortIcon("village_code")}
-                                    </div>
-                                </th>
-                                <th
-                                    onClick={() => handleCombinedSort("village_name")}
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
-                                >
-                                    <div className="flex items-center">
-                                        Village Name
-                                        {getCombinedSortIcon("village_name")}
-                                    </div>
-                                </th>
-                                <th
-                                    onClick={() => handleCombinedSort("domestic_demand")}
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
-                                >
-                                    <div className="flex items-center">
-                                        Domestic Demand (Million litres/Year)
-                                        {getCombinedSortIcon("domestic_demand")}
-                                    </div>
-                                </th>
-                                <th
-                                    onClick={() => handleCombinedSort("agricultural_demand")}
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
-                                >
-                                    <div className="flex items-center">
-                                        Agricultural Demand (Million litres/Year)
-                                        {getCombinedSortIcon("agricultural_demand")}
-                                    </div>
-                                </th>
-                                <th
-                                    onClick={() => handleCombinedSort("industrial_demand")}
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
-                                >
-                                    <div className="flex items-center">
-                                        Industrial Demand (Million litres/Year)
-                                        {getCombinedSortIcon("industrial_demand")}
-                                    </div>
-                                </th>
-                                <th
-                                    onClick={() => handleCombinedSort("total_demand")}
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
-                                >
-                                    <div className="flex items-center">
-                                        Total Village Demand (Million litres/Year)
-                                        {getCombinedSortIcon("total_demand")}
-                                    </div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {processedCombinedVillages.map((row, index) => (
-                                <tr
-                                    key={row.village_code}
-                                    className={`${
-                                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                                    } hover:bg-blue-50 transition-colors`}
-                                >
-                                    <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
-                                        {index + 1}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 font-semibold whitespace-nowrap">
-                                        {row.village_code}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                                        {row.village_name}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-blue-700 font-semibold whitespace-nowrap">
-                                        {Number(row.domestic_demand).toFixed(3)}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-green-700 font-semibold whitespace-nowrap">
-                                        {Number(row.agricultural_demand).toFixed(3)}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-purple-700 font-semibold whitespace-nowrap">
-                                        {Number(row.industrial_demand).toFixed(3)}
+                {showCombinedTable && (
+                    <div className="overflow-x-auto overflow-y-auto max-h-96 bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider bg-gray-50 border-b-2 border-gray-200">
+                                        S.No.
+                                    </th>
+                                    <th
+                                        onClick={() => handleCombinedSort("village_code")}
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+                                    >
+                                        <div className="flex items-center">
+                                            Village Code
+                                            {getCombinedSortIcon("village_code")}
+                                        </div>
+                                    </th>
+                                    <th
+                                        onClick={() => handleCombinedSort("village_name")}
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+                                    >
+                                        <div className="flex items-center">
+                                            Village Name
+                                            {getCombinedSortIcon("village_name")}
+                                        </div>
+                                    </th>
+                                    <th
+                                        onClick={() => handleCombinedSort("domestic_demand")}
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+                                    >
+                                        <div className="flex items-center">
+                                            Domestic Demand (Million litres/Year)
+                                            {getCombinedSortIcon("domestic_demand")}
+                                        </div>
+                                    </th>
+                                    <th
+                                        onClick={() => handleCombinedSort("agricultural_demand")}
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+                                    >
+                                        <div className="flex items-center">
+                                            Agricultural Demand (Million litres/Year)
+                                            {getCombinedSortIcon("agricultural_demand")}
+                                        </div>
+                                    </th>
+                                    <th
+                                        onClick={() => handleCombinedSort("industrial_demand")}
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+                                    >
+                                        <div className="flex items-center">
+                                            Industrial Demand (Million litres/Year)
+                                            {getCombinedSortIcon("industrial_demand")}
+                                        </div>
+                                    </th>
+                                    <th
+                                        onClick={() => handleCombinedSort("total_demand")}
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 tracking-wider bg-gray-50 border-b-2 border-gray-200 cursor-pointer hover:bg-gray-100 select-none"
+                                    >
+                                        <div className="flex items-center">
+                                            Total Village Demand (Million litres/Year)
+                                            {getCombinedSortIcon("total_demand")}
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {processedCombinedVillages.map((row, index) => (
+                                    <tr
+                                        key={row.village_code}
+                                        className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                                            } hover:bg-blue-50 transition-colors`}
+                                    >
+                                        <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap">
+                                            {index + 1}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-900 font-semibold whitespace-nowrap">
+                                            {row.village_code}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                                            {row.village_name}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-blue-700 font-semibold whitespace-nowrap">
+                                            {Number(row.domestic_demand).toFixed(3)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-green-700 font-semibold whitespace-nowrap">
+                                            {Number(row.agricultural_demand).toFixed(3)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-purple-700 font-semibold whitespace-nowrap">
+                                            {Number(row.industrial_demand).toFixed(3)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-indigo-900 font-bold whitespace-nowrap">
+                                            {Number(row.total_demand).toFixed(3)}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {/* Grand Total Row */}
+                                <tr className="bg-gray-100 border-t-2 border-gray-300">
+                                    <td
+                                        className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap"
+                                        colSpan={6}
+                                    >
+                                        Grand Total Demand
                                     </td>
                                     <td className="px-4 py-3 text-sm text-indigo-900 font-bold whitespace-nowrap">
-                                        {Number(row.total_demand).toFixed(3)}
+                                        {grandTotal.toFixed(3)}
                                     </td>
                                 </tr>
-                            ))}
-                            {/* Grand Total Row */}
-                            <tr className="bg-gray-100 border-t-2 border-gray-300">
-                                <td
-                                    className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap"
-                                    colSpan={6}
-                                >
-                                    Grand Total Demand
-                                </td>
-                                <td className="px-4 py-3 text-sm text-indigo-900 font-bold whitespace-nowrap">
-                                    {grandTotal.toFixed(3)}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
                 <div className="mt-3 text-sm text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <span>
@@ -1278,22 +1316,20 @@ const Demand = () => {
                         <nav className="-mb-px flex space-x-8">
                             <button
                                 onClick={() => setSelectedChart('individual')}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                    selectedChart === 'individual'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
+                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedChart === 'individual'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
                             >
                                 Individual Crops
                             </button>
 
                             <button
                                 onClick={() => setSelectedChart('cumulative')}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                    selectedChart === 'cumulative'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
+                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedChart === 'cumulative'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
                             >
                                 Total Demand
                             </button>
@@ -1359,7 +1395,7 @@ const Demand = () => {
     return (
         <div className="p-4 bg-green-50 border border-green-200 rounded-md">
             <h3 className="text-lg font-semibold text-green-800 mb-3">Groundwater Demand Assessment</h3>
-            
+
             {/* Demand Type Checkboxes */}
             <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Demand Types:</label>
@@ -1379,10 +1415,10 @@ const Demand = () => {
                 </div>
             </div>
 
-            {/* 1. DOMESTIC DEMAND SECTION*/}
+            {/* 1. DOMESTIC DEMAND SECTION */}
             {domesticChecked && (
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                    {/* ---------- Loading overlay (Simplified for brevity) ---------- */}
+                    {/* Loading overlay */}
                     {domesticLoading && (
                         <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
                             <div className="text-center bg-white rounded-xl shadow-2xl p-8">
@@ -1393,9 +1429,10 @@ const Demand = () => {
                             </div>
                         </div>
                     )}
+
                     <h4 className="text-md font-semibold text-blue-800 mb-3">Domestic Demand Parameters</h4>
-                    
-                    {/* ---------- Per Capita Input ---------- */}
+
+                    {/* Per Capita Input */}
                     <div className="mb-4 max-w-sm">
                         <div className="flex items-center gap-2 mb-1">
                             <label className="block text-sm font-medium text-gray-700">
@@ -1409,13 +1446,12 @@ const Demand = () => {
                                     </svg>
                                 </span>
                                 <div className={`
-                                    absolute left-1/2 -translate-x-1/2 mt-1 w-64
-                                    bg-gray-800 text-white text-xs rounded-lg p-3
-                                    opacity-0 group-hover:opacity-100
-                                    transition-opacity duration-200 shadow-lg z-50 pointer-events-none
-                                `}>
-                                    Per Capita Consumption 60 liters according to Central Public Health
-                                    and Environmental Engineering Organization (CPHEEO) standards.
+                        absolute left-1/2 -translate-x-1/2 mt-1 w-64
+                        bg-gray-800 text-white text-xs rounded-lg p-3
+                        opacity-0 group-hover:opacity-100
+                        transition-opacity duration-200 shadow-lg z-50 pointer-events-none
+                    `}>
+                                    Per Capita Consumption 60 liters according to Central Public Health and Environmental Engineering Organization (CPHEEO) standards.
                                 </div>
                             </div>
                         </div>
@@ -1428,14 +1464,16 @@ const Demand = () => {
                             min="1"
                         />
                     </div>
-                    {/* ---------- Error message ---------- */}
+
+                    {/* Error message */}
                     {domesticError && (
                         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
                             <p className="font-medium">Computation Failed</p>
                             <p className="text-sm mt-1">{domesticError}</p>
                         </div>
                     )}
-                    {/* ---------- Action Buttons ---------- */}
+
+                    {/* Action Buttons */}
                     <div className="mb-4 flex flex-col sm:flex-row gap-4 items-start">
                         <button
                             onClick={computeDomesticDemand}
@@ -1449,7 +1487,8 @@ const Demand = () => {
                         >
                             {domesticLoading ? "Computing..." : "Compute Domestic Demand"}
                         </button>
-                        {/* ---------- Search & Toggle ---------- */}
+
+                        {/* Search & Toggle */}
                         {domesticTableData.length > 0 && (
                             <div className="flex flex-col sm:flex-row gap-3 ml-auto">
                                 <div className="flex gap-2">
@@ -1476,12 +1515,22 @@ const Demand = () => {
                                     className="p-2 rounded-full hover:bg-gray-200 transition-colors"
                                     title={showDomesticTable ? "Hide Table" : "Show Table"}
                                 >
-                                    {/* Eye/Eye-slash icons */}
+                                    {showDomesticTable ? (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.953 9.953 0 012.174-3.412M6.676 6.676a9.953 9.953 0 014.89-1.57c4.478 0 8.268 2.943 9.542 7a9.952 9.952 0 01-1.378 3.38m-4.892-8.44L3 3m3.06 3.06l-.707.707m15.384.348L18 7.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    )}
                                 </button>
                             </div>
                         )}
                     </div>
-                    {/* ---------- Active filters ---------- */}
+
+                    {/* Active filters */}
                     {(domesticAppliedSearch || domesticAppliedSort) && (
                         <div className="mb-3 flex flex-wrap gap-2 text-sm">
                             {domesticAppliedSearch && (
@@ -1502,7 +1551,8 @@ const Demand = () => {
                             )}
                         </div>
                     )}
-                    {/* ---------- Domestic Table (with inline sorting) ---------- */}
+
+                    {/* Domestic Table */}
                     {showDomesticTable && domesticTableData.length > 0 && (
                         <DomesticTable
                             tableData={processedDomesticData}
@@ -1541,7 +1591,7 @@ const Demand = () => {
                     </div>
                     {/* Season Selection */}
                     {/* ... (Kharif, Rabi, Zaid Checkboxes & Crop Selection Logic) ... */}
-                    
+
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Select Seasons:</label>
                         <div className="grid grid-cols-3 gap-4">
@@ -1754,6 +1804,8 @@ const Demand = () => {
                         >
                             {agriculturalLoading ? "Computing..." : "Compute Agricultural Demand"}
                         </button>
+
+
                         {/* Search & Toggle Controls */}
                         {agriculturalTableData.length > 0 && (
                             <div className="flex flex-col sm:flex-row gap-3 ml-auto">
@@ -1783,7 +1835,7 @@ const Demand = () => {
                                     className="p-2 rounded-full hover:bg-gray-200 transition-colors"
                                     title={showAgriculturalTable ? "Hide Table" : "Show Table"}
                                 >
-                                    {/* Eye/Eye-slash icons */}
+                                    <EyeIcon isVisible={showAgriculturalTable} />
                                 </button>
                             </div>
                         )}
@@ -1837,7 +1889,9 @@ const Demand = () => {
                             </div>
                         </div>
                     )}
+
                     <h4 className="text-md font-semibold text-purple-800 mb-3">Industrial Demand Parameters</h4>
+
                     {industrialError && (
                         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
                             <div className="flex items-start gap-2">
@@ -1857,7 +1911,10 @@ const Demand = () => {
                         <button
                             onClick={computeIndustrialDemand}
                             disabled={industrialLoading || !canComputeIndustrialDemand()}
-                            className={`w-full ${industrialLoading || !canComputeIndustrialDemand() ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'} text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
+                            className={`w-full ${industrialLoading || !canComputeIndustrialDemand()
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300"
+                                } text-white font-medium py-3 px-4 rounded-md flex items-center justify-center transition-colors duration-200 mb-4`}
                         >
                             {industrialLoading ? (
                                 <>
@@ -1869,9 +1926,10 @@ const Demand = () => {
                             )}
                         </button>
                     </div>
+
                     {industrialTableData.length > 0 && (
                         <>
-                            {/* Search controls */}
+                            {/* Search controls + Toggle Button */}
                             <div className="mt-4 mb-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                                 <div className="flex gap-2 ml-auto">
                                     <input
@@ -1889,6 +1947,13 @@ const Demand = () => {
                                         {/* Search icon */}
                                         Search
                                     </button>
+                                    <button
+                                        onClick={toggleIndustrialTable}
+                                        className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                                        title={showIndustrialTable ? "Hide Table" : "Show Table"}
+                                    >
+                                        <EyeIcon isVisible={showIndustrialTable} />
+                                    </button>
                                 </div>
                             </div>
 
@@ -1898,14 +1963,21 @@ const Demand = () => {
                                     {industrialAppliedSearch && (
                                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
                                             Search: "{industrialAppliedSearch}"
-                                            <button onClick={() => { setIndustrialAppliedSearch(""); setIndustrialSearchInput(""); }} className="ml-1 hover:text-blue-900">
+                                            <button
+                                                onClick={() => {
+                                                    setIndustrialAppliedSearch("");
+                                                    setIndustrialSearchInput("");
+                                                }}
+                                                className="ml-1 hover:text-blue-900"
+                                            >
                                                 {/* X icon */}
                                             </button>
                                         </span>
                                     )}
                                     {industrialAppliedSort && (
                                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-                                            Sort: {industrialAppliedSort.key.replace(/_/g, " ")} ({industrialAppliedSort.direction === "asc" ? "Ascending" : "Descending"})
+                                            Sort: {industrialAppliedSort.key.replace(/_/g, " ")} (
+                                            {industrialAppliedSort.direction === "asc" ? "Ascending" : "Descending"})
                                             <button onClick={handleIndustrialResetSort} className="ml-1 hover:text-green-900">
                                                 {/* X icon */}
                                             </button>
@@ -1914,28 +1986,31 @@ const Demand = () => {
                                 </div>
                             )}
 
-                            <TableDisplay
-                                tableData={processedIndustrialData}
-                                title="Industrial Demand Results"
-                                sortConfig={industrialAppliedSort || undefined}
-                                onSort={(field: string) => {
-                                    setIndustrialAppliedSort((prev) => {
-                                        if (prev?.key === field) {
-                                            return {
-                                                key: field,
-                                                direction: prev.direction === "asc" ? "desc" : "asc",
-                                            };
-                                        }
-                                        return { key: field, direction: "asc" };
-                                    });
-                                }}
-                                isSearched={!!industrialAppliedSearch}
-                            />
+                            {/* Conditionally render the Industrial Table */}
+                            {showIndustrialTable && (
+                                <TableDisplay
+                                    tableData={processedIndustrialData}
+                                    title="Industrial Demand Results"
+                                    sortConfig={industrialAppliedSort || undefined}
+                                    onSort={(field) => {
+                                        setIndustrialAppliedSort((prev) => {
+                                            if (prev?.key === field) {
+                                                return {
+                                                    key: field,
+                                                    direction: prev.direction === "asc" ? "desc" : "asc",
+                                                };
+                                            }
+                                            return { key: field, direction: "asc" };
+                                        });
+                                    }}
+                                    isSearched={!!industrialAppliedSearch}
+                                />
+                            )}
                         </>
                     )}
-
                 </div>
             )}
+
 
             {/* Combined Demand Summary Table */}
             {(domesticTableData.length > 0 || agriculturalTableData.length > 0 || industrialTableData.length > 0) && (
