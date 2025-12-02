@@ -117,9 +117,9 @@ const Demand = () => {
 
   // State for chart selection
   const [selectedChart, setSelectedChart] = useState<'individual' | 'cumulative'>('individual');
-  const [showDomesticTable, setShowDomesticTable] = useState(true);
+  const [showDomesticTable, setShowDomesticTable] = useState(false);
   const toggleDomesticTable = () => setShowDomesticTable((prev) => !prev);
-  const [showAgriculturalTable, setShowAgriculturalTable] = useState(true);
+  const [showAgriculturalTable, setShowAgriculturalTable] = useState(false);
   const toggleAgriculturalTable = () => setShowAgriculturalTable((prev) => !prev);
   const [showSelectionWarning, setShowSelectionWarning] = useState(false);
 
