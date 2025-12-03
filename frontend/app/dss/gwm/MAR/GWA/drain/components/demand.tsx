@@ -663,48 +663,48 @@ const Demand = () => {
                                                     {item.subtype}
                                                 </td>
 
-<td className="px-6 py-4">
-  <div className="flex items-center gap-2">
-    <input
-      type="text"
-      inputMode="decimal"
-      defaultValue={item.consumptionValue.toFixed(2)}
-      onChange={(e) => {
-        const val = e.target.value;
-        // Allow only numbers and one decimal point
-        if (val === "" || /^\d*\.?\d*$/.test(val)) {
-          // Do nothing here — just let user type freely
-        } else {
-          e.preventDefault();
-        }
-      }}
-      onBlur={(e) => {
-        const val = e.target.value.trim();
-        const num = parseFloat(val);
-        if (!isNaN(num) && num > 0) {
-          updateIndustrialConsumption(item.industry, item.subtype, num);
-        } else {
-          // Revert to original value if invalid
-          e.target.value = item.consumptionValue.toFixed(2);
-        }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.currentTarget.blur(); // Trigger blur → save
-        }
-        if (e.key === "Escape") {
-          e.currentTarget.value = item.consumptionValue.toFixed(2);
-          e.currentTarget.blur();
-        }
-      }}
-      className="w-24 px-2 py-1 text-sm font-medium text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
-      placeholder="0.0"
-    />
-    <span className="text-xs text-gray-500 font-medium">
-      m³/{item.industry === "Thermal Power Plants" ? "MW" : "MT"}
-    </span>
-  </div>
-</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            defaultValue={item.consumptionValue.toFixed(2)}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                // Allow only numbers and one decimal point
+                                                                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                                    // Do nothing here — just let user type freely
+                                                                } else {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                const val = e.target.value.trim();
+                                                                const num = parseFloat(val);
+                                                                if (!isNaN(num) && num > 0) {
+                                                                    updateIndustrialConsumption(item.industry, item.subtype, num);
+                                                                } else {
+                                                                    // Revert to original value if invalid
+                                                                    e.target.value = item.consumptionValue.toFixed(2);
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") {
+                                                                    e.currentTarget.blur(); // Trigger blur → save
+                                                                }
+                                                                if (e.key === "Escape") {
+                                                                    e.currentTarget.value = item.consumptionValue.toFixed(2);
+                                                                    e.currentTarget.blur();
+                                                                }
+                                                            }}
+                                                            className="w-24 px-2 py-1 text-sm font-medium text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                                                            placeholder="0.0"
+                                                        />
+                                                        <span className="text-xs text-gray-500 font-medium">
+                                                            m³/{item.industry === "Thermal Power Plants" ? "MW" : "MT"}
+                                                        </span>
+                                                    </div>
+                                                </td>
 
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
@@ -1998,8 +1998,8 @@ const Demand = () => {
                             onClick={computeIndustrialDemand}
                             disabled={industrialLoading || !canComputeIndustrialDemand()}
                             className={`${industrialLoading || !canComputeIndustrialDemand()
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300"
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300"
                                 } text-white font-medium py-3 px-6 rounded-md flex items-center justify-center transition-colors duration-200`}
                         >
                             {industrialLoading ? "Computing Industrial Demand..." : "Compute Industrial Demand"}
