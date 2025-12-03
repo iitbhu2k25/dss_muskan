@@ -120,9 +120,9 @@ const Demand = () => {
         direction: "asc" | "desc";
     } | null>(null);
     /* Add these state variables at the top of your component */
-    const [showDomesticTable, setShowDomesticTable] = useState(true);
-    const [showAgriculturalTable, setShowAgriculturalTable] = useState(true);
-    const [showIndustrialTable, setShowIndustrialTable] = useState(true);
+    const [showDomesticTable, setShowDomesticTable] = useState(false);
+    const [showAgriculturalTable, setShowAgriculturalTable] = useState(false);
+    const [showIndustrialTable, setShowIndustrialTable] = useState(false);
     const [showCombinedTable, setShowCombinedTable] = useState(true);
 
     /* Toggle functions */

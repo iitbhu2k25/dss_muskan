@@ -53,7 +53,7 @@ const Recharge = () => {
   const { selectedVillages } = useLocation();
   const { csvFilename } = useWell();
 
-  const [showTable, setShowTable] = useState(true);
+  const [showTable, setShowTable] = useState(false);
 
   // Filter & Sort States
   const [searchInput, setSearchInput] = useState("");
