@@ -91,6 +91,8 @@ interface DemandContextType {
   setIndustrialData: (data: IndustrialSubtype[]) => void;
   setIndustrialGWShare: (value: number) => void;
   updateIndustrialProduction: (industry: string, subtype: string, production: number) => void;
+  updateIndustrialConsumption: (industry: string, subtype: string, consumption: number) => void;
+
   setKharifChecked: (checked: boolean) => void;
   setRabiChecked: (checked: boolean) => void;
   setZaidChecked: (checked: boolean) => void;
@@ -180,7 +182,16 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
       )
     );
   };
-
+// Add this function inside DemandProvider (next to updateIndustrialProduction)
+const updateIndustrialConsumption = (industry: string, subtype: string, newConsumption: number) => {
+  setIndustrialData(prev =>
+    prev.map(item =>
+      item.industry === industry && item.subtype === subtype
+        ? { ...item, consumptionValue: isNaN(newConsumption) || newConsumption < 0 ? 0 : newConsumption }
+        : item
+    )
+  );
+};
   const clearChartData = () => {
     setChartData(null);
     setChartsError(null);
@@ -617,6 +628,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     setIndustrialData,
     setIndustrialGWShare,
     updateIndustrialProduction,
+    updateIndustrialConsumption,
     setKharifChecked,
     setRabiChecked,
     setZaidChecked,
@@ -629,6 +641,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     canComputeDomesticDemand,
     canComputeAgriculturalDemand,
     canComputeIndustrialDemand,
+    
   };
 
   return (
