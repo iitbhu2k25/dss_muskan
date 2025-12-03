@@ -197,7 +197,17 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       } else {
         console.log('   ⚠️ No combined demand data');
       }
+      console.log('');
+      console.log('🔍 DEMAND BREAKDOWN BY TYPE:');
+      const domesticTotal = combinedDemandData.reduce((sum, v) => sum + (Number(v.domestic_demand) || 0), 0);
+      const agriculturalTotal = combinedDemandData.reduce((sum, v) => sum + (Number(v.agricultural_demand) || 0), 0);
+      const industrialTotal = combinedDemandData.reduce((sum, v) => sum + (Number(v.industrial_demand) || 0), 0);
 
+      console.log(`   Domestic: ${domesticTotal.toFixed(3)} MLD`);
+      console.log(`   Agricultural: ${agriculturalTotal.toFixed(3)} MLD`);
+      console.log(`   Industrial: ${industrialTotal.toFixed(3)} MLD`);
+      console.log(`   ─────────────────────────────────────────────────────`);
+      console.log(`   TOTAL: ${(domesticTotal + agriculturalTotal + industrialTotal).toFixed(3)} MLD`);
       console.log('');
       console.log('📍 Selected Sub-districts:', selectedSubDistricts);
       console.log('📈 Trend CSV:', trendCsvFilename || 'Not provided');

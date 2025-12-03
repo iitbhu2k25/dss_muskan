@@ -257,7 +257,7 @@ export const GroundwaterTrendProvider = ({
   };
 
   const availableCharts = trendData ? Object.keys(trendData.charts || {}) : [];
-  
+
   // Extract village timeseries data and years
   const villageTimeseriesData = trendData?.village_timeseries_data || [];
   const allYears = trendData?.all_years || [];

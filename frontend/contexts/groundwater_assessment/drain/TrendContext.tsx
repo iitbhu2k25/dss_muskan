@@ -271,7 +271,7 @@ export const GroundwaterTrendProvider = ({
   };
 
   const availableCharts = trendData ? Object.keys(trendData.charts || {}) : [];
-  
+
   // Extract village timeseries data and years
   const villageTimeseriesData = trendData?.village_timeseries_data || [];
   const allYears = trendData?.all_years || [];
@@ -384,7 +384,7 @@ export const GroundwaterTrendProvider = ({
           village_name: data.village_timeseries_data[0].village_name,
           years: data.village_timeseries_data[0].years,
           depths: data.village_timeseries_data[0].depths,
-          trend_line: data.village_timeseries_data[0].trend_line, 
+          trend_line: data.village_timeseries_data[0].trend_line,
           sen_slope: data.village_timeseries_data[0].sen_slope,
           trend_status: data.village_timeseries_data[0].trend_status,
         });

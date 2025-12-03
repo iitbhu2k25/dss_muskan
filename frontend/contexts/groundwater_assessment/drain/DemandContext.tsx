@@ -9,7 +9,7 @@ interface TableData {
 }
 
 interface CropData {
-  [season: string]: string[]; 
+  [season: string]: string[];
 }
 
 export interface IndustrialSubtype {
@@ -112,9 +112,9 @@ interface DemandProviderProps {
 }
 
 export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
-  const [domesticChecked, setDomesticChecked] = useState<boolean>(false);
-  const [agriculturalChecked, setAgriculturalChecked] = useState<boolean>(false);
-  const [industrialChecked, setIndustrialChecked] = useState<boolean>(false);
+  const [domesticChecked, setDomesticCheckedState] = useState<boolean>(false);
+  const [agriculturalChecked, setAgriculturalCheckedState] = useState<boolean>(false);
+  const [industrialChecked, setIndustrialCheckedState] = useState<boolean>(false);
   const [perCapitaConsumption, setPerCapitaConsumption] = useState<number>(60);
   const [kharifChecked, setKharifChecked] = useState<boolean>(false);
   const [rabiChecked, setRabiChecked] = useState<boolean>(false);
@@ -142,6 +142,33 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   const { selectedVillages } = useLocation(); // Drain context uses selectedVillages
   const { csvFilename } = useWell();
 
+  const setDomesticChecked = (checked: boolean) => {
+    setDomesticCheckedState(checked);
+    if (!checked) {
+      setDomesticTableData([]);
+      setDomesticError(null);
+      console.log('🗑️ Domestic demand data cleared (unchecked)');
+    }
+  };
+
+  const setAgriculturalChecked = (checked: boolean) => {
+    setAgriculturalCheckedState(checked);
+    if (!checked) {
+      setAgriculturalTableData([]);
+      setAgriculturalError(null);
+      clearChartData();
+      console.log('🗑️ Agricultural demand data cleared (unchecked)');
+    }
+  };
+
+  const setIndustrialChecked = (checked: boolean) => {
+    setIndustrialCheckedState(checked);
+    if (!checked) {
+      setIndustrialTableData([]);
+      setIndustrialError(null);
+      console.log('🗑️ Industrial demand data cleared (unchecked)');
+    }
+  };
   // Update production for a specific sub-type
   const updateIndustrialProduction = (industry: string, subtype: string, production: number) => {
     setIndustrialData(prevData =>
@@ -158,102 +185,102 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     setChartsError(null);
   };
 
-// ADDED: Logic to generate combined demand data based on village_code
-const generateCombinedDemandData = () => {
-  const villageMap = new Map<string | number, any>();
+  // ADDED: Logic to generate combined demand data based on village_code
+  const generateCombinedDemandData = () => {
+    const villageMap = new Map<string | number, any>();
 
-  // Use a helper function to standardize the key and fallback logic
-  const standardizeKey = (row: any) => row.village_code || row.Village_code || String(row.village_name) || String(row.village) || 'Unknown_Code';
-  const getVillageName = (row: any) => row.village_name || row.Village_name || row.village || 'Unknown';
+    // Use a helper function to standardize the key and fallback logic
+    const standardizeKey = (row: any) => row.village_code || row.Village_code || String(row.village_name) || String(row.village) || 'Unknown_Code';
+    const getVillageName = (row: any) => row.village_name || row.Village_name || row.village || 'Unknown';
 
 
-  // Add domestic data
-  domesticTableData.forEach(row => {
-    const key = standardizeKey(row);
-    if (key === 'Unknown_Code') return; 
-    
-    const villageName = getVillageName(row);
-    if (!villageMap.has(key)) {
-      villageMap.set(key, {
-        village_code: key,
-        village_name: villageName,
-        domestic_demand: 0,
-        agricultural_demand: 0,
-        industrial_demand: 0,
-      });
-    }
-    const village = villageMap.get(key);
-    if (village) {
-      village.domestic_demand = row.demand_mld || 0;
-      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
-        village.village_name = villageName;
+    // Add domestic data
+    domesticTableData.forEach(row => {
+      const key = standardizeKey(row);
+      if (key === 'Unknown_Code') return;
+
+      const villageName = getVillageName(row);
+      if (!villageMap.has(key)) {
+        villageMap.set(key, {
+          village_code: key,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
       }
-    }
-  });
-
-  // Add agricultural data
-  agriculturalTableData.forEach(row => {
-    const key = standardizeKey(row);
-    if (key === 'Unknown_Code') return; 
-
-    const villageName = getVillageName(row);
-    if (!villageMap.has(key)) {
-      villageMap.set(key, {
-        village_code: key,
-        village_name: villageName,
-        domestic_demand: 0,
-        agricultural_demand: 0,
-        industrial_demand: 0,
-      });
-    }
-    const village = villageMap.get(key);
-    if (village) {
-      // Assuming 'village_demand' is the correct field for agricultural demand
-      if (row.village_demand !== undefined) {
-        village.agricultural_demand = row.village_demand;
+      const village = villageMap.get(key);
+      if (village) {
+        village.domestic_demand = row.demand_mld || 0;
+        if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+          village.village_name = villageName;
+        }
       }
-      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
-        village.village_name = villageName;
+    });
+
+    // Add agricultural data
+    agriculturalTableData.forEach(row => {
+      const key = standardizeKey(row);
+      if (key === 'Unknown_Code') return;
+
+      const villageName = getVillageName(row);
+      if (!villageMap.has(key)) {
+        villageMap.set(key, {
+          village_code: key,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
       }
-    }
-  });
-
-  // Add industrial data
-  industrialTableData.forEach(row => {
-    const key = standardizeKey(row);
-    if (key === 'Unknown_Code') return; 
-
-    const villageName = getVillageName(row);
-    if (!villageMap.has(key)) {
-      villageMap.set(key, {
-        village_code: key,
-        village_name: villageName,
-        domestic_demand: 0,
-        agricultural_demand: 0,
-        industrial_demand: 0,
-      });
-    }
-    const village = villageMap.get(key);
-    if (village) {
-      // Assuming industrial demand is in a column named 'Industrial_demand_(Million litres/Year)' as per the admin file
-      if (row['Industrial_demand_(Million litres/Year)'] !== undefined) {
-        village.industrial_demand = row['Industrial_demand_(Million litres/Year)'];
+      const village = villageMap.get(key);
+      if (village) {
+        // Assuming 'village_demand' is the correct field for agricultural demand
+        if (row.village_demand !== undefined) {
+          village.agricultural_demand = row.village_demand;
+        }
+        if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+          village.village_name = villageName;
+        }
       }
-      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
-        village.village_name = villageName;
+    });
+
+    // Add industrial data
+    industrialTableData.forEach(row => {
+      const key = standardizeKey(row);
+      if (key === 'Unknown_Code') return;
+
+      const villageName = getVillageName(row);
+      if (!villageMap.has(key)) {
+        villageMap.set(key, {
+          village_code: key,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
       }
-    }
-  });
+      const village = villageMap.get(key);
+      if (village) {
+        // Assuming industrial demand is in a column named 'Industrial_demand_(Million litres/Year)' as per the admin file
+        if (row['Industrial_demand_(Million litres/Year)'] !== undefined) {
+          village.industrial_demand = row['Industrial_demand_(Million litres/Year)'];
+        }
+        if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+          village.village_name = villageName;
+        }
+      }
+    });
 
-  // Calculate totals and convert to array
-  const combined = Array.from(villageMap.values()).map(village => ({
-    ...village,
-    total_demand: Number(village.domestic_demand) + Number(village.agricultural_demand) + Number(village.industrial_demand),
-  }));
+    // Calculate totals and convert to array
+    const combined = Array.from(villageMap.values()).map(village => ({
+      ...village,
+      total_demand: Number(village.domestic_demand) + Number(village.agricultural_demand) + Number(village.industrial_demand),
+    }));
 
-  setCombinedDemandData(combined);
-  // console.log('✅ Drain Combined demand data generated:', combined.length, 'villages');
-};
+    setCombinedDemandData(combined);
+    // console.log('✅ Drain Combined demand data generated:', combined.length, 'villages');
+  };
 
   // ADDED: Regenerate combined data when any demand changes
   useEffect(() => {

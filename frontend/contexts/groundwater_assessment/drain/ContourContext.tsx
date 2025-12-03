@@ -47,18 +47,18 @@ export const GroundwaterContourContext = createContext<GroundwaterContourContext
   contourInterval: '',
   isLoading: false,
   error: null,
-  setInterpolationMethod: () => {},
-  setParameter: () => {},
-  setDataType: () => {},
-  setSelectedYear: () => {},
-  setContourInterval: () => {},
-  handleGenerate: async () => {},
+  setInterpolationMethod: () => { },
+  setParameter: () => { },
+  setDataType: () => { },
+  setSelectedYear: () => { },
+  setContourInterval: () => { },
+  handleGenerate: async () => { },
 });
 
 export const GroundwaterContourProvider = ({
   children,
   activeTab,
-  onGeoJsonData = () => {},
+  onGeoJsonData = () => { },
 }: GroundwaterContourProviderProps) => {
   const [geoJsonData, setGeoJsonData] = useState<any>(null);
   const [rasterData, setRasterData] = useState<any>(null);

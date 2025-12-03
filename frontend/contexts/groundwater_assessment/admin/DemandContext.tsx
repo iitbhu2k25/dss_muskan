@@ -112,9 +112,9 @@ interface DemandProviderProps {
 }
 
 export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
-  const [domesticChecked, setDomesticChecked] = useState<boolean>(false);
-  const [agriculturalChecked, setAgriculturalChecked] = useState<boolean>(false);
-  const [industrialChecked, setIndustrialChecked] = useState<boolean>(false);
+  const [domesticChecked, setDomesticCheckedState] = useState<boolean>(false);
+  const [agriculturalChecked, setAgriculturalCheckedState] = useState<boolean>(false);
+  const [industrialChecked, setIndustrialCheckedState] = useState<boolean>(false);
   const [perCapitaConsumption, setPerCapitaConsumption] = useState<number>(60);
   const [kharifChecked, setKharifChecked] = useState<boolean>(false);
   const [rabiChecked, setRabiChecked] = useState<boolean>(false);
@@ -142,6 +142,34 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
   const { selectedSubDistricts } = useLocation();
   const { csvFilename } = useWell();
 
+
+  const setDomesticChecked = (checked: boolean) => {
+    setDomesticCheckedState(checked);
+    if (!checked) {
+      setDomesticTableData([]);
+      setDomesticError(null);
+      console.log('🗑️ Domestic demand data cleared (unchecked)');
+    }
+  };
+
+  const setAgriculturalChecked = (checked: boolean) => {
+    setAgriculturalCheckedState(checked);
+    if (!checked) {
+      setAgriculturalTableData([]);
+      setAgriculturalError(null);
+      clearChartData();
+      console.log('🗑️ Agricultural demand data cleared (unchecked)');
+    }
+  };
+
+  const setIndustrialChecked = (checked: boolean) => {
+    setIndustrialCheckedState(checked);
+    if (!checked) {
+      setIndustrialTableData([]);
+      setIndustrialError(null);
+      console.log('🗑️ Industrial demand data cleared (unchecked)');
+    }
+  };
   // Update production for a specific sub-type
   const updateIndustrialProduction = (industry: string, subtype: string, production: number) => {
     setIndustrialData(prevData =>
@@ -158,95 +186,95 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     setChartsError(null);
   };
 
-// Generate combined demand data based on village_code
-const generateCombinedDemandData = () => {
-  const villageMap = new Map<string | number, any>();
+  // Generate combined demand data based on village_code
+  const generateCombinedDemandData = () => {
+    const villageMap = new Map<string | number, any>();
 
-  // Add domestic data
-  domesticTableData.forEach(row => {
-    const villageCode = row.village_code || row.Village_code;
-    if (!villageCode) return; // Skip if no village code
-    
-    const villageName = row.village_name || 'Unknown';
-    if (!villageMap.has(villageCode)) {
-      villageMap.set(villageCode, {
-        village_code: villageCode,
-        village_name: villageName,
-        domestic_demand: 0,
-        agricultural_demand: 0,
-        industrial_demand: 0,
-      });
-    }
-    const village = villageMap.get(villageCode);
-    if (village) {
-      village.domestic_demand = row.demand_mld || 0;
-      // Update village name if it was 'Unknown' before
-      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
-        village.village_name = villageName;
+    // Add domestic data
+    domesticTableData.forEach(row => {
+      const villageCode = row.village_code || row.Village_code;
+      if (!villageCode) return; // Skip if no village code
+
+      const villageName = row.village_name || 'Unknown';
+      if (!villageMap.has(villageCode)) {
+        villageMap.set(villageCode, {
+          village_code: villageCode,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
       }
-    }
-  });
-
-  // Add agricultural data
-  agriculturalTableData.forEach(row => {
-    const villageCode = row.village_code || row.Village_code;
-    if (!villageCode) return; // Skip if no village code
-    
-    const villageName = row.village || row.village_name || 'Unknown';
-    if (!villageMap.has(villageCode)) {
-      villageMap.set(villageCode, {
-        village_code: villageCode,
-        village_name: villageName,
-        domestic_demand: 0,
-        agricultural_demand: 0,
-        industrial_demand: 0,
-      });
-    }
-    const village = villageMap.get(villageCode);
-    if (village) {
-      village.agricultural_demand = row.village_demand || 0;
-      // Update village name if it was 'Unknown' before
-      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
-        village.village_name = villageName;
+      const village = villageMap.get(villageCode);
+      if (village) {
+        village.domestic_demand = row.demand_mld || 0;
+        // Update village name if it was 'Unknown' before
+        if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+          village.village_name = villageName;
+        }
       }
-    }
-  });
+    });
 
-  // Add industrial data
-  industrialTableData.forEach(row => {
-    const villageCode = row.village_code || row.Village_code;
-    if (!villageCode) return; // Skip if no village code
-    
-    const villageName = row.Village_name || row.village_name || 'Unknown';
-    if (!villageMap.has(villageCode)) {
-      villageMap.set(villageCode, {
-        village_code: villageCode,
-        village_name: villageName,
-        domestic_demand: 0,
-        agricultural_demand: 0,
-        industrial_demand: 0,
-      });
-    }
-    const village = villageMap.get(villageCode);
-    if (village) {
-      village.industrial_demand = row['Industrial_demand_(Million litres/Year)'] || 0;
-      // Update village name if it was 'Unknown' before
-      if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
-        village.village_name = villageName;
+    // Add agricultural data
+    agriculturalTableData.forEach(row => {
+      const villageCode = row.village_code || row.Village_code;
+      if (!villageCode) return; // Skip if no village code
+
+      const villageName = row.village || row.village_name || 'Unknown';
+      if (!villageMap.has(villageCode)) {
+        villageMap.set(villageCode, {
+          village_code: villageCode,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
       }
-    }
-  });
+      const village = villageMap.get(villageCode);
+      if (village) {
+        village.agricultural_demand = row.village_demand || 0;
+        // Update village name if it was 'Unknown' before
+        if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+          village.village_name = villageName;
+        }
+      }
+    });
 
-  // Calculate totals
-  const combined = Array.from(villageMap.values()).map(village => ({
-    ...village,
-    total_demand: Number(village.domestic_demand) + Number(village.agricultural_demand) + Number(village.industrial_demand),
-  }));
+    // Add industrial data
+    industrialTableData.forEach(row => {
+      const villageCode = row.village_code || row.Village_code;
+      if (!villageCode) return; // Skip if no village code
 
-  setCombinedDemandData(combined);
-  console.log('✅ Combined demand data generated:', combined.length, 'villages');
-  console.log('📋 Sample combined data:', combined.slice(0, 3));
-};
+      const villageName = row.Village_name || row.village_name || 'Unknown';
+      if (!villageMap.has(villageCode)) {
+        villageMap.set(villageCode, {
+          village_code: villageCode,
+          village_name: villageName,
+          domestic_demand: 0,
+          agricultural_demand: 0,
+          industrial_demand: 0,
+        });
+      }
+      const village = villageMap.get(villageCode);
+      if (village) {
+        village.industrial_demand = row['Industrial_demand_(Million litres/Year)'] || 0;
+        // Update village name if it was 'Unknown' before
+        if (village.village_name === 'Unknown' && villageName !== 'Unknown') {
+          village.village_name = villageName;
+        }
+      }
+    });
+
+    // Calculate totals
+    const combined = Array.from(villageMap.values()).map(village => ({
+      ...village,
+      total_demand: Number(village.domestic_demand) + Number(village.agricultural_demand) + Number(village.industrial_demand),
+    }));
+
+    setCombinedDemandData(combined);
+    console.log('✅ Combined demand data generated:', combined.length, 'villages');
+    console.log('📋 Sample combined data:', combined.slice(0, 3));
+  };
 
   // Regenerate combined data when any demand changes
   useEffect(() => {

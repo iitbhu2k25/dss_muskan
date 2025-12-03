@@ -64,11 +64,11 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
   const [mapImageBase64, setMapImageBase64] = useState<string | null>(null);
 
   const { selectedVillages } = useLocation(); // Drain context uses selectedVillages
-  
+
   // FIX: Destructure combinedDemandData from useDemand (was added in the previous context update)
-  const { 
-    domesticTableData, 
-    agriculturalTableData, 
+  const {
+    domesticTableData,
+    agriculturalTableData,
     industrialTableData,
     combinedDemandData // This is the crucial addition from the DemandContext update
   } = useDemand();
@@ -105,7 +105,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
   const canComputeGSR = (): boolean => {
     // Check if any demand data exists, by checking the combined data length
     const hasDemandData = domesticTableData.length > 0 || agriculturalTableData.length > 0 || industrialTableData.length > 0;
-    
+
     return !!(
       selectedVillages.length > 0 &&
       rechargeTableData.length > 0 &&
@@ -159,7 +159,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       console.log(`   ✓ Recharge Records: ${rechargeTableData.length}`);
       console.log(`   ✓ Combined Demand Records: ${combinedDemandData.length}`);
       console.log('');
-      
+
       if (combinedDemandData.length > 0) {
         console.log('🏭 COMBINED DEMAND DATA SAMPLE (First 3 records):');
         combinedDemandData.slice(0, 3).forEach((record, idx) => {
@@ -279,7 +279,7 @@ export const GSRProvider: React.FC<GSRProviderProps> = ({ children }) => {
       } else {
         setMapImageBase64(null);
       }
-      
+
       console.log('═══════════════════════════════════════════════════════════════════════════════');
 
     } catch (err) {

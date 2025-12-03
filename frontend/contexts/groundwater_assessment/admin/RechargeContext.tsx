@@ -24,7 +24,7 @@ export const RechargeProvider: React.FC<RechargeProviderProps> = ({ children }) 
   const [error, setError] = useState<string | null>(null);
 
   const { selectedSubDistricts } = useLocation();
-  const { csvFilename } = useWell(); 
+  const { csvFilename } = useWell();
 
   const canComputeRecharge = (): boolean => {
     return !!(csvFilename && selectedSubDistricts.length > 0);
@@ -43,7 +43,7 @@ export const RechargeProvider: React.FC<RechargeProviderProps> = ({ children }) 
       }
 
       const requestPayload = {
-        csvFilename, 
+        csvFilename,
         selectedSubDistricts,
       };
 

@@ -125,7 +125,7 @@ const Demand = () => {
 
   const [showIndustrialTable, setShowIndustrialTable] = useState(false);
   const toggleIndustrialTable = () => setShowIndustrialTable(prev => !prev);
-  const [showCombinedTable, setShowCombinedTable] = useState(false);
+  const [showCombinedTable, setShowCombinedTable] = useState(true);
   const toggleCombinedTable = () => setShowCombinedTable(prev => !prev);
 
 
@@ -2159,14 +2159,14 @@ const Demand = () => {
               )}
             </button>
 
-            <div className="flex gap-2 flex-grow max-w-xs">
+            <div className="flex gap-2 flex-grow max-w-xs mr-4">
               <input
                 type="text"
                 placeholder="Search industrial table..."
                 value={industrialSearchInput}
                 onChange={(e) => setIndustrialSearchInput(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleIndustrialApplySearch()}
-                className="flex-grow px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-grow px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <button
                 onClick={handleIndustrialApplySearch}
@@ -2188,8 +2188,7 @@ const Demand = () => {
                 </svg>
                 Search
               </button>
-
-              {/* Eye button toggle for industrial table */}
+                        {/* Eye button toggle for industrial table */}
               <button
                 onClick={toggleIndustrialTable}
                 className="p-2 rounded-full hover:bg-gray-200 transition-colors"
@@ -2212,7 +2211,7 @@ const Demand = () => {
                     />
                   </svg>
                 ) : (
-                  // 🚫 Eye Off (Hidden)
+                  //  Eye (Hidden)
                   <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -2229,8 +2228,8 @@ const Demand = () => {
                   </svg>
                 )}
               </button>
-
             </div>
+          
           </div>
 
           {/* Active filters display */}
@@ -2346,7 +2345,7 @@ const Demand = () => {
                   />
                 </svg>
               ) : (
-                // 🚫 Eye Off (Hidden)
+                // Eye Off (Hidden)
                 <svg
                   className="w-6 h-6 text-gray-700"
                   fill="none"

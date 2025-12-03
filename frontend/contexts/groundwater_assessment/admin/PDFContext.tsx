@@ -40,14 +40,14 @@ interface PDFContextType {
   pdfGenerationSuccess: boolean;
   pdfGenerationError: string | null;
   generatedPDFData: PDFGenerationResponse['data'] | null;
-  
+
   // PDF functions
   generatePDFReport: () => Promise<PDFGenerationResponse | null>;
   resetPDFState: () => void;
-  
+
   // Data validation
   validatePDFData: () => { valid: boolean; message: string };
-  
+
   // Get prepared data (for debugging/preview)
   getPreparedData: () => PDFGenerationRequest | null;
 }
@@ -62,7 +62,7 @@ const PDFContext = createContext<PDFContextType>({
   pdfGenerationError: null,
   generatedPDFData: null,
   generatePDFReport: async () => null,
-  resetPDFState: () => {},
+  resetPDFState: () => { },
   validatePDFData: () => ({ valid: false, message: 'Context not initialized' }),
   getPreparedData: () => null,
 });
@@ -70,7 +70,7 @@ const PDFContext = createContext<PDFContextType>({
 export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
   const locationContext = useLocation();
   const wellContext = useWell();
-  
+
   // PDF generation state
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfGenerationSuccess, setPdfGenerationSuccess] = useState(false);
@@ -100,7 +100,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
 
       return {
         selectedSubDistricts: locationContext.selectedSubDistricts,
-        csv_filename: wellContext.csvFilename 
+        csv_filename: wellContext.csvFilename
       };
     } catch (error) {
       console.log('Error preparing PDF data:', error);
@@ -111,7 +111,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
   // Main PDF generation function
   const generatePDFReport = async (): Promise<PDFGenerationResponse | null> => {
     console.log(' Starting PDF generation process...');
-    
+
     // Reset previous state
     setIsGeneratingPDF(true);
     setPdfGenerationSuccess(false);
@@ -130,7 +130,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
       console.log(' Preparing simplified PDF data...');
       const pdfRequest: PDFGenerationRequest = {
         selectedSubDistricts: locationContext.selectedSubDistricts,
-        csv_filename: wellContext.csvFilename 
+        csv_filename: wellContext.csvFilename
       };
 
       console.log(' PDF request prepared:', {
@@ -192,7 +192,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
     if (pdfGenerationSuccess) {
       const timer = setTimeout(() => {
         setPdfGenerationSuccess(false);
-      }, 10000); 
+      }, 10000);
 
       return () => clearTimeout(timer);
     }
@@ -211,7 +211,7 @@ export const PDFProvider: React.FC<PDFProviderProps> = ({ children }) => {
     pdfGenerationSuccess,
     pdfGenerationError,
     generatedPDFData,
-    
+
     // PDF functions
     generatePDFReport,
     resetPDFState,

@@ -36,21 +36,21 @@ export const GroundwaterForecastContext = createContext<GroundwaterForecastConte
   forecastYears: ['', ''],
   isLoading: false,
   error: null,
-  setMethod: () => {},
-  setForecastType: () => {},
-  setForecastYear: () => {},
-  setForecastYears: () => {},
-  handleGenerate: async () => {},
-  clearForecastData: () => {},
-  resetForm: () => {},
+  setMethod: () => { },
+  setForecastType: () => { },
+  setForecastYear: () => { },
+  setForecastYears: () => { },
+  handleGenerate: async () => { },
+  clearForecastData: () => { },
+  resetForm: () => { },
   getTimeseriesFilename: () => null,
-  debugTrendAccess: () => {},
+  debugTrendAccess: () => { },
 });
 
 export const GroundwaterForecastProvider = ({
   children,
   activeTab,
-  onForecastData = () => {},
+  onForecastData = () => { },
 }: GroundwaterForecastProviderProps) => {
   const [forecastData, setForecastData] = useState<any>(null);
   const [method, setMethod] = useState<string>('');
@@ -62,10 +62,10 @@ export const GroundwaterForecastProvider = ({
 
   //  Access TrendContext
   const trendContextValue = useContext(GroundwaterTrendContext);
-  
+
   // Extract trendData separately for better reactivity
   const { trendData, trendMethod, yearStart, yearEnd } = trendContextValue;
-  
+
   //  Use useCallback to get the latest trendData reference
   const getLatestTrendData = useCallback(() => {
     return trendContextValue.trendData;
@@ -80,7 +80,7 @@ export const GroundwaterForecastProvider = ({
     console.log(' trendData from destructuring:', trendData);
     console.log(' latestTrendData from callback:', latestTrendData);
     console.log(' trendData available?:', !!latestTrendData);
-    
+
     if (latestTrendData) {
       console.log(' TrendData found!');
       console.log(' success:', latestTrendData.success);
@@ -143,7 +143,7 @@ export const GroundwaterForecastProvider = ({
   const handleGenerate = async () => {
     console.log(' === FORECAST GENERATION STARTED ===');
     debugTrendAccess();
-    
+
     // Validate all required fields
     if (!method || !forecastType) {
       alert('Please fill all required fields: Method and Forecast Type.');
@@ -182,7 +182,7 @@ export const GroundwaterForecastProvider = ({
 
     // Get timeseries filename from latest data
     const timeseriesCsvFilename = latestTrendData.summary_stats?.file_info?.timeseries_yearly_csv_filename;
-    
+
     if (!timeseriesCsvFilename) {
       console.log('❌ No timeseries CSV filename found!');
       console.log('Available data structure:', latestTrendData);
@@ -209,20 +209,20 @@ export const GroundwaterForecastProvider = ({
         alert('Please enter both start and end years for the forecast range.');
         return;
       }
-      
+
       const startYear = parseInt(forecastYears[0]);
       const endYear = parseInt(forecastYears[1]);
-      
+
       if (isNaN(startYear) || isNaN(endYear)) {
         alert('Please enter valid years.');
         return;
       }
-      
+
       if (startYear < 2020 || startYear > 2099 || endYear < 2020 || endYear > 2099) {
         alert('Both years must be between 2020 and 2099.');
         return;
       }
-      
+
       if (startYear >= endYear) {
         alert('Start year must be less than end year.');
         return;
@@ -303,7 +303,7 @@ export const GroundwaterForecastProvider = ({
 
       console.log(' Forecast generation completed!');
       console.log(` Based on: ${timeseriesCsvFilename}`);
-      
+
     } catch (error) {
       console.log('❌ Error generating forecast analysis:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during forecast analysis';
