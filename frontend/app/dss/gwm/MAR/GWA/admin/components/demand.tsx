@@ -2191,22 +2191,45 @@ const toggleCombinedTable = () => setShowCombinedTable(prev => !prev);
 
         {/* Eye button toggle for industrial table */}
         <button
-          onClick={toggleIndustrialTable}
-          className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-          aria-label={showIndustrialTable ? "Hide Industrial Table" : "Show Industrial Table"}
-          title={showIndustrialTable ? "Hide Industrial Table" : "Show Industrial Table"}
-        >
-          <svg
-            className="w-6 h-6 text-gray-700 fill-none stroke-current"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-        </button>
+  onClick={toggleIndustrialTable}
+  className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+  title={showIndustrialTable ? "Hide Table" : "Show Table"}
+>
+  {showIndustrialTable ? (
+    // 👁️ Eye Open (Visible)
+    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+      />
+    </svg>
+  ) : (
+    // 🚫 Eye Off (Hidden)
+    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18"
+      />
+    </svg>
+  )}
+</button>
+
       </div>
     </div>
 
@@ -2296,23 +2319,56 @@ const toggleCombinedTable = () => setShowCombinedTable(prev => !prev);
     <div className="flex justify-between items-center mb-3">
       <h4 className="text-lg font-semibold text-gray-800">Combined Groundwater Demand Summary</h4>
       <button
-        onClick={toggleCombinedTable}
-        className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-        aria-label={showCombinedTable ? "Hide Combined Table" : "Show Combined Table"}
-        title={showCombinedTable ? "Hide Combined Table" : "Show Combined Table"}
-      >
-        {/* Eye icon SVG */}
-        <svg
-          className="w-6 h-6 text-gray-700 fill-none stroke-current"
-          viewBox="0 0 24 24"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      </button>
+  onClick={toggleCombinedTable}
+  className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+  aria-label={showCombinedTable ? "Hide Combined Table" : "Show Combined Table"}
+  title={showCombinedTable ? "Hide Combined Table" : "Show Combined Table"}
+>
+  {showCombinedTable ? (
+    // 👁️ Eye Open (Visible)
+    <svg
+      className="w-6 h-6 text-gray-700"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+      />
+    </svg>
+  ) : (
+    // 🚫 Eye Off (Hidden)
+    <svg
+      className="w-6 h-6 text-gray-700"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17.94 17.94A10.016 10.016 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.96 9.96 0 012.293-3.95M6.06 6.06A9.991 9.991 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.958 9.958 0 01-4.042 5.142"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 12a3 3 0 01-3 3m0-6a3 3 0 013 3m0 0a3 3 0 01-3 3m0 0L3 3m0 0l18 18"
+      />
+    </svg>
+  )}
+</button>
+
     </div>
 
     {/* Conditionally render combined table */}
