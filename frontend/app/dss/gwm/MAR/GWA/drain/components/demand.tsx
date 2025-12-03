@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 interface EyeIconProps {
-  isVisible: boolean;
+    isVisible: boolean;
 }
 
 // Field Definitions & Labels (ALIGNED WITH ADMIN CASE)
@@ -144,7 +144,7 @@ const Demand = () => {
         setShowSelectionWarning(false);
         computeAgriculturalDemand();
     };
-   const EyeIcon: React.FC<EyeIconProps> = ({ isVisible }) => (
+    const EyeIcon: React.FC<EyeIconProps> = ({ isVisible }) => (
         isVisible ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -1511,61 +1511,61 @@ const Demand = () => {
                                     </button>
                                 </div>
                                 <button
-  onClick={toggleDomesticTable}
-  className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-  title={showDomesticTable ? "Hide Table" : "Show Table"}
-  aria-label={showDomesticTable ? "Hide Domestic Table" : "Show Domestic Table"}
->
-  {showDomesticTable ? (
-    // 👁️ Eye Open (Visible)
-    <svg
-      className="w-6 h-6 text-blue-600"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-      />
-    </svg>
-  ) : (
-    // 🚫 Eye Off (Hidden)
-    <svg
-      className="w-6 h-6 text-gray-400"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M17.94 17.94A10.016 10.016 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.953 9.953 0 012.174-3.412M6.676 6.676A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.952 9.952 0 01-1.378 3.38"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M3 3l18 18"
-      />
-    </svg>
-  )}
-</button>
+                                    onClick={toggleDomesticTable}
+                                    className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                                    title={showDomesticTable ? "Hide Table" : "Show Table"}
+                                    aria-label={showDomesticTable ? "Hide Domestic Table" : "Show Domestic Table"}
+                                >
+                                    {showDomesticTable ? (
+                                        // 👁️ Eye Open (Visible)
+                                        <svg
+                                            className="w-6 h-6 text-blue-600"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                            />
+                                        </svg>
+                                    ) : (
+                                        // 🚫 Eye Off (Hidden)
+                                        <svg
+                                            className="w-6 h-6 text-gray-400"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M17.94 17.94A10.016 10.016 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.953 9.953 0 012.174-3.412M6.676 6.676A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.952 9.952 0 01-1.378 3.38"
+                                            />
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M3 3l18 18"
+                                            />
+                                        </svg>
+                                    )}
+                                </button>
 
                             </div>
                         )}
@@ -1917,143 +1917,142 @@ const Demand = () => {
             )}
 
             {/* 3. INDUSTRIAL DEMAND SECTION */}
-{industrialChecked && (
-  <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
+            {industrialChecked && (
+                <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
 
-    {/* Loading overlay */}
-    {industrialLoading && (
-      <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="text-center bg-white rounded-xl shadow-2xl p-8">
-          <p className="text-xl font-semibold mt-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-            Computing Industrial Demand...
-          </p>
-          <p className="text-sm text-gray-500 mt-2">Please wait...</p>
-        </div>
-      </div>
-    )}
+                    {/* Loading overlay */}
+                    {industrialLoading && (
+                        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center">
+                            <div className="text-center bg-white rounded-xl shadow-2xl p-8">
+                                <p className="text-xl font-semibold mt-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+                                    Computing Industrial Demand...
+                                </p>
+                                <p className="text-sm text-gray-500 mt-2">Please wait...</p>
+                            </div>
+                        </div>
+                    )}
 
-    <h4 className="text-md font-semibold text-purple-800 mb-3">
-      Industrial Demand Parameters
-    </h4>
+                    <h4 className="text-md font-semibold text-purple-800 mb-3">
+                        Industrial Demand Parameters
+                    </h4>
 
-    {industrialError && (
-      <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-        <div className="flex items-start gap-2">
-          <div>
-            <p className="font-medium">Computation Failed</p>
-            <p className="text-sm mt-1">{industrialError}</p>
-          </div>
-        </div>
-      </div>
-    )}
+                    {industrialError && (
+                        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                            <div className="flex items-start gap-2">
+                                <div>
+                                    <p className="font-medium">Computation Failed</p>
+                                    <p className="text-sm mt-1">{industrialError}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-    {/* Industrial Input Table */}
-    <IndustrialDemandInputTable />
+                    {/* Industrial Input Table */}
+                    <IndustrialDemandInputTable />
 
-    {/* ✅ Compute + Search + Eye in ONE ROW */}
-    <div className="mt-4 mb-3 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+                    {/* ✅ Compute + Search + Eye in ONE ROW */}
+                    <div className="mt-4 mb-3 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
 
-      {/* ✅ Compute Button */}
-      <button
-        onClick={computeIndustrialDemand}
-        disabled={industrialLoading || !canComputeIndustrialDemand()}
-        className={`${
-          industrialLoading || !canComputeIndustrialDemand()
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300"
-        } text-white font-medium py-3 px-6 rounded-md flex items-center justify-center transition-colors duration-200`}
-      >
-        {industrialLoading ? "Computing Industrial Demand..." : "Compute Industrial Demand"}
-      </button>
+                        {/* ✅ Compute Button */}
+                        <button
+                            onClick={computeIndustrialDemand}
+                            disabled={industrialLoading || !canComputeIndustrialDemand()}
+                            className={`${industrialLoading || !canComputeIndustrialDemand()
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300"
+                                } text-white font-medium py-3 px-6 rounded-md flex items-center justify-center transition-colors duration-200`}
+                        >
+                            {industrialLoading ? "Computing Industrial Demand..." : "Compute Industrial Demand"}
+                        </button>
 
-      {/* ✅ Right Side Controls */}
-      <div className="flex gap-2 items-center ml-auto w-full lg:w-auto">
+                        {/* ✅ Right Side Controls */}
+                        <div className="flex gap-2 items-center ml-auto w-full lg:w-auto">
 
-        {/* Search Input */}
-        <input
-          type="text"
-          placeholder="Search industrial table..."
-          value={industrialSearchInput}
-          onChange={(e) => setIndustrialSearchInput(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && handleIndustrialApplySearch()}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
-        />
+                            {/* Search Input */}
+                            <input
+                                type="text"
+                                placeholder="Search industrial table..."
+                                value={industrialSearchInput}
+                                onChange={(e) => setIndustrialSearchInput(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && handleIndustrialApplySearch()}
+                                className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
+                            />
 
-        {/* Search Button */}
-        <button
-          onClick={handleIndustrialApplySearch}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Search
-        </button>
+                            {/* Search Button */}
+                            <button
+                                onClick={handleIndustrialApplySearch}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                Search
+                            </button>
 
-        {/* Eye Toggle Button */}
-        <button
-          onClick={toggleIndustrialTable}
-          className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-          title={showIndustrialTable ? "Hide Table" : "Show Table"}
-        >
-          <EyeIcon isVisible={showIndustrialTable} />
-        </button>
+                            {/* Eye Toggle Button */}
+                            <button
+                                onClick={toggleIndustrialTable}
+                                className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+                                title={showIndustrialTable ? "Hide Table" : "Show Table"}
+                            >
+                                <EyeIcon isVisible={showIndustrialTable} />
+                            </button>
 
-      </div>
-    </div>
+                        </div>
+                    </div>
 
-    {/* Active filters */}
-    {(industrialAppliedSearch || industrialAppliedSort) && (
-      <div className="mb-3 flex flex-wrap gap-2 text-sm">
-        {industrialAppliedSearch && (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
-            Search: "{industrialAppliedSearch}"
-            <button
-              onClick={() => {
-                setIndustrialAppliedSearch("");
-                setIndustrialSearchInput("");
-              }}
-              className="ml-1 hover:text-blue-900"
-            >
-              {/* X icon */}
-            </button>
-          </span>
-        )}
-        {industrialAppliedSort && (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-            Sort: {industrialAppliedSort.key.replace(/_/g, " ")} (
-            {industrialAppliedSort.direction === "asc" ? "Ascending" : "Descending"})
-            <button
-              onClick={handleIndustrialResetSort}
-              className="ml-1 hover:text-green-900"
-            >
-              {/* X icon */}
-            </button>
-          </span>
-        )}
-      </div>
-    )}
+                    {/* Active filters */}
+                    {(industrialAppliedSearch || industrialAppliedSort) && (
+                        <div className="mb-3 flex flex-wrap gap-2 text-sm">
+                            {industrialAppliedSearch && (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+                                    Search: "{industrialAppliedSearch}"
+                                    <button
+                                        onClick={() => {
+                                            setIndustrialAppliedSearch("");
+                                            setIndustrialSearchInput("");
+                                        }}
+                                        className="ml-1 hover:text-blue-900"
+                                    >
+                                        {/* X icon */}
+                                    </button>
+                                </span>
+                            )}
+                            {industrialAppliedSort && (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full">
+                                    Sort: {industrialAppliedSort.key.replace(/_/g, " ")} (
+                                    {industrialAppliedSort.direction === "asc" ? "Ascending" : "Descending"})
+                                    <button
+                                        onClick={handleIndustrialResetSort}
+                                        className="ml-1 hover:text-green-900"
+                                    >
+                                        {/* X icon */}
+                                    </button>
+                                </span>
+                            )}
+                        </div>
+                    )}
 
-    {/* Industrial Results Table */}
-    {showIndustrialTable && industrialTableData.length > 0 && (
-      <TableDisplay
-        tableData={processedIndustrialData}
-        title="Industrial Demand Results"
-        sortConfig={industrialAppliedSort || undefined}
-        onSort={(field) => {
-          setIndustrialAppliedSort((prev) => {
-            if (prev?.key === field) {
-              return {
-                key: field,
-                direction: prev.direction === "asc" ? "desc" : "asc",
-              };
-            }
-            return { key: field, direction: "asc" };
-          });
-        }}
-        isSearched={!!industrialAppliedSearch}
-      />
-    )}
+                    {/* Industrial Results Table */}
+                    {showIndustrialTable && industrialTableData.length > 0 && (
+                        <TableDisplay
+                            tableData={processedIndustrialData}
+                            title="Industrial Demand Results"
+                            sortConfig={industrialAppliedSort || undefined}
+                            onSort={(field) => {
+                                setIndustrialAppliedSort((prev) => {
+                                    if (prev?.key === field) {
+                                        return {
+                                            key: field,
+                                            direction: prev.direction === "asc" ? "desc" : "asc",
+                                        };
+                                    }
+                                    return { key: field, direction: "asc" };
+                                });
+                            }}
+                            isSearched={!!industrialAppliedSearch}
+                        />
+                    )}
 
-  </div>
-)}
+                </div>
+            )}
 
 
             {/* Combined Demand Summary Table */}
