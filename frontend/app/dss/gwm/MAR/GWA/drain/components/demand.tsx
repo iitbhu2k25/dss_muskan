@@ -82,6 +82,7 @@ const Demand = () => {
         setGroundwaterFactor,
         setIndustrialGWShare,
         updateIndustrialProduction,
+        updateIndustrialConsumption,
         clearChartData,
         setKharifChecked,
         setRabiChecked,
@@ -662,9 +663,48 @@ const Demand = () => {
                                                     {item.subtype}
                                                 </td>
 
-                                                <td className="px-6 py-4 text-sm text-gray-600">
-                                                    {formatConsumptionValue(item)}
-                                                </td>
+<td className="px-6 py-4">
+  <div className="flex items-center gap-2">
+    <input
+      type="text"
+      inputMode="decimal"
+      defaultValue={item.consumptionValue.toFixed(2)}
+      onChange={(e) => {
+        const val = e.target.value;
+        // Allow only numbers and one decimal point
+        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+          // Do nothing here — just let user type freely
+        } else {
+          e.preventDefault();
+        }
+      }}
+      onBlur={(e) => {
+        const val = e.target.value.trim();
+        const num = parseFloat(val);
+        if (!isNaN(num) && num > 0) {
+          updateIndustrialConsumption(item.industry, item.subtype, num);
+        } else {
+          // Revert to original value if invalid
+          e.target.value = item.consumptionValue.toFixed(2);
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.currentTarget.blur(); // Trigger blur → save
+        }
+        if (e.key === "Escape") {
+          e.currentTarget.value = item.consumptionValue.toFixed(2);
+          e.currentTarget.blur();
+        }
+      }}
+      className="w-24 px-2 py-1 text-sm font-medium text-gray-800 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+      placeholder="0.0"
+    />
+    <span className="text-xs text-gray-500 font-medium">
+      m³/{item.industry === "Thermal Power Plants" ? "MW" : "MT"}
+    </span>
+  </div>
+</td>
 
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">

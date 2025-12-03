@@ -17,19 +17,20 @@ export interface IndustrialSubtype {
   subtype: string;
   unit: 'MW' | 'm³/tonne of product';
   consumptionValue: number;
+  originalConsumption?: number;
   production: number;
 }
 
 const initialIndustrialData: IndustrialSubtype[] = [
-  { industry: 'Thermal Power Plants', subtype: 'Small (<1000 MW)', unit: 'm³/tonne of product', consumptionValue: 3.1, production: 0 },
-  { industry: 'Thermal Power Plants', subtype: 'Medium (1000–2500 MW)', unit: 'm³/tonne of product', consumptionValue: 4.2, production: 0 },
-  { industry: 'Thermal Power Plants', subtype: 'Large (>2500 MW)', unit: 'm³/tonne of product', consumptionValue: 3.1, production: 0 },
-  { industry: 'Pulp & Paper', subtype: 'Integrated Mills', unit: 'm³/tonne of product', consumptionValue: 31.8, production: 0 },
-  { industry: 'Pulp & Paper', subtype: 'RCF-based Mills', unit: 'm³/tonne of product', consumptionValue: 11.5, production: 0 },
-  { industry: 'Textiles', subtype: 'Integrated (Cotton)', unit: 'm³/tonne of product', consumptionValue: 224, production: 0 },
-  { industry: 'Textiles', subtype: 'Fabric Processing', unit: 'm³/tonne of product', consumptionValue: 75, production: 0 },
-  { industry: 'Iron & Steel', subtype: 'Integrated (Woollen)', unit: 'm³/tonne of product', consumptionValue: 237, production: 0 },
-  { industry: 'Iron & Steel', subtype: 'General', unit: 'm³/tonne of product', consumptionValue: 6.5, production: 0 },
+  { industry: 'Thermal Power Plants', subtype: 'Small (<1000 MW)', unit: 'm³/tonne of product', consumptionValue: 3.1, originalConsumption: 3.1, production: 0 },
+  { industry: 'Thermal Power Plants', subtype: 'Medium (1000–2500 MW)', unit: 'm³/tonne of product', consumptionValue: 4.2, originalConsumption: 4.2, production: 0 },
+  { industry: 'Thermal Power Plants', subtype: 'Large (>2500 MW)', unit: 'm³/tonne of product', consumptionValue: 3.1, originalConsumption: 3.1, production: 0 },
+  { industry: 'Pulp & Paper', subtype: 'Integrated Mills', unit: 'm³/tonne of product', consumptionValue: 31.8, originalConsumption: 31.8, production: 0 },
+  { industry: 'Pulp & Paper', subtype: 'RCF-based Mills', unit: 'm³/tonne of product', consumptionValue: 11.5, originalConsumption: 11.5, production: 0 },
+  { industry: 'Textiles', subtype: 'Integrated (Cotton)', unit: 'm³/tonne of product', consumptionValue: 224, originalConsumption: 224, production: 0 },
+  { industry: 'Textiles', subtype: 'Fabric Processing', unit: 'm³/tonne of product', consumptionValue: 75, originalConsumption: 75, production: 0 },
+  { industry: 'Iron & Steel', subtype: 'Integrated (Woollen)', unit: 'm³/tonne of product', consumptionValue: 237, originalConsumption: 237, production: 0 },
+  { industry: 'Iron & Steel', subtype: 'General', unit: 'm³/tonne of product', consumptionValue: 6.5, originalConsumption: 6.5, production: 0 },
 ];
 
 interface ChartData {
@@ -91,6 +92,7 @@ interface DemandContextType {
   setIndustrialData: (data: IndustrialSubtype[]) => void;
   setIndustrialGWShare: (value: number) => void;
   updateIndustrialProduction: (industry: string, subtype: string, production: number) => void;
+  updateIndustrialConsumption: (industry: string, subtype: string, value: number) => void;
   setKharifChecked: (checked: boolean) => void;
   setRabiChecked: (checked: boolean) => void;
   setZaidChecked: (checked: boolean) => void;
@@ -141,7 +143,15 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
 
   const { selectedVillages } = useLocation(); // Drain context uses selectedVillages
   const { csvFilename } = useWell();
-
+  const updateIndustrialConsumption = (industry: string, subtype: string, newValue: number) => {
+    setIndustrialData(prevData =>
+      prevData.map(item =>
+        item.industry === industry && item.subtype === subtype
+          ? { ...item, consumptionValue: newValue > 0 ? newValue : item.originalConsumption || item.consumptionValue }
+          : item
+      )
+    );
+  };
   const setDomesticChecked = (checked: boolean) => {
     setDomesticCheckedState(checked);
     if (!checked) {
@@ -649,6 +659,7 @@ export const DemandProvider: React.FC<DemandProviderProps> = ({ children }) => {
     canComputeDomesticDemand,
     canComputeAgriculturalDemand,
     canComputeIndustrialDemand,
+    updateIndustrialConsumption,
   };
 
   return (
