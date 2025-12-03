@@ -3,9 +3,11 @@ from django.db import models
 class GroundWaterData(models.Model):
     blockcode = models.IntegerField()
     SUBDIS_COD = models.IntegerField()
-    vlcode = models.IntegerField(unique=True)  # Unique village code
+
+    vlcode = models.IntegerField() 
+
     village = models.CharField(max_length=255)
-    blockname = models.CharField(max_length=255)
+    blockname = models.CharField(max_length=255, null=True, blank=True) 
 
     Total_Geographical_Area = models.FloatField(null=True, blank=True)
     Recharge_Worthy_Area = models.FloatField(null=True, blank=True)
@@ -28,3 +30,30 @@ class GroundWaterData(models.Model):
 
     def __str__(self):
         return f"{self.village} ({self.vlcode})"
+
+
+
+
+class Village(models.Model):
+    blockcode = models.IntegerField()
+    vlcode = models.IntegerField(unique=True)
+    village = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = "rsq_village"
+
+
+
+
+class Block(models.Model):
+    block = models.CharField(max_length=255)        
+    blockcode = models.IntegerField(unique=True)  
+    district = models.CharField(max_length=255)    
+    districtcode = models.IntegerField()          
+
+    class Meta:
+        db_table = "rsq_block"  
+
+    def __str__(self):
+        return f"{self.block} ({self.blockcode})"
+
