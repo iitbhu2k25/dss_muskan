@@ -100,6 +100,7 @@ const Demand = () => {
     setGroundwaterFactor,
     setIndustrialGWShare,
     updateIndustrialProduction,
+    updateIndustrialConsumption,
     clearChartData,
     setKharifChecked,
     setRabiChecked,
@@ -1383,9 +1384,32 @@ const Demand = () => {
                           {item.subtype}
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {formatConsumptionValue(item)}
-                        </td>
+<td className="px-6 py-4">
+  <div className="flex items-center gap-2">
+    <input
+      type="text"
+      inputMode="decimal"
+      defaultValue={item.consumptionValue}  // ← Change from value to defaultValue
+      onBlur={(e) => {
+        const val = e.target.value.trim();
+        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+          const num = parseFloat(val) || 0;
+          updateIndustrialConsumption(item.industry, item.subtype, num);
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur(); // Trigger blur on Enter
+        }
+      }}
+      className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+      placeholder={item.consumptionValue.toString()}
+    />
+    <span className="text-xs text-gray-500">
+      m³/{getInputLabel(item).replace("MW", "MW").replace("MT", "tonne")}
+    </span>
+  </div>
+</td>
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
