@@ -26,6 +26,7 @@ import { Geometry } from "ol/geom";
 import { bbox as bboxStrategy } from "ol/loadingstrategy";
 import { defaults as defaultControls } from "ol/control";
 import { useLocation } from "./LocationContext";
+import { useRSQ } from "./RsqContext";
 
 const baseMaps = {
   osm: { name: "OpenStreetMap", source: () => new OSM({ crossOrigin: "anonymous" }) },
@@ -60,6 +61,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const districtLayerRef = useRef<VectorLayer<any> | null>(null);
   const blockLayerRef = useRef<VectorLayer<any> | null>(null);
   const villageLayerRef = useRef<VectorLayer<any> | null>(null);
+  const rsqLayerRef = useRef<VectorLayer<any> | null>(null);
   const hoverOverlayRef = useRef<Overlay | null>(null);
   const highlightLayerRef = useRef<VectorLayer<any> | null>(null);
 
@@ -72,6 +74,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const { selectedState, selectedDistricts, selectedBlocks, selectedVillages } =
     useLocation();
+  const { groundWaterData } = useRSQ();
 
   const toggleLabels = () => setShowLabels((v) => !v);
 
@@ -80,6 +83,17 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       mapRef.current.removeLayer(ref.current);
       ref.current = null;
     }
+  };
+
+  // RSQ Category Colors
+  const getCategoryColor = (category: string): string => {
+    const colors: { [key: string]: string } = {
+      "Safe": "rgba(34, 197, 94, 0.6)",
+      "Semi-Critical": "rgba(234, 179, 8, 0.6)",
+      "Critical": "rgba(249, 115, 22, 0.6)",
+      "Over-Exploited": "rgba(239, 68, 68, 0.6)",
+    };
+    return colors[category] || "rgba(156, 163, 175, 0.6)";
   };
 
   // Styles
@@ -92,8 +106,8 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const labelStyle = (feature: any, base: Style, props: string[], font = "12px") =>
     showLabels
       ? new Style({
-          ...base.getStroke(),
-          ...base.getFill(),
+          stroke: base.getStroke(),
+          fill: base.getFill(),
           text: new Text({
             text: props.map((p) => feature.get(p)).find(Boolean) || "",
             font: `600 ${font} sans-serif`,
@@ -118,6 +132,33 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const makeDistrictStyle = (f: any) => labelStyle(f, districtBase, ["district_name", "DISTRICT_N", "DISTRICT_C"]);
   const makeBlockStyle = (f: any) => labelStyle(f, blockBase, ["block_name", "BLOCK_NAME", "block"]);
   const makeVillageStyle = (f: any) => labelStyle(f, villageBase, ["village_name", "VILL_NAME", "vlcode", "village"], "10px");
+
+  // RSQ Style Function
+  const makeRSQStyle = (feature: any) => {
+    const category = feature.get("CATEGORY") || "Unknown";
+    const fillColor = getCategoryColor(category);
+    const gwStage = feature.get("GW_STAGE") || 0;
+    
+    const style = new Style({
+      stroke: new Stroke({ color: "rgba(0, 0, 0, 0.8)", width: 1.5 }),
+      fill: new Fill({ color: fillColor }),
+    });
+
+    if (showLabels) {
+      const village = feature.get("village") || feature.get("vlcode");
+      style.setText(
+        new Text({
+          text: `${village}\n${gwStage.toFixed(1)}%`,
+          font: "600 10px sans-serif",
+          fill: new Fill({ color: "#1f2937" }),
+          stroke: new Stroke({ color: "white", width: 3 }),
+          overflow: true,
+        })
+      );
+    }
+
+    return style;
+  };
 
   // Base map change
   const changeBaseMap = (key: string) => {
@@ -206,9 +247,16 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             props.district_name ||
             props.state_name ||
             "";
+          
+          // Show additional RSQ info on hover
+          let displayText = name;
+          if (props.CATEGORY) {
+            displayText += `\n${props.CATEGORY} (${props.GW_STAGE?.toFixed(1)}%)`;
+          }
+          
           if (name) {
             hs.addFeature(f.clone() as Feature<Geometry>);
-            hoverEl.textContent = name;
+            hoverEl.innerHTML = displayText.replace('\n', '<br>');
             overlay.setPosition(e.coordinate);
             found = true;
             map.getTargetElement()!.style.cursor = "pointer";
@@ -229,7 +277,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // State layer
   useEffect(() => {
     if (!mapRef.current || !selectedState) {
-      [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef].forEach(removeLayer);
+      [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef, rsqLayerRef].forEach(removeLayer);
       return;
     }
     removeLayer(stateLayerRef);
@@ -254,10 +302,10 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // District layer
   useEffect(() => {
     if (!mapRef.current || selectedDistricts.length === 0) {
-      [districtLayerRef, blockLayerRef, villageLayerRef].forEach(removeLayer);
+      [districtLayerRef, blockLayerRef, villageLayerRef, rsqLayerRef].forEach(removeLayer);
       return;
     }
-    removeLayer(stateLayerRef); // Remove state when district loads
+    removeLayer(stateLayerRef);
     removeLayer(districtLayerRef);
     const cql = `DISTRICT_C IN (${selectedDistricts.join(",")})`;
     const url = `http://localhost:9090/geoserver/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:B_district&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cql)}`;
@@ -280,11 +328,11 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Block layer
   useEffect(() => {
     if (!mapRef.current || selectedBlocks.length === 0) {
-      [blockLayerRef, villageLayerRef].forEach(removeLayer);
+      [blockLayerRef, villageLayerRef, rsqLayerRef].forEach(removeLayer);
       return;
     }
-    removeLayer(stateLayerRef); // Remove state when block loads
-    removeLayer(districtLayerRef); // Remove district when block loads
+    removeLayer(stateLayerRef);
+    removeLayer(districtLayerRef);
     removeLayer(blockLayerRef);
     const cql = `Block_LG00 IN (${selectedBlocks.join(",")})`;
     const url = `http://localhost:9090/geoserver/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:block&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cql)}`;
@@ -304,15 +352,15 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [selectedBlocks]);
 
-  // Village layer - FINAL WORKING
+  // Village layer
   useEffect(() => {
     if (!mapRef.current || selectedVillages.length === 0) {
       removeLayer(villageLayerRef);
       return;
     }
-    removeLayer(stateLayerRef); // Remove state when village loads
-    removeLayer(districtLayerRef); // Remove district when village loads
-    removeLayer(blockLayerRef); // Remove block when village loads
+    removeLayer(stateLayerRef);
+    removeLayer(districtLayerRef);
+    removeLayer(blockLayerRef);
     removeLayer(villageLayerRef);
 
     const codes = selectedVillages.map((c) => `'${c}'`).join(",");
@@ -344,9 +392,52 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [selectedVillages]);
 
+  // RSQ Layer - RENDER GROUNDWATER DATA
+  useEffect(() => {
+    if (!mapRef.current || !groundWaterData) {
+      removeLayer(rsqLayerRef);
+      return;
+    }
+
+    console.log('🗺️ Rendering RSQ layer with features:', groundWaterData.features.length);
+
+    // Remove previous layers when RSQ data loads
+    removeLayer(stateLayerRef);
+    removeLayer(districtLayerRef);
+    removeLayer(blockLayerRef);
+    removeLayer(villageLayerRef);
+    removeLayer(rsqLayerRef);
+
+    const source = new VectorSource({
+      features: new GeoJSON().readFeatures(groundWaterData, {
+        featureProjection: "EPSG:3857",
+      }),
+    });
+
+    const layer = new VectorLayer({
+      source,
+      style: makeRSQStyle,
+      zIndex: 15,
+    });
+
+    layer.set("name", "rsq-layer");
+    rsqLayerRef.current = layer;
+    mapRef.current.addLayer(layer);
+
+    // Fit to RSQ data extent
+    const extent = source.getExtent();
+    if (extent[0] < extent[2]) {
+      mapRef.current.getView().fit(extent, {
+        duration: 1000,
+        padding: [60, 60, 60, 60],
+        maxZoom: 14,
+      });
+    }
+  }, [groundWaterData, showLabels]);
+
   // Label toggle refresh
   useEffect(() => {
-    [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef].forEach((ref) => {
+    [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef, rsqLayerRef].forEach((ref) => {
       ref.current?.changed();
     });
   }, [showLabels]);
