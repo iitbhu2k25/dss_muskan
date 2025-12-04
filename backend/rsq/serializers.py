@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Block, Village
+from .models import Block, Village, GroundWaterData
 
 
 class BlockSerializer(serializers.ModelSerializer):
@@ -12,3 +12,9 @@ class VillageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Village
         fields = ['vlcode', 'village']
+
+
+class GroundWaterDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroundWaterData
+        fields = "__all__"

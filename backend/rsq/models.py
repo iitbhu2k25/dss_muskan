@@ -1,13 +1,15 @@
 from django.db import models
 
 class GroundWaterData(models.Model):
+    srno = models.BigAutoField(primary_key=True)  
+
     blockcode = models.IntegerField()
     SUBDIS_COD = models.IntegerField()
 
-    vlcode = models.IntegerField() 
+    vlcode = models.IntegerField()   
 
     village = models.CharField(max_length=255)
-    blockname = models.CharField(max_length=255, null=True, blank=True) 
+    blockname = models.CharField(max_length=255, null=True, blank=True)
 
     Total_Geographical_Area = models.FloatField(null=True, blank=True)
     Recharge_Worthy_Area = models.FloatField(null=True, blank=True)
@@ -29,9 +31,7 @@ class GroundWaterData(models.Model):
     Year = models.CharField(max_length=50)
 
     def __str__(self):
-        return f"{self.village} ({self.vlcode})"
-
-
+        return f"{self.SrNo} - {self.village} ({self.vlcode})"
 
 
 class Village(models.Model):
