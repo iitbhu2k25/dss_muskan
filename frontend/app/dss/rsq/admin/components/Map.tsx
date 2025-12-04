@@ -58,7 +58,7 @@ const Map: React.FC = () => {
         {/* Map Container */}
         <div
           ref={mapRef}
-          className="w-full h-[600px] bg-gray-100"
+          className="w-full h-[1000px] bg-gray-100"
           style={{ minHeight: '600px' }}
         />
 
@@ -96,8 +96,9 @@ const Map: React.FC = () => {
 
           /* Zoom controls styling */
           .ol-zoom {
-            top: auto !important;
-            bottom: 520px !important;
+            
+            top: 8px !important;
+            
             left: 14px !important;
             right: auto !important;
           }

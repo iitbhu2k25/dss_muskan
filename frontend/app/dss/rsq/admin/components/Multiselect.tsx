@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 interface MultiSelectItem {
-  id: number;
+  id: number | string;
   name: string;
   __isUnavailable?: boolean;
   __itemClass?: string;
@@ -12,8 +12,8 @@ interface MultiSelectItem {
 
 interface MultiSelectProps {
   items: MultiSelectItem[];
-  selectedItems: number[];
-  onSelectionChange: (selectedIds: number[]) => void;
+  selectedItems: (number | string)[];
+  onSelectionChange: (selectedIds: (number | string)[]) => void;
   label: string;
   placeholder: string;
   disabled?: boolean;
@@ -41,24 +41,30 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const allItemIds = items.map((i) => Number(i.id));
-  const allSelected = items.length > 0 && selectedItems.length === items.length;
-
   const savedScrollTop = useRef(0);
 
-  // ---------- FILTER ----------
+  // ---------- CORE LOGIC - FIXED ----------
+  // Get all selectable item IDs (not disabled)
+  const allSelectableItemIds = items
+    .filter(item => !(itemDisabled && itemDisabled(item)))
+    .map(item => item.id);
+
+  // Check if ALL selectable items are selected
+  const allSelectableSelected = allSelectableItemIds.length > 0 && 
+    allSelectableItemIds.every(id => selectedItems.includes(id));
+
+  // Filtered items
   const filteredItems = items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (item) => item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get IDs of selectable filtered items (not disabled)
+  // Get selectable filtered item IDs
   const selectableFilteredIds = filteredItems
     .filter(item => !(itemDisabled && itemDisabled(item)))
-    .map(item => Number(item.id));
+    .map(item => item.id);
 
-  // Check if all selectable filtered items are selected
-  const allFilteredSelected = selectableFilteredIds.length > 0 && 
+  // Check if ALL selectable filtered items are selected
+  const allFilteredSelectableSelected = selectableFilteredIds.length > 0 && 
     selectableFilteredIds.every(id => selectedItems.includes(id));
 
   // ---------- POSITION ----------
@@ -100,26 +106,34 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     if (!isOpen) calculateDropdownPosition();
   };
 
-  // ---------- SELECT ALL ----------
+  // ---------- FIXED SELECT ALL ----------
   const handleSelectAll = () => {
-    if (searchQuery) {
-      // When searching, toggle only the filtered selectable items
-      if (allFilteredSelected) {
-        // Deselect all filtered items
-        onSelectionChange(selectedItems.filter(id => !selectableFilteredIds.includes(id)));
+    if (searchQuery && filteredItems.length > 0) {
+      // When searching: toggle ALL selectable filtered items
+      if (allFilteredSelectableSelected) {
+        // Deselect all filtered selectable items (keep others)
+        const newSelection = selectedItems.filter(id => !selectableFilteredIds.includes(id));
+        onSelectionChange(newSelection);
       } else {
-        // Select all filtered items (add them to existing selection)
+        // Select all filtered selectable items (add to existing)
         const newSelection = [...new Set([...selectedItems, ...selectableFilteredIds])];
         onSelectionChange(newSelection);
       }
     } else {
-      // When not searching, toggle all items
-      onSelectionChange(allSelected ? [] : [...allItemIds]);
+      // No search: toggle ALL selectable items
+      if (allSelectableSelected) {
+        // Deselect all selectable items (keep disabled ones if somehow selected)
+        const newSelection = selectedItems.filter(id => !allSelectableItemIds.includes(id));
+        onSelectionChange(newSelection);
+      } else {
+        // Select all selectable items
+        onSelectionChange([...new Set([...selectedItems, ...allSelectableItemIds])]);
+      }
     }
   };
 
   // ---------- ITEM SELECT ----------
-  const handleItemSelect = (id: number) => {
+  const handleItemSelect = (id: number | string) => {
     if (selectedItems.includes(id)) {
       onSelectionChange(selectedItems.filter((x) => x !== id));
     } else {
@@ -130,11 +144,20 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   // ---------- DISPLAY TEXT ----------
   const getDisplayText = () => {
     if (selectedItems.length === 0) return placeholder;
-    if (allSelected) return `All ${label}s`;
+    
+    const selectableSelectedCount = selectedItems.filter(id => 
+      allSelectableItemIds.includes(id)
+    ).length;
+    
+    if (allSelectableSelected && selectableSelectedCount === allSelectableItemIds.length) {
+      return `All ${label}s`;
+    }
+    
     if (selectedItems.length === 1) {
       const it = items.find((i) => i.id === selectedItems[0]);
       return it ? it.name : placeholder;
     }
+    
     return `${selectedItems.length} ${label}s selected`;
   };
 
@@ -220,22 +243,27 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
           {/* LIST – scrollable */}
           <div ref={dropdownRef} className="max-h-60 overflow-y-auto" onScroll={onScroll}>
-            {/* SELECT ALL */}
+            {/* SELECT ALL - FIXED */}
             <div
               className={`p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-200 font-medium transition-colors ${
-                (searchQuery ? allFilteredSelected : allSelected) ? 'bg-blue-100 border-blue-200' : ''
+                (searchQuery ? allFilteredSelectableSelected : allSelectableSelected) 
+                  ? 'bg-blue-100 border-blue-200' 
+                  : ''
               }`}
               onClick={handleSelectAll}
             >
               <input 
                 type="checkbox" 
-                checked={searchQuery ? allFilteredSelected : allSelected} 
+                checked={searchQuery ? allFilteredSelectableSelected : allSelectableSelected} 
                 onChange={handleSelectAll} 
                 className="mr-3 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 onClick={(e) => e.stopPropagation()}
               />
               <span className="align-middle">
-                {searchQuery ? `All Filtered (${filteredItems.length})` : `All ${label}s (${items.length})`}
+                {searchQuery 
+                  ? `All Filtered (${selectableFilteredIds.length})` 
+                  : `All ${label}s (${allSelectableItemIds.length})`
+                }
               </span>
             </div>
 
@@ -248,13 +276,13 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
             {/* ITEMS */}
             {filteredItems.map((item) => {
-              const id = Number(item.id);
+              const id = item.id;
               const isDisabled = itemDisabled ? itemDisabled(item) : false;
               const extraClass = itemClassName ? itemClassName(item) : '';
 
               return (
                 <div
-                  key={item.id}
+                  key={String(id)}
                   className={`
                     p-3 cursor-pointer transition-all duration-150 border-b border-gray-50 last:border-b-0
                     ${selectedItems.includes(id) ? 'bg-blue-50 border-l-4 border-blue-400' : 'hover:bg-blue-50'}

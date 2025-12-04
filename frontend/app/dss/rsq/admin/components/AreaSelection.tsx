@@ -17,114 +17,109 @@ const AreaSelection: React.FC<AreaSelectionProps> = ({ onAreaConfirmed }) => {
     selectedState,
     selectedDistricts,
     selectedBlocks,
+    selectedVillages,           // From Context
     isLoading,
     error,
     handleStateChange,
     setSelectedDistricts,
     setSelectedBlocks,
+    setSelectedVillages,        // From Context - THIS WAS MISSING!
     resetSelections,
   } = useLocation();
 
-  // ✅ LOCAL CONFIRM STATE
   const [areaConfirmed, setAreaConfirmed] = useState(false);
   const selectionsLocked = areaConfirmed;
 
-  // ✅ LOCAL VILLAGE STATE
-  const [selectedVillages, setSelectedVillages] = useState<number[]>([]);
-
-  // ✅ SORT STATES (ID 9 FIRST)
+  // Sort states - State ID 9 first
   const sortedStates = useMemo(() => {
     const copy = [...states];
-    const index = copy.findIndex((s) => Number(s.id) === 9);
-    if (index !== -1) {
-      const [target] = copy.splice(index, 1);
-      return [target, ...copy];
+    const idx = copy.findIndex((s) => Number(s.id) === 9);
+    if (idx !== -1) {
+      const [state9] = copy.splice(idx, 1);
+      copy.unshift(state9);
     }
     return copy;
   }, [states]);
 
   const allowedDistrictIds = [179, 152, 120, 174, 187];
 
-  const isStateSelectable = (stateId: string | number): boolean => {
-    return Number(stateId) === 9;
-  };
+  const isStateSelectable = (id: string | number): boolean => Number(id) === 9;
 
-  const handleStateSelect = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+  const handleStateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (selectionsLocked) return;
-    const stateId = parseInt(e.target.value);
-    if (stateId === 9 || e.target.value === "") {
-      handleStateChange(stateId);
-      setSelectedVillages([]);
+    const value = e.target.value;
+    if (value === "" || Number(value) === 9) {
+      handleStateChange(value as string);
     }
   };
 
-  // ✅ DISTRICT SORTING + DISABLED
+  // Enhanced districts with availability
   const sortedEnhancedDistricts = useMemo(() => {
-    const available: any[] = [];
-    const unavailable: any[] = [];
-
-    districts.forEach((district) => {
-      const id = Number(district.id);
-      const isAllowed = allowedDistrictIds.includes(id);
-
-      const enhanced = {
-        ...district,
-        name: `${district.name}${!isAllowed ? " (Not Available)" : ""}`,
-        __isUnavailable: !isAllowed,
-        __itemClass: !isAllowed ? "text-gray-400" : "",
+    return districts.map((d) => {
+      const id = Number(d.id);
+      const allowed = allowedDistrictIds.includes(id);
+      return {
+        ...d,
+        name: allowed ? d.name : `${d.name} (Not Available)`,
+        disabled: !allowed,
+        className: !allowed ? "text-gray-400 italic" : "",
       };
-
-      isAllowed ? available.push(enhanced) : unavailable.push(enhanced);
     });
-
-    return [...available, ...unavailable];
   }, [districts]);
 
-  const handleDistrictsChange = (ids: number[]) => {
+  const handleDistrictsChange = (ids: (string | number)[]) => {
     if (selectionsLocked) return;
-    const validIds = ids.filter((id) => allowedDistrictIds.includes(id));
-    setSelectedDistricts(validIds);
+    const valid = ids
+      .map(String)
+      .filter((id) => allowedDistrictIds.includes(Number(id)));
+    setSelectedDistricts(valid);
   };
 
-  const handleBlocksChange = (ids: number[]) => {
+  const handleBlocksChange = (ids: (string | number)[]) => {
     if (selectionsLocked) return;
-    setSelectedBlocks(ids);
-    if (ids.length === 0) setSelectedVillages([]);
+    setSelectedBlocks(ids.map(String));
   };
 
-  const handleVillagesChange = (ids: number[]) => {
+  const handleVillagesChange = (ids: (string | number)[]) => {
     if (selectionsLocked) return;
-    setSelectedVillages(ids);
+    const stringIds = ids.map(String);
+    console.log("Villages selected → Map will now load:", stringIds);
+    setSelectedVillages(stringIds); // This triggers village layer instantly
   };
 
-  const handleConfirmSelection = () => {
+  const handleConfirm = () => {
     setAreaConfirmed(true);
-    if (onAreaConfirmed) onAreaConfirmed();
+    onAreaConfirmed?.();
+  };
+
+  const handleReset = () => {
+    resetSelections();
+    setAreaConfirmed(false);
   };
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       {error && (
-        <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+          {error}
+        </div>
       )}
 
-      <h2 className="text-xl font-bold text-gray-800 mb-4">
-        Area Selection
-      </h2>
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Area Selection</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-        {/* ✅ STATE */}
+        {/* State */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             State:
           </label>
           <select
-            className="w-full p-2 text-sm border border-blue-500 rounded-md"
+            className="w-full p-2 text-sm border border-blue-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedState || ""}
             onChange={handleStateSelect}
             disabled={isLoading || selectionsLocked}
           >
-            <option value="">--Choose a State--</option>
+            <option value="">-- Choose a State --</option>
             {sortedStates.map((state) => (
               <option
                 key={state.id}
@@ -132,68 +127,70 @@ const AreaSelection: React.FC<AreaSelectionProps> = ({ onAreaConfirmed }) => {
                 disabled={!isStateSelectable(state.id)}
               >
                 {state.name}
+                {!isStateSelectable(state.id) && " (Coming Soon)"}
               </option>
             ))}
           </select>
         </div>
 
-        {/* ✅ DISTRICT */}
+        {/* District */}
         <MultiSelect
           items={sortedEnhancedDistricts}
           selectedItems={selectedDistricts}
           onSelectionChange={handleDistrictsChange}
           label="District"
-          placeholder="--Choose Districts--"
+          placeholder="-- Choose Districts --"
           disabled={!selectedState || isLoading || selectionsLocked}
-          itemClassName={(item: any) => item.__itemClass}
-          itemDisabled={(item: any) => item.__isUnavailable}
+          itemDisabled={(item: any) => item.disabled}
+          itemClassName={(item: any) => item.className}
         />
 
-        {/* ✅ BLOCK */}
+        {/* Block */}
         <MultiSelect
           items={blocks}
           selectedItems={selectedBlocks}
           onSelectionChange={handleBlocksChange}
           label="Block"
-          placeholder="--Choose Blocks--"
+          placeholder="-- Choose Blocks --"
           disabled={selectedDistricts.length === 0 || isLoading || selectionsLocked}
         />
       </div>
 
-      {/* ✅ VILLAGES */}
+      {/* Villages */}
       <MultiSelect
         items={villages}
         selectedItems={selectedVillages}
         onSelectionChange={handleVillagesChange}
         label="Village"
-        placeholder="--Choose Villages--"
+        placeholder="-- Choose Villages --"
         disabled={selectedBlocks.length === 0 || isLoading || selectionsLocked}
       />
 
-      
-
-      {/* ✅ BUTTONS */}
+      {/* Buttons */}
       <div className="flex justify-end gap-4 mt-6">
         {selectedVillages.length > 0 && !areaConfirmed && (
           <button
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
-            onClick={handleConfirmSelection}
+            onClick={handleConfirm}
+            className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded transition"
           >
-            Confirm Selection
+            Confirm Selection ({selectedVillages.length})
           </button>
         )}
 
         <button
-          className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded"
-          onClick={() => {
-            resetSelections();
-            setSelectedVillages([]);
-            setAreaConfirmed(false);
-          }}
+          onClick={handleReset}
+          className="bg-red-500 hover:bg-red-600 text-white font-medium px-6 py-2 rounded transition"
         >
           Reset Selection
         </button>
       </div>
+
+      {/* Optional Debug
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-4 text-xs font-mono text-gray-500">
+          Villages in context: [{selectedVillages.join(", ")}]
+        </div>
+      )} */}
     </div>
   );
 };

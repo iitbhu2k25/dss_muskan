@@ -1,4 +1,3 @@
-/// frontend/app/dss/rsq/admin/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -73,26 +72,23 @@ function RSQAssessmentContent() {
     </div>
   );
 
-  /* ================= RIGHT PANEL (MAP) ================= */
+  /* ================= RIGHT PANEL (✅ MAP ONLY – NO BACKGROUND) ================= */
 
   const rightPanel = (
-    <div className="flex flex-col h-full">
-      <div className="flex-grow bg-white mr-2 sm:mr-3 mx-2 lg:mx-0 my-2 rounded-lg shadow-md overflow-hidden min-h-[400px] lg:min-h-0 relative">
-        {/* Map Header */}
-        <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b border-gray-200 px-2 sm:px-4 py-2 sm:py-3">
-          <div className="flex items-center justify-between">
-            
-            <button
-              onClick={() => setIsMobileMapVisible(false)}
-              className="lg:hidden p-1 text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+    <div className="flex flex-col h-500px w-full">
+      {/* ✅ PURE MAP CONTAINER — NO bg, NO shadow, NO rounded */}
+      <div className="flex-grow w-full h-full overflow-hidden relative">
 
-        {/* Map Content */}
-        <div className="w-full h-full pt-10 sm:pt-13">
+        {/* ✅ Floating Close Button for Mobile */}
+        <button
+          onClick={() => setIsMobileMapVisible(false)}
+          className="lg:hidden absolute top-3 right-3 z-50 bg-black/60 text-white px-3 py-1 rounded-md"
+        >
+          ✕
+        </button>
+
+        {/* ✅ MAP ONLY */}
+        <div className="w-full h-full mt-2 ">
           <Map />
         </div>
       </div>
@@ -102,7 +98,7 @@ function RSQAssessmentContent() {
   /* ================= RENDER ================= */
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
+    <div className="flex flex-col h-screen overflow-hidden bg-transparent">
       {/* ================= MOBILE MAP TOGGLE ================= */}
       <div className="flex-shrink-0 lg:hidden mx-2 sm:mx-3 mt-2">
         <button

@@ -11,26 +11,26 @@ import React, {
 /* ================= TYPES ================= */
 
 export interface State {
-  id: string;  // ✅ Changed to string with padding
+  id: string;
   name: string;
 }
 
 export interface District {
-  id: string;  // ✅ Changed to string with padding
+  id: string;
   name: string;
-  stateId: string;  // ✅ Changed to string
+  stateId: string;
 }
 
 export interface Block {
-  id: string;  // ✅ Changed to string with padding
+  id: string;
   name: string;
-  districtCode: string;  // ✅ Changed to string
+  districtCode: string;
 }
 
 export interface Village {
-  id: string;  // ✅ Changed to string with padding (6 digits for vlcode)
+  id: string;
   name: string;
-  blockCode: string;  // ✅ Changed to string
+  blockCode: string;
 }
 
 interface LocationContextType {
@@ -39,10 +39,10 @@ interface LocationContextType {
   blocks: Block[];
   villages: Village[];
 
-  selectedState: string | null;  // ✅ Changed to string
-  selectedDistricts: string[];   // ✅ Changed to string[]
-  selectedBlocks: string[];      // ✅ Changed to string[]
-  selectedVillages: string[];    // ✅ Changed to string[]
+  selectedState: string | null;
+  selectedDistricts: string[];
+  selectedBlocks: string[];
+  selectedVillages: string[];
 
   isLoading: boolean;
   error: string | null;
@@ -107,12 +107,14 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
         const data = await response.json();
 
         const formatted: State[] = data.map((s: any) => ({
-          id: String(s.state_code).padStart(2, '0'),  // ✅ Pad to 2 digits
+          id: String(s.state_code).padStart(2, '0'),
           name: s.state_name,
         }));
 
+        console.log('🌟 States loaded:', formatted.length);
         setStates(formatted);
-      } catch {
+      } catch (err) {
+        console.error('❌ States fetch failed:', err);
         setError("Failed to fetch states");
       } finally {
         setIsLoading(false);
@@ -125,7 +127,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   /* ================= FETCH DISTRICTS ================= */
 
   useEffect(() => {
+    console.log('🔄 Districts useEffect triggered:', { selectedState });
+    
     if (!selectedState) {
+      console.log('❌ No selectedState, clearing districts');
       setDistricts([]);
       setSelectedDistrictsState([]);
       setBlocks([]);
@@ -138,6 +143,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     const fetchDistricts = async () => {
       setIsLoading(true);
       try {
+        console.log('📤 Fetching districts for state:', selectedState);
         const response = await fetch("/django/district/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -145,15 +151,16 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
         });
 
         const data = await response.json();
-
         const formatted: District[] = data.map((d: any) => ({
-          id: String(d.district_code).padStart(3, '0'),  // ✅ Pad to 3 digits
+          id: String(d.district_code).padStart(3, '0'),
           name: d.district_name,
           stateId: selectedState,
         }));
 
+        console.log('🌟 Districts loaded:', formatted.length);
         setDistricts(formatted);
-      } catch {
+      } catch (err) {
+        console.error('❌ Districts fetch failed:', err);
         setError("Failed to fetch districts");
       } finally {
         setIsLoading(false);
@@ -166,7 +173,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   /* ================= FETCH BLOCKS (MULTI DISTRICT) ================= */
 
   useEffect(() => {
+    console.log('🔄 Blocks useEffect triggered:', { selectedDistricts: selectedDistricts.length });
+    
     if (selectedDistricts.length === 0) {
+      console.log('❌ No selectedDistricts, clearing blocks');
       setBlocks([]);
       setVillages([]);
       setSelectedBlocksState([]);
@@ -177,6 +187,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     const fetchBlocks = async () => {
       setIsLoading(true);
       try {
+        console.log('📤 Fetching blocks for districts:', selectedDistricts);
         const response = await fetch("/django/rsq/getblocks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -186,18 +197,19 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
         });
 
         const data = await response.json();
-
         const formatted: Block[] = data.map((b: any) => ({
-          id: String(b.blockcode).padStart(4, '0'),  // ✅ Pad to 4 digits
+          id: String(b.blockcode).padStart(4, '0'),
           name: b.block,
           districtCode: String(b.districtcode).padStart(3, '0'),
         }));
 
+        console.log('🌟 Blocks loaded:', formatted.length);
         setBlocks(formatted);
         setVillages([]);
         setSelectedBlocksState([]);
         setSelectedVillagesState([]);
-      } catch {
+      } catch (err) {
+        console.error('❌ Blocks fetch failed:', err);
         setError("Failed to fetch blocks");
       } finally {
         setIsLoading(false);
@@ -210,7 +222,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   /* ================= FETCH VILLAGES (MULTI BLOCK) ================= */
 
   useEffect(() => {
+    console.log('🔄 Villages useEffect triggered:', { selectedBlocks: selectedBlocks.length });
+    
     if (selectedBlocks.length === 0) {
+      console.log('❌ No selectedBlocks, clearing villages');
       setVillages([]);
       setSelectedVillagesState([]);
       return;
@@ -219,6 +234,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     const fetchVillages = async () => {
       setIsLoading(true);
       try {
+        console.log('📤 Fetching villages for blocks:', selectedBlocks);
         const response = await fetch("/django/rsq/getvillages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -228,16 +244,17 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
         });
 
         const data = await response.json();
-
         const formatted: Village[] = data.map((v: any) => ({
-          id: String(v.vlcode).padStart(6, '0'),  // ✅ Pad to 6 digits for village codes
+          id: String(v.vlcode).padStart(6, '0'),
           name: v.village,
           blockCode: String(v.blockcode).padStart(4, '0'),
         }));
 
+        console.log('🌟 Villages loaded:', formatted.length, 'first few:', formatted.slice(0, 3));
         setVillages(formatted);
         setSelectedVillagesState([]);
-      } catch {
+      } catch (err) {
+        console.error('❌ Villages fetch failed:', err);
         setError("Failed to fetch villages");
       } finally {
         setIsLoading(false);
@@ -250,6 +267,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   /* ================= HANDLERS ================= */
 
   const handleStateChange = (stateId: string) => {
+    console.log('🏠 State changed to:', stateId);
     setSelectedState(stateId);
     setSelectedDistrictsState([]);
     setSelectedBlocksState([]);
@@ -259,6 +277,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   };
 
   const updateSelectedDistricts = (districtIds: string[]) => {
+    console.log('🏢 Districts selected:', districtIds);
     setSelectedDistrictsState(districtIds);
     setSelectedBlocksState([]);
     setSelectedVillagesState([]);
@@ -267,16 +286,19 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   };
 
   const updateSelectedBlocks = (blockIds: string[]) => {
+    console.log('🏭 Blocks selected:', blockIds);
     setSelectedBlocksState(blockIds);
     setSelectedVillagesState([]);
     setVillages([]);
   };
 
   const updateSelectedVillages = (villageIds: string[]) => {
+    console.log('🚀 🏘️ VILLAGES SELECTED:', villageIds, 'Previous:', selectedVillages);
     setSelectedVillagesState(villageIds);
   };
 
   const resetSelections = () => {
+    console.log('🔄 Reset all selections');
     setSelectedState(null);
     setSelectedDistrictsState([]);
     setSelectedBlocksState([]);
@@ -305,6 +327,17 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     setSelectedVillages: updateSelectedVillages,
     resetSelections,
   };
+
+  // ✅ DEBUG: Log context state changes
+  useEffect(() => {
+    console.log('📊 LocationContext State:', {
+      selectedState,
+      selectedDistricts: selectedDistricts.length,
+      selectedBlocks: selectedBlocks.length,
+      selectedVillages: selectedVillages.length,
+      totalVillages: villages.length
+    });
+  }, [selectedState, selectedDistricts, selectedBlocks, selectedVillages, villages.length]);
 
   return (
     <LocationContext.Provider value={contextValue}>
