@@ -85,15 +85,19 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // RSQ Category Colors
-  const getCategoryColor = (category: string): string => {
-    const colors: { [key: string]: string } = {
-      "Safe": "rgba(34, 197, 94, 0.6)",
-      "Semi-Critical": "rgba(234, 179, 8, 0.6)",
-      "Critical": "rgba(249, 115, 22, 0.6)",
-      "Over-Exploited": "rgba(239, 68, 68, 0.6)",
-    };
-    return colors[category] || "rgba(156, 163, 175, 0.6)";
+  // RSQ Category Colors based on Stage of Ground Water Extraction
+  const getStageColor = (stage: number): string => {
+    if (stage <= 70) return "rgba(34, 197, 94, 0.7)"; // Safe - Green
+    if (stage <= 90) return "rgba(250, 204, 21, 0.7)"; // Semi-Critical - Yellow
+    if (stage <= 100) return "rgba(251, 146, 60, 0.7)"; // Critical - Orange
+    return "rgba(239, 68, 68, 0.7)"; // Over-Exploited - Red
+  };
+
+  const getStageCategory = (stage: number): string => {
+    if (stage <= 70) return "Safe";
+    if (stage <= 90) return "Semi-Critical";
+    if (stage <= 100) return "Critical";
+    return "Over-Exploited";
   };
 
   // Styles
@@ -106,8 +110,9 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const labelStyle = (feature: any, base: Style, props: string[], font = "12px") =>
     showLabels
       ? new Style({
-          stroke: base.getStroke(),
-          fill: base.getFill(),
+        
+          stroke: (base.getStroke() as Stroke | undefined),
+          fill: (base.getFill() as Fill | undefined),
           text: new Text({
             text: props.map((p) => feature.get(p)).find(Boolean) || "",
             font: `600 ${font} sans-serif`,
@@ -133,26 +138,30 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const makeBlockStyle = (f: any) => labelStyle(f, blockBase, ["block_name", "BLOCK_NAME", "block"]);
   const makeVillageStyle = (f: any) => labelStyle(f, villageBase, ["village_name", "VILL_NAME", "vlcode", "village"], "10px");
 
-  // RSQ Style Function
+  // RSQ Style Function - ENHANCED
   const makeRSQStyle = (feature: any) => {
-    const category = feature.get("CATEGORY") || "Unknown";
-    const fillColor = getCategoryColor(category);
-    const gwStage = feature.get("GW_STAGE") || 0;
+    const stage = feature.get("Stage_of_Ground_Water_Extraction") || 0;
+    const fillColor = getStageColor(stage);
     
     const style = new Style({
-      stroke: new Stroke({ color: "rgba(0, 0, 0, 0.8)", width: 1.5 }),
+      stroke: new Stroke({ 
+        color: "rgba(0, 16, 239, 0.99)", 
+        width: 2.5 
+      }),
       fill: new Fill({ color: fillColor }),
     });
 
     if (showLabels) {
-      const village = feature.get("village") || feature.get("vlcode");
+      const village = feature.get("village") || feature.get("vlcode") || "Unknown";
+      const category = getStageCategory(stage);
       style.setText(
         new Text({
-          text: `${village}\n${gwStage.toFixed(1)}%`,
-          font: "600 10px sans-serif",
-          fill: new Fill({ color: "#1f2937" }),
+          text: `${village}\n${stage.toFixed(1)}%\n(${category})`,
+          font: "bold 10px sans-serif",
+          fill: new Fill({ color: "#09f904ff" }),
           stroke: new Stroke({ color: "white", width: 3 }),
           overflow: true,
+          offsetY: 0,
         })
       );
     }
@@ -214,15 +223,26 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Hover
     const hoverEl = document.createElement("div");
     hoverEl.className = "ol-hover-popup";
-    const overlay = new Overlay({ element: hoverEl, positioning: "bottom-center", offset: [0, -10] });
+    hoverEl.style.cssText = `
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #333;
+      padding: 10px 14px;
+      border-radius: 6px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      font-size: 12px;
+      font-weight: 600;
+      max-width: 280px;
+      min-width: 200px;
+    `;
+    const overlay = new Overlay({ element: hoverEl, positioning: "bottom-center", offset: [0, -15] });
     map.addOverlay(overlay);
     hoverOverlayRef.current = overlay;
 
     const highlight = new VectorLayer({
       source: new VectorSource(),
       style: new Style({
-        fill: new Fill({ color: "rgba(59, 130, 246, 0.2)" }),
-        stroke: new Stroke({ color: "#FFD700", width: 3 }),
+        fill: new Fill({ color: "rgba(59, 130, 246, 0.3)" }),
+        stroke: new Stroke({ color: "#FFD700", width: 4 }),
       }),
       zIndex: 999,
     });
@@ -244,19 +264,50 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             props.village ||
             props.VILL_NAME ||
             props.block_name ||
+            props.blockname ||
             props.district_name ||
             props.state_name ||
             "";
           
-          // Show additional RSQ info on hover
-          let displayText = name;
-          if (props.CATEGORY) {
-            displayText += `\n${props.CATEGORY} (${props.GW_STAGE?.toFixed(1)}%)`;
+          // Enhanced RSQ info on hover
+          let displayText = `<strong>${name}</strong>`;
+          if (props.Stage_of_Ground_Water_Extraction !== undefined) {
+            const stage = props.Stage_of_Ground_Water_Extraction;
+            const category = getStageCategory(stage);
+            const categoryColor = stage <= 70 ? '#22c55e' : stage <= 90 ? '#facc15' : stage <= 100 ? '#fb923c' : '#ef4444';
+            
+            displayText = `
+              <div style="line-height: 1.6;">
+                <div style="font-size: 13px; margin-bottom: 6px;"><strong>${name}</strong></div>
+                <div style="padding: 4px 0; border-top: 1px solid #ddd;">
+                  <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                    <span>Stage:</span>
+                    <strong>${stage.toFixed(1)}%</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-top: 2px;">
+                    <span>Category:</span>
+                    <strong style="color: ${categoryColor};">${category}</strong>
+                  </div>
+                  ${props.Total_Extraction ? `
+                    <div style="display: flex; justify-content: space-between; margin-top: 2px;">
+                      <span>Extraction:</span>
+                      <strong>${props.Total_Extraction.toFixed(2)}</strong>
+                    </div>
+                  ` : ''}
+                  ${props.Total_Annual_Ground_Water_Recharge ? `
+                    <div style="display: flex; justify-content: space-between; margin-top: 2px;">
+                      <span>Recharge:</span>
+                      <strong>${props.Total_Annual_Ground_Water_Recharge.toFixed(2)}</strong>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
           }
           
           if (name) {
             hs.addFeature(f.clone() as Feature<Geometry>);
-            hoverEl.innerHTML = displayText.replace('\n', '<br>');
+            hoverEl.innerHTML = displayText;
             overlay.setPosition(e.coordinate);
             found = true;
             map.getTargetElement()!.style.cursor = "pointer";
@@ -392,46 +443,102 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [selectedVillages]);
 
-  // RSQ Layer - RENDER GROUNDWATER DATA
+  // RSQ Layer - FIXED RENDERING
   useEffect(() => {
-    if (!mapRef.current || !groundWaterData) {
-      removeLayer(rsqLayerRef);
+    if (!mapRef.current) return;
+    
+    // Always remove existing RSQ layer first
+    removeLayer(rsqLayerRef);
+    
+    if (!groundWaterData || !groundWaterData.features || groundWaterData.features.length === 0) {
+      console.log('🗺️ No RSQ data to display');
       return;
     }
 
     console.log('🗺️ Rendering RSQ layer with features:', groundWaterData.features.length);
+    
+    if (groundWaterData.features.length > 0) {
+      console.log('🗺️ First feature sample:', {
+        properties: groundWaterData.features[0].properties,
+        geometry: groundWaterData.features[0].geometry,
+        geometryType: groundWaterData.features[0].geometry?.type,
+      });
+    }
 
-    // Remove previous layers when RSQ data loads
+    // Remove other layers when RSQ data loads
     removeLayer(stateLayerRef);
     removeLayer(districtLayerRef);
     removeLayer(blockLayerRef);
     removeLayer(villageLayerRef);
-    removeLayer(rsqLayerRef);
 
-    const source = new VectorSource({
-      features: new GeoJSON().readFeatures(groundWaterData, {
-        featureProjection: "EPSG:3857",
-      }),
-    });
-
-    const layer = new VectorLayer({
-      source,
-      style: makeRSQStyle,
-      zIndex: 15,
-    });
-
-    layer.set("name", "rsq-layer");
-    rsqLayerRef.current = layer;
-    mapRef.current.addLayer(layer);
-
-    // Fit to RSQ data extent
-    const extent = source.getExtent();
-    if (extent[0] < extent[2]) {
-      mapRef.current.getView().fit(extent, {
-        duration: 1000,
-        padding: [60, 60, 60, 60],
-        maxZoom: 14,
+    try {
+      // Create GeoJSON reader with proper projection settings
+      const geojsonFormat = new GeoJSON({
+        dataProjection: 'EPSG:4326', // Input data is in WGS84
+        featureProjection: 'EPSG:3857', // Map uses Web Mercator
       });
+
+      // Read features from the GeoJSON data
+      const features = geojsonFormat.readFeatures(groundWaterData);
+      
+      console.log('🗺️ Parsed features:', features.length);
+      
+      if (features.length === 0) {
+        console.error('🗺️ No features parsed from GeoJSON!');
+        return;
+      }
+
+      // Log first feature details
+      if (features.length > 0) {
+        const firstFeature = features[0];
+        console.log('🗺️ First parsed feature:', {
+          geometry: firstFeature.getGeometry()?.getType(),
+          extent: firstFeature.getGeometry()?.getExtent(),
+          properties: firstFeature.getProperties(),
+          stage: firstFeature.get('Stage_of_Ground_Water_Extraction'),
+        });
+      }
+
+      // Create vector source with features
+      const source = new VectorSource({
+        features: features,
+      });
+
+      // Create the RSQ layer with enhanced styling
+      const layer = new VectorLayer({
+        source,
+        style: makeRSQStyle,
+        zIndex: 15,
+        opacity: 0.85,
+      });
+
+      layer.set("name", "rsq-layer");
+      rsqLayerRef.current = layer;
+      mapRef.current.addLayer(layer);
+
+      console.log('🗺️ RSQ layer added to map');
+
+      // Fit to RSQ data extent
+      const extent = source.getExtent();
+      console.log('🗺️ Source extent:', extent);
+      
+      if (extent && extent[0] !== Infinity && isFinite(extent[0]) && extent[0] < extent[2]) {
+        console.log('🗺️ Fitting map to extent:', extent);
+        mapRef.current.getView().fit(extent, {
+          duration: 1000,
+          padding: [80, 80, 80, 80],
+          maxZoom: 13,
+        });
+      } else {
+        console.warn('🗺️ Invalid extent, cannot fit to view:', extent);
+      }
+
+      // Force map refresh
+      mapRef.current.render();
+      
+    } catch (error) {
+      console.error('🗺️ Error creating RSQ layer:', error);
+      console.error('🗺️ Error details:', error instanceof Error ? error.message : String(error));
     }
   }, [groundWaterData, showLabels]);
 

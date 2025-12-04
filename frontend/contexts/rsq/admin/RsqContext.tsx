@@ -1,4 +1,3 @@
-/// frontend/contexts/rsq/admin/RsqContext.tsx
 "use client";
 
 import React, {
@@ -15,21 +14,26 @@ import { useLocation } from "./LocationContext";
 
 export interface GroundWaterFeature {
   type: "Feature";
+  id?: string;
   properties: {
     vlcode: number;
-    Year: string;
     village: string;
-    blockcode: number;
-    districtcode: number;
-    statecode: number;
-    GWA: number;
-    IRRI: number;
-    DOME: number;
-    INDU: number;
-    ALLOC: number;
-    GWNR: number;
-    GW_STAGE: number;
-    CATEGORY: string;
+    blockname?: string;
+    blockcode?: number;
+    Year: string;
+    Total_Annual_Ground_Water_Recharge?: number;
+    Annual_Extractable_Ground_Water_Resource?: number;
+    Irrigation_Use?: number;
+    Domestic_Use?: number;
+    Industrial_Use?: number | null;
+    Total_Extraction?: number;
+    Net_Ground_Water_Availability_for_future_use?: number;
+    Stage_of_Ground_Water_Extraction?: number;
+    Recharge_from_Rainfall_MON?: number;
+    Recharge_from_Other_Sources_MON?: number;
+    Recharge_from_Rainfall_NM?: number;
+    Recharge_from_Other_Sources_NM?: number;
+    Total_Natural_Discharges?: number;
     [key: string]: any;
   };
   geometry: {
@@ -56,7 +60,7 @@ interface RSQContextType {
 /* ================= CONTEXT ================= */
 
 const RSQContext = createContext<RSQContextType>({
-  selectedYear: "2013 - 14",
+  selectedYear: "2016 - 17",
   setSelectedYear: () => {},
   groundWaterData: null,
   isLoading: false,
@@ -72,7 +76,7 @@ interface RSQProviderProps {
 }
 
 export const RSQProvider: React.FC<RSQProviderProps> = ({ children }) => {
-  const [selectedYear, setSelectedYear] = useState<string>("2016-2017");
+  const [selectedYear, setSelectedYear] = useState<string>("2016 - 17");
   const [groundWaterData, setGroundWaterData] = useState<GroundWaterGeoJSON | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

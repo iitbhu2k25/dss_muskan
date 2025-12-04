@@ -1,7 +1,5 @@
 "use client";
-
 import React, { useState } from "react";
-
 import AreaSelection from "./components/AreaSelection";
 import RSQAnalysis from "./components/rsq";
 import Map from "./components/Map";
@@ -9,155 +7,66 @@ import { LocationProvider, useLocation } from "@/contexts/rsq/admin/LocationCont
 import { MapProvider } from "@/contexts/rsq/admin/MapContext";
 import { RSQProvider } from "@/contexts/rsq/admin/RsqContext";
 
-/* ================= TYPES ================= */
-
-interface Step {
-  id: number;
-  name: string;
-}
-
 /* ================= MAIN CONTENT ================= */
-
 function RSQAssessmentContent() {
-  const [activeStep, setActiveStep] = useState<number>(1);
-  const [isMobileMapVisible, setIsMobileMapVisible] = useState<boolean>(false);
-
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [showLocation, setShowLocation] = useState(false);
+  const [isMobileMapVisible, setIsMobileMapVisible] = useState(false);
   const { selectedBlocks, selectedVillages } = useLocation();
 
-  const steps: Step[] = [
-    { id: 1, name: "Area Selection" },
-    { id: 2, name: "RSQ Analysis" },
-    { id: 3, name: "Final Output" },
-  ];
-
-  const isFirstStep = activeStep === 1;
-  const isLastStep = activeStep === steps.length;
-
-  const handleNext = () => {
-    if (activeStep === 1 && selectedBlocks.length === 0) {
-      alert("Please select State, District, and Block before proceeding.");
-      return;
-    }
-
-    if (activeStep === 2 && selectedVillages.length === 0) {
-      alert("Please select Villages before proceeding.");
-      return;
-    }
-
-    if (!isLastStep) {
-      setActiveStep((prev) => prev + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (!isFirstStep) {
-      setActiveStep((prev) => prev - 1);
-    }
+  // Handle confirmation from AreaSelection component
+  const handleAreaConfirmed = () => {
+    setLocationConfirmed(true);
   };
 
   /* ================= LEFT PANEL ================= */
-
   const leftPanel = (
-    <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 px-3 sm:px-6 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-            RSQ Assessment
-          </h1>
+    <div className="p-4 lg:p-6 h-full flex flex-col">
+      <h1 className="text-2xl font-bold mb-6">RSQ Assessment</h1>
+      
+      {/* Location Section with Toggle */}
+      {(!locationConfirmed || showLocation) && (
+        <div className="mb-6">
+          <AreaSelection onAreaConfirmed={handleAreaConfirmed} />
         </div>
-
-        {/* Step Indicator */}
-        <div className="flex items-center justify-between mb-4">
-          {steps.map((step, idx) => (
-            <React.Fragment key={step.id}>
-              <div className="flex flex-col items-center flex-1">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                    activeStep === step.id
-                      ? "bg-blue-600 text-white"
-                      : activeStep > step.id
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-300 text-gray-600"
-                  }`}
-                >
-                  {activeStep > step.id ? "✓" : step.id}
-                </div>
-                <div className="text-xs mt-1 text-center text-gray-600 hidden sm:block">
-                  {step.name}
-                </div>
-              </div>
-              {idx < steps.length - 1 && (
-                <div
-                  className={`h-1 flex-1 mx-2 ${
-                    activeStep > step.id ? "bg-green-500" : "bg-gray-300"
-                  }`}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-grow overflow-y-auto bg-white mx-2 sm:mx-3 rounded-lg shadow-md min-h-0">
-        <div className="p-3 sm:p-6">
-          {activeStep === 1 && <AreaSelection />}
-          {activeStep === 2 && <RSQAnalysis />}
-          {activeStep === 3 && (
-            <div className="text-center text-gray-700 font-semibold">
-              Final Output & Report (Coming Next)
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Desktop Navigation */}
-      <div className="hidden lg:flex flex-shrink-0 p-4 bg-white border-t border-gray-200 mx-2 sm:mx-3 mb-2 rounded-b-lg shadow-md">
-        <div className="flex gap-2 w-full">
-          <button
-            onClick={handlePrevious}
-            disabled={isFirstStep}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Previous
-          </button>
-          <button
-            onClick={handleNext}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-          >
-            {isLastStep ? "Finish" : "Next"}
-          </button>
-        </div>
-      </div>
+      )}
+      
+      {/* Toggle Location Visibility Button */}
+      {locationConfirmed && (
+        <button
+          onClick={() => setShowLocation(!showLocation)}
+          className="flex items-center gap-2 mb-6 text-blue-600 hover:text-blue-700"
+        >
+          <span className="text-xl">{showLocation ? "👁️" : "👁️‍🗨️"}</span>
+          <span>{showLocation ? "Hide Location" : "Show Location"}</span>
+        </button>
+      )}
+      
+      {/* RSQ Analysis - Only show after location confirmed */}
+      {locationConfirmed && <RSQAnalysis />}
     </div>
   );
 
   /* ================= RIGHT PANEL (MAP) ================= */
-
   const rightPanel = (
-    <div className="flex flex-col h-full w-full">
-      <div className="flex-grow w-full h-full overflow-hidden relative">
-        {/* Floating Close Button for Mobile */}
-        <button
-          onClick={() => setIsMobileMapVisible(false)}
-          className="lg:hidden absolute top-3 right-3 z-50 bg-black/60 text-white px-3 py-1 rounded-md"
-        >
-          ✕
-        </button>
-
-        {/* MAP */}
-        <div className="w-full h-full mt-2">
-          <Map />
-        </div>
-      </div>
+    <div className="relative h-full bg-gray-100">
+      {/* Floating Close Button for Mobile */}
+      <button
+        onClick={() => setIsMobileMapVisible(false)}
+        className="lg:hidden absolute top-3 right-3 z-50 bg-black/60 text-white px-3 py-1 rounded-md"
+      >
+        ✕
+      </button>
+      {/* MAP */}
+      <Map />
     </div>
   );
 
   /* ================= RENDER ================= */
-
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Mobile Map Toggle */}
-      <div className="flex-shrink-0 lg:hidden mx-2 sm:mx-3 mt-2">
+      <div className="lg:hidden p-4">
         <button
           onClick={() => setIsMobileMapVisible(!isMobileMapVisible)}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
@@ -167,35 +76,16 @@ function RSQAssessmentContent() {
       </div>
 
       {/* Main Body */}
-      <div className="flex-1 flex lg:flex-row flex-col overflow-hidden h-full">
+      <div className="flex-1 overflow-hidden">
         {/* Desktop: 50-50 Split */}
-        <div className="hidden lg:flex w-full min-h-0">
-          <div className="w-1/2 border-r border-gray-200">{leftPanel}</div>
-          <div className="w-1/2">{rightPanel}</div>
+        <div className="hidden lg:grid lg:grid-cols-2 h-full">
+          <div className="overflow-y-auto">{leftPanel}</div>
+          <div>{rightPanel}</div>
         </div>
 
         {/* Mobile: Toggle */}
-        <div className="lg:hidden flex-1 min-h-0 overflow-hidden">
+        <div className="lg:hidden h-full overflow-y-auto">
           {isMobileMapVisible ? rightPanel : leftPanel}
-        </div>
-      </div>
-
-      {/* Mobile Navigation */}
-      <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200 lg:hidden">
-        <div className="flex gap-2 max-w-md mx-auto">
-          <button
-            onClick={handlePrevious}
-            disabled={isFirstStep}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Previous
-          </button>
-          <button
-            onClick={handleNext}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-          >
-            {isLastStep ? "Finish" : "Next"}
-          </button>
         </div>
       </div>
     </div>
@@ -203,15 +93,14 @@ function RSQAssessmentContent() {
 }
 
 /* ================= PROVIDER WRAPPER ================= */
-
 export default function RSQAssessmentAdmin() {
   return (
     <LocationProvider>
-      <RSQProvider>
-        <MapProvider>
+      <MapProvider>
+        <RSQProvider>
           <RSQAssessmentContent />
-        </MapProvider>
-      </RSQProvider>
+        </RSQProvider>
+      </MapProvider>
     </LocationProvider>
   );
 }
