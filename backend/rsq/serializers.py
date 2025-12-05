@@ -14,7 +14,8 @@ class VillageSerializer(serializers.ModelSerializer):
         fields = ['vlcode', 'village']
 
 
+
 class GroundWaterDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = GroundWaterData
-        fields = "__all__"
+        fields = "__all__"   # ✅ RETURNS EVERY COLUMN

@@ -4,8 +4,6 @@ import React, {
   createContext,
   useContext,
   useState,
-  useEffect,
-  useCallback,
   ReactNode,
 } from "react";
 import { useLocation } from "./LocationContext";
@@ -21,6 +19,7 @@ export interface GroundWaterFeature {
     blockname?: string;
     blockcode?: number;
     Year: string;
+
     Total_Annual_Ground_Water_Recharge?: number;
     Annual_Extractable_Ground_Water_Resource?: number;
     Irrigation_Use?: number;
@@ -28,12 +27,19 @@ export interface GroundWaterFeature {
     Industrial_Use?: number | null;
     Total_Extraction?: number;
     Net_Ground_Water_Availability_for_future_use?: number;
+
     Stage_of_Ground_Water_Extraction?: number;
+
     Recharge_from_Rainfall_MON?: number;
     Recharge_from_Other_Sources_MON?: number;
     Recharge_from_Rainfall_NM?: number;
     Recharge_from_Other_Sources_NM?: number;
     Total_Natural_Discharges?: number;
+
+    // ✅ FROM BACKEND
+    status?: "Safe" | "Semi-Critical" | "Critical" | "Over-Exploited" | "No Data";
+    color?: string;
+
     [key: string]: any;
   };
   geometry: {
@@ -57,10 +63,8 @@ interface RSQContextType {
   clearData: () => void;
 }
 
-/* ================= CONTEXT ================= */
-
 const RSQContext = createContext<RSQContextType>({
-  selectedYear: "2016 - 17",
+  selectedYear: "",
   setSelectedYear: () => {},
   groundWaterData: null,
   isLoading: false,
@@ -71,35 +75,30 @@ const RSQContext = createContext<RSQContextType>({
 
 /* ================= PROVIDER ================= */
 
-interface RSQProviderProps {
-  children: ReactNode;
-}
-
-export const RSQProvider: React.FC<RSQProviderProps> = ({ children }) => {
-  const [selectedYear, setSelectedYear] = useState<string>("2016 - 17");
-  const [groundWaterData, setGroundWaterData] = useState<GroundWaterGeoJSON | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+export const RSQProvider = ({ children }: { children: ReactNode }) => {
+  const [selectedYear, setSelectedYear] = useState("");
+  const [groundWaterData, setGroundWaterData] =
+    useState<GroundWaterGeoJSON | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { selectedVillages } = useLocation();
 
-  /* ================= FETCH GROUND WATER DATA ================= */
-
   const fetchGroundWaterData = async () => {
-    if (selectedVillages.length === 0) {
-      setError("Please select villages first");
+    if (selectedVillages.length === 0 || !selectedYear) {
+      console.log("🌊 No villages or year selected - skipping fetch");
       return;
     }
+
+    console.log("🌊 🔄 Fetching RSQ data for:", {
+      year: selectedYear,
+      villages: selectedVillages.length,
+    });
 
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('📤 Fetching RSQ data:', {
-        year: selectedYear,
-        vlcodes: selectedVillages,
-      });
-
       const response = await fetch("/django/rsq/quantification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,71 +108,55 @@ export const RSQProvider: React.FC<RSQProviderProps> = ({ children }) => {
         }),
       });
 
+      console.log("🌊 API Response status:", response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch groundwater data");
+        const err = await response.json();
+        throw new Error(err.error || "Failed to fetch data");
       }
 
       const data: GroundWaterGeoJSON = await response.json();
-
-      console.log('🌟 RSQ Data loaded:', {
-        features: data.features.length,
-        sample: data.features[0]?.properties,
+      
+      console.log("🌊 ✅ RSQ Data received:", {
+        features: data.features?.length || 0,
+        firstFeature: data.features?.[0]?.properties,
       });
 
       setGroundWaterData(data);
     } catch (err) {
-      console.error('❌ RSQ fetch failed:', err);
-      setError(err instanceof Error ? err.message : "Failed to fetch data");
+      const errorMsg = err instanceof Error ? err.message : "Fetch failed";
+      console.error("🌊 ❌ RSQ Fetch error:", errorMsg);
+      setError(errorMsg);
       setGroundWaterData(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  /* ================= AUTO-FETCH ON VILLAGE CHANGE ================= */
-
-  useEffect(() => {
-    if (selectedVillages.length > 0) {
-      fetchGroundWaterData();
-    } else {
-      setGroundWaterData(null);
-      setError(null);
-    }
-  }, [selectedVillages, selectedYear]);
-
-  /* ================= CLEAR DATA ================= */
+  // NO AUTO-FETCH - Only manual fetch when year is selected
 
   const clearData = () => {
+    console.log("🌊 Clearing RSQ data");
     setGroundWaterData(null);
     setError(null);
-  };
-
-  /* ================= PROVIDER VALUE ================= */
-
-  const contextValue: RSQContextType = {
-    selectedYear,
-    setSelectedYear,
-    groundWaterData,
-    isLoading,
-    error,
-    fetchGroundWaterData,
-    clearData,
+    setSelectedYear("");
   };
 
   return (
-    <RSQContext.Provider value={contextValue}>
+    <RSQContext.Provider
+      value={{
+        selectedYear,
+        setSelectedYear,
+        groundWaterData,
+        isLoading,
+        error,
+        fetchGroundWaterData,
+        clearData,
+      }}
+    >
       {children}
     </RSQContext.Provider>
   );
 };
 
-/* ================= HOOK ================= */
-
-export const useRSQ = (): RSQContextType => {
-  const context = useContext(RSQContext);
-  if (!context) {
-    throw new Error("useRSQ must be used inside RSQProvider");
-  }
-  return context;
-};
+export const useRSQ = () => useContext(RSQContext);

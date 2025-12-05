@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRSQ } from "@/contexts/rsq/admin/RsqContext";
 import { useLocation } from "@/contexts/rsq/admin/LocationContext";
 
@@ -14,42 +14,51 @@ const YEAR_OPTIONS = [
   "2023 - 24",
 ];
 
-/* ================= CATEGORY COLORS & HELPERS ================= */
-
-const getStageCategory = (stage: number): string => {
-  if (stage <= 70) return "Safe";
-  if (stage <= 90) return "Semi-Critical";  
-  if (stage <= 100) return "Critical";
-  return "Over-Exploited";
-};
-
-const getCategoryColor = (stage: number): string => {
-  const category = getStageCategory(stage);
-  const colors: { [key: string]: string } = {
-    "Safe": "bg-green-100 text-green-800",
-    "Semi-Critical": "bg-yellow-100 text-yellow-800",
-    "Critical": "bg-orange-100 text-orange-800",
-    "Over-Exploited": "bg-red-100 text-red-800",
-  };
-  return colors[category] || "bg-gray-100 text-gray-800";
-};
-
-/* ================= MAIN COMPONENT ================= */
-
 export default function RSQAnalysis() {
-  const { selectedYear, setSelectedYear, groundWaterData, isLoading, error } = useRSQ();
-  const { selectedVillages, villages } = useLocation();
-  
+  const { selectedYear, setSelectedYear, groundWaterData, isLoading, error, fetchGroundWaterData, clearData } =
+    useRSQ();
+  const { selectedVillages } = useLocation();
+
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  /* ================= SORTING ================= */
+  // Fetch data when year is selected
+  useEffect(() => {
+    if (selectedYear && selectedVillages.length > 0) {
+      console.log("📅 Year selected, fetching RSQ data...");
+      fetchGroundWaterData();
+    }
+  }, [selectedYear]);
+
+  // Clear data when villages change
+  useEffect(() => {
+    clearData();
+  }, [selectedVillages]);
+
+  /* ================= GET ALL COLUMNS DYNAMICALLY ================= */
+
+  const allColumns = useMemo(() => {
+    if (!groundWaterData?.features?.length) return [];
+
+    const firstFeature = groundWaterData.features[0];
+    const props = firstFeature.properties;
+
+    const keys = Object.keys(props).filter(
+      key => !['status', 'color'].includes(key)
+    );
+
+    return keys;
+  }, [groundWaterData]);
+
+  /* ================= SORT ================= */
 
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
@@ -59,24 +68,71 @@ export default function RSQAnalysis() {
     setSortConfig({ key, direction });
   };
 
-  /* ================= FILTERED & PAGINATED DATA ================= */
+  /* ================= FORMAT COLUMN NAME ================= */
 
-  const processedData = React.useMemo(() => {
+  const formatColumnName = (key: string) => {
+    return key
+      .split("_")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  /* ================= FORMAT CELL VALUE ================= */
+
+  const formatCellValue = (value: any) => {
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "number") {
+      return value.toFixed(2);
+    }
+    return String(value);
+  };
+
+  /* ================= HIGHLIGHT SEARCH TERM ================= */
+
+  const highlightText = (text: string, search: string) => {
+    if (!search.trim()) return text;
+
+    const parts = text.split(new RegExp(`(${search})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, i) =>
+          part.toLowerCase() === search.toLowerCase() ? (
+            <mark key={i} className="bg-yellow-200 px-1 rounded">{part}</mark>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </span>
+    );
+  };
+
+  /* ================= FILTER + SORT ================= */
+
+  const processedData = useMemo(() => {
     if (!groundWaterData?.features) return [];
 
-    return groundWaterData.features
-      .filter((feature) => {
-        const p = feature.properties;
-        const villageName = (p.village || p.vlcode || "").toLowerCase();
-        const blockName = (p.blockname || "").toLowerCase();
-        return (
-          villageName.includes(searchTerm.toLowerCase()) ||
-          blockName.includes(searchTerm.toLowerCase())
-        );
-      })
-      .sort((a, b) => {
-        if (!sortConfig) return 0;
+    let filtered = [...groundWaterData.features];
 
+    // Global search
+    if (globalSearch.trim()) {
+      filtered = filtered.filter((f) => {
+        const searchLower = globalSearch.toLowerCase();
+        return Object.values(f.properties).some((val) =>
+          String(val).toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (f) => f.properties.status === statusFilter
+      );
+    }
+
+    // Sort
+    if (sortConfig) {
+      filtered.sort((a, b) => {
         const aVal = a.properties[sortConfig.key];
         const bVal = b.properties[sortConfig.key];
 
@@ -84,355 +140,390 @@ export default function RSQAnalysis() {
           return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
         }
 
-        const aStr = String(aVal).toLowerCase();
-        const bStr = String(bVal).toLowerCase();
-        
-        if (aStr < bStr) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aStr > bStr) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
+        return (
+          String(aVal).localeCompare(String(bVal)) *
+          (sortConfig.direction === "asc" ? 1 : -1)
+        );
       });
-  }, [groundWaterData, sortConfig, searchTerm]);
+    }
 
-  const paginatedData = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return processedData.slice(startIndex, startIndex + rowsPerPage);
-  }, [processedData, currentPage, rowsPerPage]);
+    return filtered;
+  }, [groundWaterData, sortConfig, globalSearch, statusFilter]);
+
+  /* ================= PAGINATION ================= */
+
+  const paginatedData = processedData.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   const totalPages = Math.ceil(processedData.length / rowsPerPage);
 
-  /* ================= STATISTICS ================= */
+  /* ================= STATS ================= */
 
-  const stats = React.useMemo(() => {
+  const stats = useMemo(() => {
     if (!groundWaterData?.features?.length) return null;
 
     const categories = groundWaterData.features.reduce((acc, f) => {
-      const stage = f.properties.Stage_of_Ground_Water_Extraction || 0;
-      const cat = getStageCategory(stage);
+      const cat = f.properties.status || "No Data";
       acc[cat] = (acc[cat] || 0) + 1;
       return acc;
-    }, {} as { [key: string]: number });
+    }, {} as Record<string, number>);
 
-    const avgStage = groundWaterData.features.reduce(
-      (sum, f) => sum + (f.properties.Stage_of_Ground_Water_Extraction || 0),
-      0
-    ) / groundWaterData.features.length;
+    return { categories };
+  }, [groundWaterData]);
 
-    const totalExtraction = groundWaterData.features.reduce(
-      (sum, f) => sum + (f.properties.Total_Extraction || 0),
-      0
-    );
+  /* ================= ROW SELECTION ================= */
 
-    const totalRecharge = groundWaterData.features.reduce(
-      (sum, f) => sum + (f.properties.Total_Annual_Ground_Water_Recharge || 0),
-      0
-    );
+  const toggleRowSelection = (index: number) => {
+    const newSelected = new Set(selectedRows);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedRows(newSelected);
+  };
 
-    return {
-      total: groundWaterData.features.length,
-      filtered: processedData.length,
-      categories,
-      avgStage: avgStage.toFixed(2),
-      totalExtraction: totalExtraction.toFixed(2),
-      totalRecharge: totalRecharge.toFixed(2),
-    };
-  }, [groundWaterData, processedData.length]);
-
-  /* ================= PAGINATION HANDLERS ================= */
-
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+  const toggleAllRows = () => {
+    if (selectedRows.size === paginatedData.length) {
+      setSelectedRows(new Set());
+    } else {
+      const allIndices = paginatedData.map((_, i) => i);
+      setSelectedRows(new Set(allIndices));
     }
   };
 
-  /* ================= RENDER ================= */
+  /* ================= EXPORT SELECTED ================= */
+
+  const exportSelected = () => {
+    const selected = paginatedData.filter((_, i) => selectedRows.has(i));
+    const csv = [
+      [...allColumns, "status"].join(","),
+      ...selected.map((f) =>
+        [...allColumns, "status"]
+          .map((col) => `"${f.properties[col] || ""}"`)
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rsq-export-${selectedYear}.csv`;
+    a.click();
+  };
+
+  /* ================= CLEAR FILTERS ================= */
+
+  const clearAllFilters = () => {
+    setGlobalSearch("");
+    setStatusFilter("all");
+    setCurrentPage(1);
+  };
 
   if (selectedVillages.length === 0) {
     return (
-      <div className="p-6 text-center">
-        <div className="text-gray-500 mb-4">
-          📍 Please select villages from the Area Selection tab to view RSQ analysis
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg">
+          <div className="text-6xl mb-4">📍</div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">No Villages Selected</h3>
+          <p className="text-gray-600">Please select villages to view RSQ analysis</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-4 max-w-full">
-      {/* ================= HEADER & CONTROLS ================= */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">RSQ Analysis</h2>
-          <p className="text-sm text-gray-600">
-            {stats?.filtered || 0} of {stats?.total || 0} villages • {selectedVillages.length} selected
-          </p>
-        </div>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
 
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-          {/* Year Selector */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Year:</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
-            >
-              {YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+      {/* ================= YEAR SELECTION CARD ================= */}
+
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Select Assessment Year</h3>
+            <p className="text-sm text-gray-600">
+              📊 Selected {selectedVillages.length} villages for assessment
+            </p>
           </div>
 
-          {/* Rows per page */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Show:</label>
-            <select
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-20"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= SEARCH & STATS ================= */}
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            placeholder="Search villages or blocks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <svg
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <select
+            value={selectedYear}
+            onChange={(e) => {
+              console.log("📅 Year changed to:", e.target.value);
+              setSelectedYear(e.target.value);
+            }}
+            className="border-2 border-blue-400 px-4 py-2 rounded-xl shadow-sm hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-lg"
+            disabled={isLoading}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </div>
-
-        {stats && (
-          <div className="flex gap-2 flex-wrap">
-            {Object.entries(stats.categories).map(([category, count]) => (
-              <div
-                key={category}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium ${getCategoryColor(
-                  category === "Safe" ? 50 : category === "Semi-Critical" ? 80 : category === "Critical" ? 95 : 110
-                )}`}
-              >
-                {category}: {count}
-              </div>
+            <option value="">-- Select Year --</option>
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y} value={y}>{y}</option>
             ))}
-          </div>
-        )}
+          </select>
+        </div>
       </div>
 
-      {/* ================= LOADING STATE ================= */}
-      {isLoading && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Loading groundwater data...</p>
-        </div>
-      )}
-
-      {/* ================= ERROR STATE ================= */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <p className="text-red-800 font-semibold">Error loading data</p>
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= INTERACTIVE SCROLLABLE TABLE ================= */}
-      {groundWaterData && !isLoading && (
+      {/* Only show rest of the content after year is selected */}
+      {selectedYear && (
         <>
-          {/* Pagination Info */}
-          {processedData.length > 0 && (
-            <div className="text-sm text-gray-600 flex items-center justify-between">
-              <span>
-                Showing {((currentPage - 1) * rowsPerPage) + 1} to{" "}
-                {Math.min(currentPage * rowsPerPage, processedData.length)} of{" "}
-                {processedData.length} results
-              </span>
-              <div className="flex items-center gap-1 text-sm">
-                Page {currentPage} of {totalPages}
+          {/* ================= STATUS LEGEND CARD ================= */}
+
+          {stats && (
+            <div className="bg-white rounded-2xl shadow-lg p-2">
+              <div className="flex gap-3 flex-wrap items-center">
+                <span className="text-sm font-bold text-gray-700 mr-2">🏷️ Filter by Status:</span>
+                <button
+                  onClick={() => setStatusFilter("all")}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 ${statusFilter === "all"
+                      ? "bg-gradient-to-r from-gray-700 to-gray-900 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                >
+                  All ({groundWaterData?.features?.length || 0})
+                </button>
+                {Object.entries(stats.categories).map(([cat, count]) => {
+                  const color =
+                    groundWaterData?.features.find(
+                      (f) => f.properties.status === cat
+                    )?.properties.color || "#999";
+
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setStatusFilter(cat)}
+                      className={`px-4 py-2 rounded-xl text-white text-sm font-semibold transition-all transform hover:scale-105 ${statusFilter === cat ? "ring-4 ring-offset-2 shadow-lg" : "hover:opacity-80 shadow-md"
+                        } ${statusFilter === cat ? "ring-" + color : ''}`}
+                    >
+                      {cat}: {count}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="max-h-[500px] overflow-auto">
-              <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20">
-                  <tr>
-                    {[
-                      { key: "village", label: "Village", width: "w-32" },
-                      { key: "blockname", label: "Block", width: "w-28" },
-                      { key: "Total_Annual_Ground_Water_Recharge", label: "Annual Recharge", width: "w-32" },
-                      { key: "Annual_Extractable_Ground_Water_Resource", label: "Extractable GW", width: "w-32" },
-                      { key: "Irrigation_Use", label: "Irrigation", width: "w-28" },
-                      { key: "Domestic_Use", label: "Domestic", width: "w-28" },
-                      { key: "Total_Extraction", label: "Total Extraction", width: "w-36" },
-                      { key: "Net_Ground_Water_Availability_for_future_use", label: "Net Availability", width: "w-36" },
-                      { key: "Stage_of_Ground_Water_Extraction", label: "GW Stage (%)", width: "w-24" },
-                    ].map((col) => (
-                      <th
-                        key={col.key}
-                        className={`
-                          ${col.width} px-4 py-4 text-left text-xs font-semibold text-gray-700
-                          uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors
-                          bg-white border-b-2 border-gray-200
-                        `}
-                        onClick={() => handleSort(col.key)}
-                      >
-                        <div className="flex items-center gap-1 truncate">
-                          {col.label}
-                          {sortConfig?.key === col.key && (
-                            <span className="text-blue-600 font-bold">
-                              {sortConfig.direction === "asc" ? "↑" : "↓"}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                    ))}
-                    <th className="w-28 px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider bg-white border-b-2 border-gray-200">
-                      Category
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {paginatedData.map((feature, idx) => {
-                    const p = feature.properties;
-                    const stage = p.Stage_of_Ground_Water_Extraction || 0;
-                    return (
-                      <tr
-                        key={idx}
-                        className="hover:bg-blue-50/50 transition-colors group"
-                      >
-                        <td className="w-32 px-4 py-4 text-sm font-semibold text-gray-900 bg-gray-50/50 sticky left-0 z-10 group-hover:bg-blue-50">
-                          {p.village || p.vlcode || "-"}
-                        </td>
-                        <td className="w-28 px-4 py-3 text-sm text-gray-700">{p.blockname || "-"}</td>
-                        <td className="w-32 px-4 py-3 text-sm text-gray-700 font-mono">
-                          {p.Total_Annual_Ground_Water_Recharge?.toLocaleString() || "-"}
-                        </td>
-                        <td className="w-32 px-4 py-3 text-sm text-gray-700 font-mono">
-                          {p.Annual_Extractable_Ground_Water_Resource?.toLocaleString() || "-"}
-                        </td>
-                        <td className="w-28 px-4 py-3 text-sm text-gray-700 font-mono">
-                          {p.Irrigation_Use?.toLocaleString() || "-"}
-                        </td>
-                        <td className="w-28 px-4 py-3 text-sm text-gray-700 font-mono">
-                          {p.Domestic_Use?.toLocaleString() || "-"}
-                        </td>
-                        <td className="w-36 px-4 py-3 text-sm text-gray-700 font-mono font-semibold">
-                          {p.Total_Extraction?.toLocaleString() || "-"}
-                        </td>
-                        <td className="w-36 px-4 py-3 text-sm text-gray-700 font-mono">
-                          {p.Net_Ground_Water_Availability_for_future_use?.toLocaleString() || "-"}
-                        </td>
-                        <td className="w-24 px-4 py-3 text-sm font-semibold text-gray-900">
-                          {stage.toFixed(1)}%
-                        </td>
-                        <td className="w-28 px-4 py-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getCategoryColor(stage)} shadow-sm`}>
-                            {getStageCategory(stage)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* ================= SEARCH & ACTIONS CARD ================= */}
+
+          <div className="bg-white rounded-2xl shadow-lg p-2">
+            <div className="flex gap-4 items-center flex-wrap">
+              <div className="flex-1 min-w-[300px] relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
+                  🔍
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search across all columns..."
+                  value={globalSearch}
+                  onChange={(e) => {
+                    setGlobalSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="border-2 border-gray-200 pl-12 pr-12 py-3 rounded-xl w-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+                {globalSearch && (
+                  <button
+                    onClick={() => setGlobalSearch("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-xl transition-colors"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm font-medium hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              >
+                <option value={10}>10 rows</option>
+                <option value={25}>25 rows</option>
+                <option value={50}>50 rows</option>
+                <option value={100}>100 rows</option>
+              </select>
+
+              {(globalSearch || statusFilter !== "all") && (
+                <button
+                  onClick={clearAllFilters}
+                  className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 font-semibold"
+                >
+                  🗑️ Clear Filters
+                </button>
+              )}
+
+              {selectedRows.size > 0 && (
+                <button
+                  onClick={exportSelected}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 font-semibold"
+                >
+                  📥 Export {selectedRows.size}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* ================= PAGINATION CONTROLS ================= */}
+          {/* ================= LOADING / ERROR ================= */}
+
+          {isLoading && (
+            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+              <p className="mt-4 text-gray-600 font-medium">Loading RSQ data for {selectedYear}...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl shadow-lg">
+              <span className="text-2xl mr-2">⚠️</span>
+              <span className="font-medium">{error}</span>
+            </div>
+          )}
+
+          {/* ================= TABLE CARD ================= */}
+
+          {groundWaterData && !isLoading && (
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.size === paginatedData.length && paginatedData.length > 0}
+                          onChange={toggleAllRows}
+                          className="w-5 h-5 cursor-pointer rounded"
+                        />
+                      </th>
+                      {allColumns.map((key) => (
+                        <th key={key} className="px-0 -py-5 text-left">
+                          <div
+                            className="flex items-center gap-2 cursor-pointer hover:text-yellow-300 transition-colors select-none"
+                            onClick={() => handleSort(key)}
+                          >
+                            <span className="font-bold text-sm">{formatColumnName(key)}</span>
+                            {sortConfig?.key === key ? (
+                              <span className="text-yellow-300 text-lg">
+                                {sortConfig.direction === "asc" ? "↑" : "↓"}
+                              </span>
+                            ) : (
+                              <span className="text-white opacity-30">↕</span>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="px-6 py-4 text-left">
+                        <span className="font-bold text-sm">Status</span>
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {paginatedData.length === 0 ? (
+                      <tr>
+                        <td colSpan={allColumns.length + 2} className="text-center py-12">
+                          <div className="text-6xl mb-4">🔍</div>
+                          <p className="text-gray-500 font-medium">No data matches your filters</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedData.map((f, i) => {
+                        const p = f.properties;
+                        const isSelected = selectedRows.has(i);
+
+                        return (
+                          <tr
+                            key={i}
+                            className={`border-b border-gray-100 transition-all ${isSelected
+                                ? "bg-blue-50 hover:bg-blue-100"
+                                : "hover:bg-gray-50"
+                              }`}
+                          >
+                            <td className="px-6 py-4">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleRowSelection(i)}
+                                className="w-5 h-5 cursor-pointer rounded"
+                              />
+                            </td>
+                            {allColumns.map((key) => (
+                              <td key={key} className="px-6 py-4 font-medium text-gray-700">
+                                {typeof p[key] === "string"
+                                  ? highlightText(formatCellValue(p[key]), globalSearch)
+                                  : formatCellValue(p[key])}
+                              </td>
+                            ))}
+                            <td className="px-6 py-4">
+                              <span
+                                className="px-4 py-2 rounded-xl text-white text-xs font-bold inline-block shadow-md"
+                                style={{ backgroundColor: p.color || "#999" }}
+                              >
+                                {p.status || "No Data"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ================= PAGINATION CARD ================= */}
+
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-xl">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <button
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 border rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Previous
-                </button>
-                
-                {/* Page buttons */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum = currentPage <= 3 
-                    ? i + 1 
-                    : totalPages - 4 + i;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => goToPage(pageNum)}
-                      className={`px-3 py-1.5 border rounded-lg font-medium transition-colors ${
-                        currentPage === pageNum
-                          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                          : "hover:bg-white"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                
-                <button
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 border rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <div className="flex gap-4 items-center justify-between flex-wrap">
+                <div className="text-sm text-gray-600 font-medium">
+                  📄 Showing <span className="font-bold text-gray-900">{(currentPage - 1) * rowsPerPage + 1}</span> to{" "}
+                  <span className="font-bold text-gray-900">{Math.min(currentPage * rowsPerPage, processedData.length)}</span> of{" "}
+                  <span className="font-bold text-gray-900">{processedData.length}</span> results
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                  >
+                    ⏮ First
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-5 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold shadow-md">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-5 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                  >
+                    Next →
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                  >
+                    Last ⏭
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </>
-      )}
-
-      {/* ================= NO DATA STATE ================= */}
-      {!groundWaterData && !isLoading && !error && (
-        <div className="text-center py-16 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-          <div className="text-4xl mb-4">📊</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No groundwater data available</h3>
-          <p>Select villages and a year to view RSQ analysis</p>
-        </div>
-      )}
-
-      {processedData.length === 0 && !isLoading && groundWaterData && (
-        <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-          <div className="text-4xl mb-4">🔍</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No matching results</h3>
-          <p>Try adjusting your search term or filters</p>
-        </div>
       )}
     </div>
   );
