@@ -1,92 +1,40 @@
-// components/weather/components/map.tsx
+// components/weather/components/map.tsx - Updated controls only
 "use client";
-
-import { useEffect, useRef } from "react";
-import Map from "ol/Map";
-import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
-import OSM from "ol/source/OSM";
-import XYZ from "ol/source/XYZ";
-import { defaults as defaultControls } from "ol/control";
-import "ol/ol.css";
+import { useWeatherMap } from "@/contexts/extract/Weather/MapContext";
 
 const WeatherMap = () => {
-  const mapElement = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Map | null>(null);
-
-  useEffect(() => {
-    if (!mapElement.current) return;
-
-    // OpenWeatherMap Tile URL (requires free API key from https://openweathermap.org/api)
-    const API_KEY = "YOUR_OPENWEATHERMAP_API_KEY"; // Replace with actual key or use env
-
-    const precipitationLayer = new TileLayer({
-      source: new XYZ({
-        url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${API_KEY}`,
-        attributions: "© OpenWeatherMap",
-      }),
-      opacity: 0.7,
-    });
-
-    const cloudsLayer = new TileLayer({
-      source: new XYZ({
-        url: `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${API_KEY}`,
-      }),
-      opacity: 0.6,
-    });
-
-    const tempLayer = new TileLayer({
-      source: new XYZ({
-        url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`,
-      }),
-      opacity: 0.6,
-    });
-
-    const baseLayer = new TileLayer({
-      source: new OSM(),
-    });
-
-    const map = new Map({
-      target: mapElement.current,
-      layers: [baseLayer, precipitationLayer, cloudsLayer],
-      view: new View({
-        center: [8500000, 2500000], // Approx center of India
-        zoom: 5,
-      }),
-      controls: defaultControls({ attribution: false }),
-    });
-
-    mapRef.current = map;
-
-    return () => {
-      map.setTarget(undefined);
-    };
-  }, []);
+  const { mapRef, isLoading, isSatellite, toggleBaseMap } = useWeatherMap();
 
   return (
     <div className="w-full h-full relative">
-      <div ref={mapElement} className="w-full h-full" />
+      <div 
+        ref={mapRef} 
+        className="w-full h-full"
+        style={{ display: isLoading ? 'block' : 'block' }}
+      />
+      
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm z-20">
+          <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+            <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium text-gray-700">Loading</span>
+          </div>
+        </div>
+      )}
 
-      {/* Layer Controls */}
-      <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 space-y-2 z-10">
-        <h3 className="font-semibold text-sm text-gray-700 mb-2">Weather Layers</h3>
-        <label className="flex items-center gap-2 text-xs cursor-pointer">
-          <input type="checkbox" defaultChecked className="rounded" />
-          <span>Precipitation</span>
-        </label>
-        <label className="flex items-center gap-2 text-xs cursor-pointer">
-          <input type="checkbox" defaultChecked className="rounded" />
-          <span>Clouds</span>
-        </label>
-        <label className="flex items-center gap-2 text-xs cursor-pointer">
-          <input type="checkbox" className="rounded" />
-          <span>Temperature</span>
-        </label>
+      {/* Simple dropdown-style base map toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 w-32">
+          <button
+            onClick={toggleBaseMap}
+            className="w-full px-3 py-2 text-sm text-gray-700 text-left hover:bg-gray-50 rounded-lg transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            {isSatellite ? 'Street Map' : 'Satellite'}
+          </button>
+        </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-4 py-2 text-xs text-gray-600">
-        Data © OpenWeatherMap | Map © OpenStreetMap
-      </div>
+      
     </div>
   );
 };

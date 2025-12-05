@@ -1,3 +1,4 @@
+// frontend/contexts/rsq/admin/RsqContext.tsx
 "use client";
 
 import React, {
@@ -5,6 +6,7 @@ import React, {
   useContext,
   useState,
   ReactNode,
+  useEffect,
 } from "react";
 import { useLocation } from "./LocationContext";
 
@@ -65,12 +67,12 @@ interface RSQContextType {
 
 const RSQContext = createContext<RSQContextType>({
   selectedYear: "",
-  setSelectedYear: () => {},
+  setSelectedYear: () => { },
   groundWaterData: null,
   isLoading: false,
   error: null,
-  fetchGroundWaterData: async () => {},
-  clearData: () => {},
+  fetchGroundWaterData: async () => { },
+  clearData: () => { },
 });
 
 /* ================= PROVIDER ================= */
@@ -83,6 +85,15 @@ export const RSQProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const { selectedVillages } = useLocation();
+  // In RsqContext.tsx, replace the manual useEffect with auto-fetch
+  useEffect(() => {
+    if (selectedYear && selectedVillages.length > 0) {
+      console.log('Year selected, auto-fetching RSQ data...');
+      fetchGroundWaterData();
+    }
+  }, [selectedYear, selectedVillages.length]);  // Add selectedYear dependency
+
+  // Remove the manual useEffect from rsq.tsx component
 
   const fetchGroundWaterData = async () => {
     if (selectedVillages.length === 0 || !selectedYear) {
@@ -116,7 +127,7 @@ export const RSQProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data: GroundWaterGeoJSON = await response.json();
-      
+
       console.log("🌊 ✅ RSQ Data received:", {
         features: data.features?.length || 0,
         firstFeature: data.features?.[0]?.properties,

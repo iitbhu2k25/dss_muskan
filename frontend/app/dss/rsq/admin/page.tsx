@@ -1,3 +1,4 @@
+// frontend/app/dss/rsq/admin/page.tsx
 "use client";
 import React, { useState } from "react";
 import AreaSelection from "./components/AreaSelection";

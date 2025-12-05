@@ -1,3 +1,4 @@
+//frontend/contexts/rsq/admin/MapContext.tsx
 "use client";
 
 import React, {
@@ -54,6 +55,7 @@ interface MapContextType {
   activeLayers: Record<string, boolean>; // New prop to track added layers
 }
 
+
 const MapContext = createContext<MapContextType | undefined>(undefined);
 
 export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -82,12 +84,13 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     village: true,
     rsq: true,
   });
+
   
   // === NEW STATE TO TRACK WHICH LAYERS ARE ADDED TO THE MAP ===
   const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({});
 
   const { selectedState, selectedDistricts, selectedBlocks, selectedVillages } = useLocation();
-  const { groundWaterData } = useRSQ();
+  
 
   const toggleLabels = () => setShowLabels((v) => !v);
 
@@ -119,7 +122,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Fallback color calculation (if API doesn't provide color)
   const getStageColor = (stage: number): string => {
     if (stage <= 70) return "rgba(34, 197, 94, 0.7)"; // Safe - Green
-    if (stage <= 90) return "rgba(250, 204, 21, 0.7)"; // Semi-Critical - Yellow
+    if (stage <= 90) return "rgba(250, 204, 21, 1)"; // Semi-Critical - Yellow
     if (stage <= 100) return "rgba(251, 146, 60, 0.7)"; // Critical - Orange
     return "rgba(239, 68, 68, 0.7)"; // Over-Exploited - Red
   };
@@ -161,7 +164,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const stateBase = useMemo(() => baseStyle("rgba(240, 7, 7, 1)", "rgba(12, 129, 238, 0)"), []);
   const districtBase = useMemo(() => baseStyle("rgba(206, 0, 0, 0.8)", "rgba(255, 136, 0, 0)"), []);
   const blockBase = useMemo(() => baseStyle("rgba(255, 0, 0, 1)", "rgba(247, 225, 28, 0)"), []);
-  const villageBase = useMemo(() => baseStyle("rgba(238, 20, 20, 0.8)", "rgba(18, 183, 248, 0.6)"), []);
+  const villageBase = useMemo(() => baseStyle("rgba(238, 20, 20, 0.8)", "rgba(18, 183, 248, 0)"), []);
 
   const makeStateStyle = (f: any) => stateStyle(f, stateBase, ["state_name", "state_code"]);
   const makeDistrictStyle = (f: any) => districtStyle(f, districtBase, ["district_name", "DISTRICT_N", "DISTRICT_C"]);
@@ -170,6 +173,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   // RSQ Style Function - USING API COLORS
   const makeRSQStyle = (feature: any) => {
+  console.log('Styling feature:', feature.get('village'), feature.get('Stage_of_Ground_Water_Extraction'));
     const stage = feature.get("Stage_of_Ground_Water_Extraction") || 0;
     const status = feature.get("status") || "No Data";
     
@@ -458,126 +462,116 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [selectedBlocks, layerVisibility.block]);
 
-  // Village layer - ONLY SHOW WHEN NO RSQ DATA
-  useEffect(() => {
-    const layerName = 'village';
-    console.log('🗺️ Village effect - selectedVillages:', selectedVillages.length, 'hasRSQData:', !!groundWaterData);
-    
-    if (!mapRef.current || selectedVillages.length === 0 || (groundWaterData && groundWaterData.features && groundWaterData.features.length > 0)) {
-      removeLayer(villageLayerRef, layerName);
-      return;
-    }
-    
-    console.log('🗺️ Rendering village layer');
-    removeLayer(stateLayerRef, 'state');
-    removeLayer(districtLayerRef, 'district');
-    removeLayer(blockLayerRef, 'block');
-    removeLayer(villageLayerRef, layerName);
-    removeLayer(rsqLayerRef, 'rsq');
+// === VILLAGE LAYER - ONLY SHOW WHEN NO RSQ DATA ===
+useEffect(() => {
+  const layerName = 'village';
+  
+  // CRITICAL: Only show village layer if NO RSQ data exists
+  const hasRSQData = !!groundWaterData?.features?.length;
 
-    const codes = selectedVillages.map((c) => `'${c}'`).join(",");
-    const cql = `vlcode IN (${codes})`;
-    const url = `http://localhost:9090/geoserver/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Village&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cql)}`;
+  if (!mapRef.current || selectedVillages.length === 0 || hasRSQData) {
+    // Remove village layer if RSQ data exists
+    removeLayer(villageLayerRef, layerName);
+    return;
+  }
 
-    const layer = new VectorLayer({
-      source: new VectorSource({
-        format: new GeoJSON(),
-        url,
-        strategy: bboxStrategy,
-      }),
-      style: makeVillageStyle,
-      zIndex: 10,
-      visible: layerVisibility.village,
-    });
-    layer.set("name", "villages");
-    villageLayerRef.current = layer;
-    mapRef.current.addLayer(layer);
-    setActiveLayers(prev => ({ ...prev, [layerName]: true }));
+  console.log('Rendering plain village boundaries (no RSQ data)');
 
-    layer.getSource()?.once("featuresloadend", () => {
-      const ext = layer.getSource()!.getExtent();
-      if (ext[0] < ext[2]) {
-        mapRef.current!.getView().fit(ext, {
-          duration: 1000,
-          padding: [60, 60, 60, 60],
-          maxZoom: 17,
-        });
-      }
-    });
-  }, [selectedVillages, groundWaterData, layerVisibility.village]);
+  // Clean up higher levels
+  removeLayer(stateLayerRef, 'state');
+  removeLayer(districtLayerRef, 'district');
+  removeLayer(blockLayerRef, 'block');
+  removeLayer(villageLayerRef, layerName); // Remove old
 
-  // RSQ Layer - FIXED PROJECTION + ROBUST PARSING
-  useEffect(() => {
-    const layerName = 'rsq';
-    if (!mapRef.current) return;
+  const codes = selectedVillages.map((c) => `'${c}'`).join(",");
+  const cql = `vlcode IN (${codes})`;
+  const url = `http://localhost:9090/geoserver/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Village&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(cql)}`;
 
-    console.log('RSQ Effect triggered - groundWaterData:', !!groundWaterData);
+  const layer = new VectorLayer({
+    source: new VectorSource({
+      format: new GeoJSON(),
+      url,
+      strategy: bboxStrategy,
+    }),
+    style: makeVillageStyle,
+    zIndex: 10,
+    visible: layerVisibility.village,
+  });
+  layer.set("name", "villages");
+  villageLayerRef.current = layer;
+  mapRef.current.addLayer(layer);
+  setActiveLayers(prev => ({ ...prev, [layerName]: true }));
 
-    // Always remove old RSQ layer
-    removeLayer(rsqLayerRef, layerName);
+  layer.getSource()?.once("featuresloadend", () => {
+    const ext = layer.getSource()!.getExtent();
+    if (ext && ext[0] < ext[2]) {
+      mapRef.current!.getView().fit(ext, {
+        duration: 1000,
+        padding: [60, 60, 60, 60],
+        maxZoom: 17,
+      });
+    }
+  });
+}, [selectedVillages.length, groundWaterData, layerVisibility.village]); // ← Add groundWaterData here!
 
-    if (!groundWaterData || !groundWaterData.features || groundWaterData.features.length === 0) {
-      console.log('No RSQ data');
-      return;
-    }
+// === RSQ LAYER - FINAL WORKING VERSION (React 18 + StrictMode Safe) ===
+useEffect(() => {
+  const currentData = useRSQ().groundWaterData; // ← ALWAYS FRESH
 
-    // Also remove the simple village layer when RSQ data is present
-    removeLayer(villageLayerRef, 'village');
-    removeLayer(stateLayerRef, 'state');
-    removeLayer(districtLayerRef, 'district');
-    removeLayer(blockLayerRef, 'block');
+  console.log('RSQ LAYER CHECK - FRESH DATA:', {
+    features: currentData?.features?.length ?? 0,
+    year: currentData?.features?.[0]?.properties?.Year
+  });
 
-    try {
-      const format = new GeoJSON();
-      
-      
-      const features = format.readFeatures(groundWaterData, {
-        dataProjection: 'EPSG:3857',
-        featureProjection: 'EPSG:3857', 
-      });
+  if (!mapRef.current) return;
 
-      if (features.length === 0) {
-        console.error('Failed to parse any features from RSQ GeoJSON');
-        return;
-      }
+  // Always clean old RSQ + village layers
+  if (rsqLayerRef.current) {
+    mapRef.current.removeLayer(rsqLayerRef.current);
+    rsqLayerRef.current = null;
+  }
+  if (villageLayerRef.current) {
+    mapRef.current.removeLayer(villageLayerRef.current);
+    villageLayerRef.current = null;
+  }
 
-      console.log(`Parsed ${features.length} RSQ features`);
+  if (!currentData?.features?.length) {
+    console.log('No RSQ data - showing plain villages if any');
+    return;
+  }
 
-      const source = new VectorSource({ features });
-      const layer = new VectorLayer({
-        source,
-        style: makeRSQStyle,
-        zIndex: 20,
-        opacity: 0.9,
-        visible: layerVisibility.rsq,
-      });
-      layer.set("name", "rsq-layer");
-      rsqLayerRef.current = layer;
-      mapRef.current.addLayer(layer);
-      setActiveLayers(prev => ({ ...prev, [layerName]: true }));
+  console.log('RENDERING', currentData.features.length, 'COLORED VILLAGES');
 
-      // Fit to extent
-      const extent = source.getExtent();
-      if (extent && isFinite(extent[0])) {
-        mapRef.current.getView().fit(extent, {
-          duration: 1000,
-          padding: [100, 100, 100, 100],
-          maxZoom: 15,
-        });
-      }
+  const format = new GeoJSON();
+  const features = format.readFeatures(currentData, {
+    featureProjection: 'EPSG:3857'
+  });
 
-      mapRef.current.render();
-    } catch (err) {
-      console.error("Error rendering RSQ layer:", err);
-    }
-  }, [groundWaterData, showLabels, layerVisibility.rsq]);
+  const source = new VectorSource({ features });
+  const layer = new VectorLayer({
+    source,
+    style: makeRSQStyle,
+    zIndex: 100,
+    opacity: 0.92,
+  });
+  layer.set('name', 'rsq-colored-layer');
+  rsqLayerRef.current = layer;
+  mapRef.current.addLayer(layer);
 
-  // Label toggle refresh
-  useEffect(() => {
-    [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef, rsqLayerRef].forEach((ref) => {
-      ref.current?.changed();
-    });
-  }, [showLabels]);
+  // Zoom to data
+  const extent = source.getExtent();
+  if (extent && isFinite(extent[0])) {
+    mapRef.current.getView().fit(extent, {
+      duration: 1200,
+      padding: [100, 100, 100, 100],
+      maxZoom: 16
+    });
+  }
+
+  console.log('RSQ LAYER SUCCESSFULLY ADDED');
+
+}, [/* NO DEPENDENCIES! We read fresh data inside */]);
+
 
   const value = useMemo(
     () => ({

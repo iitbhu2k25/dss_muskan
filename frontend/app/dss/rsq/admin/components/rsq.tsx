@@ -1,3 +1,4 @@
+// frontend/app/dss/rsq/admin/components/rsq.tsx
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -30,13 +31,6 @@ export default function RSQAnalysis() {
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Fetch data when year is selected
-  useEffect(() => {
-    if (selectedYear && selectedVillages.length > 0) {
-      console.log("📅 Year selected, fetching RSQ data...");
-      fetchGroundWaterData();
-    }
-  }, [selectedYear]);
 
   // Clear data when villages change
   useEffect(() => {
@@ -288,7 +282,7 @@ export default function RSQAnalysis() {
                   const color =
                     groundWaterData?.features.find(
                       (f) => f.properties.status === cat
-                    )?.properties.color || "#999";
+                    )?.properties.color || "#d10c0cff";
 
                   return (
                     <button
