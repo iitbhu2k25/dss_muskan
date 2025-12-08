@@ -1,7 +1,7 @@
 // components/management/employee/components/register.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Mail, Lock, Building2, Briefcase, UserCheck } from 'lucide-react';
-import { useRegister, RegisterData } from '@/contexts/management/EmployeeContext/RegisterContext';
+import { useRegister } from '@/contexts/management/EmployeeContext/RegisterContext';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -9,7 +9,16 @@ interface RegisterProps {
 }
 
 export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }: RegisterProps) {
-  const { register, isLoading, error: contextError } = useRegister();
+  const { 
+    register, 
+    isLoading, 
+    error: contextError,
+    departments,
+    isLoadingEmployers,
+    getProjectsByDepartment,
+    getSupervisorsByProject
+  } = useRegister();
+  
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -19,9 +28,40 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
     supervisor: '',
     projectName: ''
   });
+  
   const [localError, setLocalError] = useState('');
+  const [availableProjects, setAvailableProjects] = useState<string[]>([]);
+  const [availableSupervisors, setAvailableSupervisors] = useState<string[]>([]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Update available projects when department changes
+  useEffect(() => {
+    if (formData.department) {
+      const projects = getProjectsByDepartment(formData.department);
+      setAvailableProjects(projects);
+      
+      // Reset project and supervisor when department changes
+      setFormData(prev => ({ ...prev, projectName: '', supervisor: '' }));
+      setAvailableSupervisors([]);
+    } else {
+      setAvailableProjects([]);
+      setAvailableSupervisors([]);
+    }
+  }, [formData.department, getProjectsByDepartment]);
+
+  // Update available supervisors when project changes
+  useEffect(() => {
+    if (formData.projectName && formData.department) {
+      const supervisors = getSupervisorsByProject(formData.department, formData.projectName);
+      setAvailableSupervisors(supervisors);
+      
+      // Reset supervisor when project changes
+      setFormData(prev => ({ ...prev, supervisor: '' }));
+    } else {
+      setAvailableSupervisors([]);
+    }
+  }, [formData.projectName, formData.department, getSupervisorsByProject]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setLocalError('');
   };
@@ -32,7 +72,6 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
     const result = await register(formData);
     
     if (result.success && result.userData) {
-      // Registration successful - auto-login with user data
       onRegisterSuccess(result.userData);
     }
   };
@@ -51,7 +90,14 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
             <p className="text-gray-500">Register your employee account</p>
           </div>
 
+          {isLoadingEmployers && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm text-center">
+              Loading departments data...
+            </div>
+          )}
+
           <div className="space-y-5">
+            {/* Username and Email */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Username *</label>
@@ -64,7 +110,7 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                     placeholder="johndoe"
-                    disabled={isLoading}
+                    disabled={isLoading || isLoadingEmployers}
                   />
                 </div>
               </div>
@@ -80,60 +126,83 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                     placeholder="john@example.com"
-                    disabled={isLoading}
+                    disabled={isLoading || isLoadingEmployers}
                   />
                 </div>
               </div>
             </div>
 
+            {/* Department Dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Department *</label>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                <select
                   name="department"
                   value={formData.department}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  placeholder="Engineering"
-                  disabled={isLoading}
-                />
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none bg-white"
+                  disabled={isLoading || isLoadingEmployers}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept.charAt(0).toUpperCase() + dept.slice(1)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Under Supervisor *</label>
-              <div className="relative">
-                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  name="supervisor"
-                  value={formData.supervisor}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  placeholder="Jane Smith"
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
+            {/* Project Name Dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Project Name *</label>
               <div className="relative">
-                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                <select
                   name="projectName"
                   value={formData.projectName}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  placeholder="Project Alpha"
-                  disabled={isLoading}
-                />
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={isLoading || isLoadingEmployers || !formData.department}
+                >
+                  <option value="">
+                    {formData.department ? 'Select Project' : 'Select Department First'}
+                  </option>
+                  {availableProjects.map((project) => (
+                    <option key={project} value={project}>
+                      {project}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
+            {/* Supervisor Dropdown */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Under Supervisor *</label>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                <select
+                  name="supervisor"
+                  value={formData.supervisor}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={isLoading || isLoadingEmployers || !formData.projectName}
+                >
+                  <option value="">
+                    {formData.projectName ? 'Select Supervisor' : 'Select Project First'}
+                  </option>
+                  {availableSupervisors.map((supervisor) => (
+                    <option key={supervisor} value={supervisor}>
+                      {supervisor}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Password Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Password *</label>
@@ -146,7 +215,7 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                     placeholder="••••••••"
-                    disabled={isLoading}
+                    disabled={isLoading || isLoadingEmployers}
                   />
                 </div>
               </div>
@@ -162,12 +231,13 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                     placeholder="••••••••"
-                    disabled={isLoading}
+                    disabled={isLoading || isLoadingEmployers}
                   />
                 </div>
               </div>
             </div>
 
+            {/* Password Requirements */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
               <p className="font-semibold mb-1">Password must contain:</p>
               <ul className="list-disc list-inside space-y-1">
@@ -178,27 +248,30 @@ export default function EmployeeRegister({ onSwitchToLogin, onRegisterSuccess }:
               </ul>
             </div>
 
+            {/* Error Message */}
             {displayError && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
                 {displayError}
               </div>
             )}
 
+            {/* Register Button */}
             <button
               onClick={handleRegister}
-              disabled={isLoading}
+              disabled={isLoading || isLoadingEmployers}
               className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white py-3 rounded-lg font-semibold hover:from-teal-600 hover:to-cyan-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
               {isLoading ? 'Creating Account...' : 'Create Account'}
             </button>
           </div>
 
+          {/* Footer */}
           <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-gray-600">
               Already have an account?{' '}
               <button
                 onClick={onSwitchToLogin}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingEmployers}
                 className="text-teal-600 font-semibold hover:text-teal-700 transition disabled:opacity-50"
               >
                 Sign In

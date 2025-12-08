@@ -1,5 +1,5 @@
 // contexts/management/EmployeeContext/RegisterContext.tsx
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface RegisterData {
   username: string;
@@ -11,11 +11,27 @@ export interface RegisterData {
   projectName: string;
 }
 
+export interface EmployerData {
+  id: number;
+  name: string;
+  email: string;
+  username: string;
+  department: string;
+  projects: string[];
+  created_at: string;
+  is_active: boolean;
+}
+
 interface RegisterContextType {
   register: (data: RegisterData) => Promise<{ success: boolean; userData?: any }>;
   isLoading: boolean;
   error: string;
   registeredUser: any | null;
+  employersData: EmployerData[];
+  isLoadingEmployers: boolean;
+  departments: string[];
+  getProjectsByDepartment: (department: string) => string[];
+  getSupervisorsByProject: (department: string, project: string) => string[];
 }
 
 const RegisterContext = createContext<RegisterContextType | undefined>(undefined);
@@ -30,6 +46,71 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
   const [registeredUser, setRegisteredUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Employers data states
+  const [employersData, setEmployersData] = useState<EmployerData[]>([]);
+  const [isLoadingEmployers, setIsLoadingEmployers] = useState(true);
+  const [departments, setDepartments] = useState<string[]>([]);
+
+  // Fetch employers data on mount
+  useEffect(() => {
+    fetchEmployersData();
+  }, []);
+
+  const fetchEmployersData = async () => {
+    setIsLoadingEmployers(true);
+    try {
+      const response = await fetch('/django/management/admindata', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setEmployersData(result.data);
+
+        // Extract unique departments
+        const uniqueDepartments = [...new Set(result.data.map((emp: EmployerData) => emp.department))] as string[];
+        setDepartments(uniqueDepartments);
+      } else {
+        setError('Failed to load departments data');
+      }
+    } catch (err) {
+      console.error('Error fetching employers:', err);
+      setError('Error loading departments. Please refresh the page.');
+    } finally {
+      setIsLoadingEmployers(false);
+    }
+  };
+
+  // Get projects by department
+  const getProjectsByDepartment = (department: string): string[] => {
+    if (!department) return [];
+
+    const departmentEmployers = employersData.filter(
+      emp => emp.department === department
+    );
+
+    const allProjects = departmentEmployers.flatMap(emp => emp.projects);
+    const uniqueProjects = [...new Set(allProjects)];
+
+    return uniqueProjects;
+  };
+
+  // Get supervisors by project and department
+  const getSupervisorsByProject = (department: string, project: string): string[] => {
+    if (!department || !project) return [];
+
+    const projectSupervisors = employersData.filter(
+      emp => emp.department === department && emp.projects.includes(project)
+    );
+
+    const supervisorNames = projectSupervisors.map(emp => emp.username);
+    return supervisorNames;
+  };
 
   const validateForm = (data: RegisterData): string | null => {
     // Check required fields
@@ -62,7 +143,7 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
     const hasUpperCase = /[A-Z]/.test(data.password);
     const hasLowerCase = /[a-z]/.test(data.password);
     const hasNumber = /[0-9]/.test(data.password);
-    
+
     if (!hasUpperCase || !hasLowerCase || !hasNumber) {
       return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
     }
@@ -111,7 +192,7 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       // Call your backend REGISTER API
       const response = await fetch('YOUR_BACKEND_URL/api/employee/auth/register', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(registrationData)
@@ -127,10 +208,10 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
           token: responseData.token, // if backend returns token
           registeredAt: new Date().toISOString()
         };
-        
+
         setRegisteredUser(userData);
         setError('');
-        
+
         // Return user data for auto-login
         return { success: true, userData };
       } else {
@@ -147,7 +228,19 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <RegisterContext.Provider value={{ register, isLoading, error, registeredUser }}>
+    <RegisterContext.Provider
+      value={{
+        register,
+        isLoading,
+        error,
+        registeredUser,
+        employersData,
+        isLoadingEmployers,
+        departments,
+        getProjectsByDepartment,
+        getSupervisorsByProject
+      }}
+    >
       {children}
     </RegisterContext.Provider>
   );
