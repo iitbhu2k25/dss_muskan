@@ -12,7 +12,7 @@ export interface RegisterData {
 }
 
 interface RegisterContextType {
-  register: (data: RegisterData) => Promise<boolean>;
+  register: (data: RegisterData) => Promise<{ success: boolean; userData?: any }>;
   isLoading: boolean;
   error: string;
   registeredUser: any | null;
@@ -63,7 +63,7 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       return 'Passwords do not match';
     }
 
-    // Strong password check (optional but recommended)
+    // Strong password check
     const hasUpperCase = /[A-Z]/.test(data.password);
     const hasLowerCase = /[a-z]/.test(data.password);
     const hasNumber = /[0-9]/.test(data.password);
@@ -92,7 +92,7 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
     return null;
   };
 
-  const register = async (data: RegisterData): Promise<boolean> => {
+  const register = async (data: RegisterData): Promise<{ success: boolean; userData?: any }> => {
     setIsLoading(true);
     setError('');
 
@@ -102,7 +102,7 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       if (validationError) {
         setError(validationError);
         setIsLoading(false);
-        return false;
+        return { success: false };
       }
 
       // Filter and clean projects
@@ -110,19 +110,18 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
         .filter(p => p.trim() !== '')
         .map(p => p.trim());
 
-      // Prepare registration data
+      // Prepare registration data (exclude confirmPassword)
       const registrationData = {
         name: data.name.trim(),
         email: data.email.trim().toLowerCase(),
         username: data.username.trim().toLowerCase(),
-        password: data.password, // In real app, this should be hashed
+        password: data.password,
         department: data.department.trim(),
-        projects: cleanedProjects,
-        registeredAt: new Date().toISOString()
+        projects: cleanedProjects
       };
 
-      // API call to dummy endpoint
-      const response = await fetch('https://jsonplaceholder.typicode.com/users', {
+      // Call your backend REGISTER API
+      const response = await fetch('YOUR_BACKEND_URL/api/auth/register', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -130,24 +129,30 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify(registrationData)
       });
 
-      if (response.ok) {
-        const userData = await response.json();
-        const newUser = {
-          ...userData,
-          ...registrationData,
-          id: userData.id
+      const responseData = await response.json();
+
+      // Check if registration was successful
+      if (response.ok && responseData.success) {
+        // Store the registered user data
+        const userData = {
+          ...responseData.user,
+          token: responseData.token, // if backend returns token
+          registeredAt: new Date().toISOString()
         };
-        setRegisteredUser(newUser);
+        
+        setRegisteredUser(userData);
         setError('');
-        return true;
+        
+        // Return user data for auto-login
+        return { success: true, userData };
       } else {
-        setError('Registration failed. Please try again.');
-        return false;
+        setError(responseData.message || 'Registration failed. Please try again.');
+        return { success: false };
       }
     } catch (err) {
       console.error('Registration error:', err);
       setError('An error occurred during registration. Please try again.');
-      return false;
+      return { success: false };
     } finally {
       setIsLoading(false);
     }

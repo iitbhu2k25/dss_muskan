@@ -8,7 +8,7 @@ import AdminDashboard from './components/dashboard';
 
 // Auth Wrapper Component
 function AuthWrapper() {
-  const { user } = useLogin();
+  const { user, loginWithUserData } = useLogin();
   const [showRegister, setShowRegister] = useState(false);
 
   // If user is logged in, show dashboard
@@ -22,9 +22,9 @@ function AuthWrapper() {
       <RegisterProvider>
         <AdminRegister
           onSwitchToLogin={() => setShowRegister(false)}
-          onRegisterSuccess={() => {
-            // After successful registration, switch to login
-            setShowRegister(false);
+          onRegisterSuccess={(userData) => {
+            // After successful registration, auto-login the user
+            loginWithUserData(userData);
           }}
         />
       </RegisterProvider>

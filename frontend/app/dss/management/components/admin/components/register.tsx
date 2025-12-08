@@ -51,11 +51,11 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
       projects: projects.filter(p => p.trim() !== '')
     };
 
-    const success = await register(registrationData);
+    const result = await register(registrationData);
     
-    if (success) {
-      // Registration successful, notify parent
-      onRegisterSuccess(registrationData);
+    if (result.success && result.userData) {
+      // Registration successful - auto-login with user data
+      onRegisterSuccess(result.userData);
     }
   };
 
@@ -65,7 +65,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4">
       <div className="w-full max-w-2xl">
         <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
-          {/* Header */}
           <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full mb-4">
               <User className="w-8 h-8 text-white" />
@@ -74,9 +73,7 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
             <p className="text-gray-500">Register your admin account</p>
           </div>
 
-          {/* Form */}
           <div className="space-y-5">
-            {/* Name and Username Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Full Name *</label>
@@ -111,7 +108,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </div>
             </div>
 
-            {/* Email Field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Email Address *</label>
               <div className="relative">
@@ -128,7 +124,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </div>
             </div>
 
-            {/* Department Field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Department *</label>
               <div className="relative">
@@ -145,7 +140,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </div>
             </div>
 
-            {/* Projects Field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Projects *</label>
               <div className="space-y-2">
@@ -186,7 +180,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </div>
             </div>
 
-            {/* Password and Confirm Password Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Password *</label>
@@ -221,7 +214,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </div>
             </div>
 
-            {/* Password Requirements */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
               <p className="font-semibold mb-1">Password must contain:</p>
               <ul className="list-disc list-inside space-y-1">
@@ -232,14 +224,12 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </ul>
             </div>
 
-            {/* Error Message */}
             {displayError && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
                 {displayError}
               </div>
             )}
 
-            {/* Register Button */}
             <button
               onClick={handleRegister}
               disabled={isLoading}
@@ -249,7 +239,6 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
             </button>
           </div>
 
-          {/* Footer */}
           <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-gray-600">
               Already have an account?{' '}

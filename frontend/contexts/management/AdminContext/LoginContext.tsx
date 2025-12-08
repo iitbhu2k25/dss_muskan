@@ -1,18 +1,11 @@
+// contexts/management/AdminContext/LoginContext.tsx
+import { createContext, useContext, useState, ReactNode } from 'react';
 
-
-
-
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User, Mail, Lock, Building2, LogOut, Plus, X, Briefcase } from 'lucide-react';
-
-// ============ CONTEXTS ============
-
-// Login Context
 interface LoginContextType {
   user: any | null;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  loginWithUserData: (userData: any) => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   error: string;
 }
@@ -35,12 +28,14 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     setError('');
     
     try {
+      // Validate inputs
       if (!email || !password) {
         setError('Please fill in all fields');
         setIsLoading(false);
         return false;
       }
 
+      // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         setError('Please enter a valid email address');
@@ -48,23 +43,37 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      const response = await fetch('https://jsonplaceholder.typicode.com/users/1', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+      // Call your backend LOGIN API
+      const response = await fetch('YOUR_BACKEND_URL/api/auth/login', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
       });
       
-      if (response.ok) {
-        const userData = await response.json();
-        const authenticatedUser = {
-          ...userData,
-          email,
+      const data = await response.json();
+
+      // Check if login was successful
+      if (response.ok && data.success) {
+        // Store user data from backend
+        const userData = {
+          ...data.user,
+          token: data.token, // if you use JWT tokens
           loggedInAt: new Date().toISOString()
         };
-        setUser(authenticatedUser);
+        
+        setUser(userData);
         setError('');
+        
+        // Optionally store token in localStorage for persistence
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        
         return true;
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError(data.message || 'Invalid credentials. Please try again.');
         return false;
       }
     } catch (err) {
@@ -76,13 +85,50 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
+  // Direct login with user data (used after registration)
+  const loginWithUserData = (userData: any) => {
+    setUser(userData);
     setError('');
+    
+    // Optionally store token if provided
+    if (userData.token) {
+      localStorage.setItem('authToken', userData.token);
+    }
+  };
+
+  const logout = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Call your backend LOGOUT API
+      const token = localStorage.getItem('authToken');
+      
+      await fetch('YOUR_BACKEND_URL/api/auth/logout', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // if you use JWT
+        }
+      });
+      
+      // Clear user data and token
+      setUser(null);
+      setError('');
+      localStorage.removeItem('authToken');
+      
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Still clear local data even if API fails
+      setUser(null);
+      setError('');
+      localStorage.removeItem('authToken');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <LoginContext.Provider value={{ user, login, logout, isLoading, error }}>
+    <LoginContext.Provider value={{ user, login, loginWithUserData, logout, isLoading, error }}>
       {children}
     </LoginContext.Provider>
   );
