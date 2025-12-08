@@ -1,6 +1,12 @@
 from rest_framework import serializers
 from .models import PersonalAdmin
 
+
+class PersonalAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PersonalAdmin
+        fields = "__all__"
+
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = PersonalAdmin

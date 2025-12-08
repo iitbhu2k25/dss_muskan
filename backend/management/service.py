@@ -62,3 +62,7 @@ def logout_admin(token):
     return True, "Logout successful"
 
 
+def get_all_admins():
+    return PersonalAdmin.objects.all()
+
+

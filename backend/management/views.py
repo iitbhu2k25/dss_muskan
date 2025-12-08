@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .service import register_admin, login_admin, logout_admin
-from .serializers import LoginSerializer
+from .service import register_admin, login_admin, logout_admin, get_all_admins
+from .serializers import LoginSerializer, PersonalAdminSerializer
 
 
 class RegisterAdminView(APIView):
@@ -85,4 +85,16 @@ class LogoutAdminView(APIView):
             return Response({"success": True, "message": message}, status=status.HTTP_200_OK)
         else:
             return Response({"success": False, "message": message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        
+
+class PersonalAdminListView(APIView):
+    permission_classes = [AllowAny] 
+    def get(self, request):
+        admins = get_all_admins()
+        serializer = PersonalAdminSerializer(admins, many=True)
+        return Response({
+            "success": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)        
             
