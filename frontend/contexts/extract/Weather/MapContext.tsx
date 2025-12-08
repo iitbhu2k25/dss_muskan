@@ -45,7 +45,7 @@ interface WeatherData {
 }
 
 interface WeatherMapContextType {
-  mapRef: React.RefObject<HTMLDivElement>;
+  mapRef: React.RefObject<HTMLDivElement | null>;
   map: Map | null;
   isLoading: boolean;
   isSatellite: boolean;
