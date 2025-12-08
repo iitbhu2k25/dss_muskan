@@ -1,17 +1,46 @@
-"use client";
+// components/management/employee/page.tsx
+'use client';
+import { useState } from 'react';
+import { LoginProvider, useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
+import { RegisterProvider } from '@/contexts/management/EmployeeContext/RegisterContext';
+import EmployeeLogin from './components/login';
+import EmployeeRegister from './components/register';
+import EmployeeDashboard from './components/dashboard';
 
-export default function EmployeePage({ goBack }: { goBack: () => void }) {
+// Auth Wrapper Component
+function AuthWrapper() {
+  const { user, loginWithUserData } = useLogin();
+  const [showRegister, setShowRegister] = useState(false);
+
+  // If user is logged in, show dashboard
+  if (user) {
+    return <EmployeeDashboard />;
+  }
+
+  // If showing register screen
+  if (showRegister) {
+    return (
+      <RegisterProvider>
+        <EmployeeRegister
+          onSwitchToLogin={() => setShowRegister(false)}
+          onRegisterSuccess={(userData) => {
+            // After successful registration, auto-login the user
+            loginWithUserData(userData);
+          }}
+        />
+      </RegisterProvider>
+    );
+  }
+
+  // Default: show login
+  return <EmployeeLogin onSwitchToRegister={() => setShowRegister(true)} />;
+}
+
+// Main Employee Page Component
+export default function EmployeePage() {
   return (
-    <div className="w-full max-w-3xl bg-white p-6 rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Employee Management</h2>
-      <p className="text-gray-600 mb-6">Employee related operations will come here...</p>
-
-      <button
-        onClick={goBack}
-        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-      >
-        Back
-      </button>
-    </div>
+    <LoginProvider>
+      <AuthWrapper />
+    </LoginProvider>
   );
 }

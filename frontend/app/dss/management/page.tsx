@@ -13,7 +13,7 @@ export default function ManagementPage() {
   }
 
   if (activePage === "employee") {
-    //return <EmployeePage/>;
+    return <EmployeePage />;
   }
 
   // Default: Show selection screen
