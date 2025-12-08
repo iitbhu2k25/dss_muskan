@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PersonalAdmin
+from .models import PersonalAdmin, PersonalEmployee
 
 
 class PersonalAdminSerializer(serializers.ModelSerializer):
@@ -22,3 +22,18 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+    
+    
+class EmployeeRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PersonalEmployee
+        fields = [
+            'id', 'name', 'email', 'username', 'password',
+            'department', 'supervisor', 'project_name'
+        ]
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        employee = PersonalEmployee(**validated_data)
+        employee.save()
+        return employee

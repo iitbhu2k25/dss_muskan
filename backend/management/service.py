@@ -3,7 +3,8 @@
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
-from .models import PersonalAdmin
+from .models import PersonalAdmin,PersonalEmployee
+
 import jwt
 
 def register_admin(data):
@@ -42,7 +43,22 @@ def login_admin(email, password):
     token = jwt.encode({"user_id": admin.id}, settings.SECRET_KEY, algorithm="HS256")
     return True, {"user": admin, "token": token}
 
+def register_employee(data):
+    from .serializers import EmployeeRegisterSerializer
 
+    if PersonalEmployee.objects.filter(email=data.get('email')).exists():
+        return False, "Email already registered"
+
+    if PersonalEmployee.objects.filter(username=data.get('username')).exists():
+        return False, "Username already taken"
+
+    serializer = EmployeeRegisterSerializer(data=data)
+    if serializer.is_valid():
+        employee = serializer.save()
+        token = jwt.encode({"employee_id": employee.id}, settings.SECRET_KEY, algorithm="HS256")
+        return True, {"employee": employee, "token": token}
+    else:
+        return False, serializer.errors
 
 
 def logout_admin(token):
@@ -65,4 +81,19 @@ def logout_admin(token):
 def get_all_admins():
     return PersonalAdmin.objects.all()
 
+def register_employee(data):
+    from .serializers import EmployeeRegisterSerializer
 
+    if PersonalEmployee.objects.filter(email=data.get('email')).exists():
+        return False, "Email already registered"
+
+    if PersonalEmployee.objects.filter(username=data.get('username')).exists():
+        return False, "Username already taken"
+
+    serializer = EmployeeRegisterSerializer(data=data)
+    if serializer.is_valid():
+        employee = serializer.save()
+        token = jwt.encode({"employee_id": employee.id}, settings.SECRET_KEY, algorithm="HS256")
+        return True, {"employee": employee, "token": token}
+    else:
+        return False, serializer.errors

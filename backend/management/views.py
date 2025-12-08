@@ -98,3 +98,29 @@ class PersonalAdminListView(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)        
             
+            
+            
+class RegisterEmployeeView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        success, result = register_employee(request.data)
+        if success:
+            employee = result['employee']
+            token = result['token']
+            return Response({
+                "success": True,
+                "message": "Employee registration successful",
+                "employee": {
+                    "id": employee.id,
+                    "name": employee.name,
+                    "email": employee.email,
+                    "username": employee.username,
+                    "department": employee.department,
+                    "supervisor": employee.supervisor,
+                    "project_name": employee.project_name
+                },
+                "token": token
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"success": False, "message": result}, status=status.HTTP_400_BAD_REQUEST)
