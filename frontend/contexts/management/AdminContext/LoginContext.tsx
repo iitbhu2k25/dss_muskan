@@ -44,7 +44,7 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Call your backend LOGIN API
-      const response = await fetch('YOUR_BACKEND_URL/api/auth/login', {
+      const response = await fetch('/django/management/login', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

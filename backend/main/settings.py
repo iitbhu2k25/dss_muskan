@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "datahub",
     "extract",
     "rsq",
+    "management",
 ]
 
 MIDDLEWARE = [

@@ -121,7 +121,7 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       };
 
       // Call your backend REGISTER API
-      const response = await fetch('YOUR_BACKEND_URL/api/auth/register', {
+      const response = await fetch('/django/management/register', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
