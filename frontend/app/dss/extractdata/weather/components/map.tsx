@@ -47,7 +47,9 @@ const WeatherMap = () => {
 
       {/* Weather Info Sidebar */}
       {(weatherData || isLoadingWeather) && (
-        <div className="w-96 bg-white border-l border-gray-200 shadow-lg overflow-y-auto">
+        <div className="w-96 bg-gradient-to-br from-white via-gray-200 to-gray-400 border-l border-gray-300 shadow-lg overflow-y-auto">
+
+
           <div className="p-6">
             {/* Close Button */}
             <button

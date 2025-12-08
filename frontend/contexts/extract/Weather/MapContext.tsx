@@ -29,13 +29,6 @@ import { Geometry } from "ol/geom";
 import { Select } from "ol/interaction";
 import { click } from "ol/events/condition";
 
-/**
- * WeatherMapContext
- * Full, improved version with robust weather fetch logic:
- * - timeout + retries + exponential backoff
- * - raw proxy usage (allorigins.win/raw)
- * - validation of fetched HTML before parsing
- */
 
 interface WeatherData {
   locationName: string;
@@ -69,7 +62,7 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSatellite, setIsSatellite] = useState(false);
+  const [isSatellite, setIsSatellite] = useState(true);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [selectedStation, setSelectedStation] = useState<string | null>(null);
@@ -89,27 +82,44 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
 
     return new Style({
       image: new Icon({
-        src: "data:image/svg+xml;utf8," + encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3" fill="red"></circle>
-          </svg>
-        `),
-        scale: 1.2,
+        src:
+          "data:image/svg+xml;utf8," +
+          encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24">
+          <defs>
+            <!-- 🔥 Red + Orange Gradient -->
+            <radialGradient id="grad" cx="50%" cy="35%" r="70%">
+              <stop offset="0%" stop-color="#ffe1cc" />       <!-- light orange center -->
+              <stop offset="45%" stop-color="#ff7a29" />      <!-- warm orange middle -->
+              <stop offset="100%" stop-color="#d70000" />     <!-- deep red outer -->
+            </radialGradient>
+          </defs>
+
+          <!-- Pin shape with gradient fill -->
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+            fill="url(#grad)" stroke="#8b0000" stroke-width="1.4"/>
+
+          <!-- Inner dot -->
+          <circle cx="12" cy="10" r="3" fill="#b30000"/>
+        </svg>`),
+        scale: 0.9,
         anchor: [0.5, 1],
       }),
+
       text: showLabel
         ? new Text({
-            text: String(label),
-            offsetY: -45,
-            font: "bold 12px Arial",
-            fill: new Fill({ color: "#000" }),
-            stroke: new Stroke({ color: "#fff", width: 3 }),
-            textAlign: "center",
-          })
+          text: String(label),
+          offsetY: -42,
+          font: "600 12px Arial",
+          fill: new Fill({ color: "#000" }),
+          stroke: new Stroke({ color: "#fff", width: 3 }),
+          textAlign: "center",
+        })
         : undefined,
     });
   };
+
+
 
   // ----- Parsing helper (defensive) -----
   const parseWeatherData = (html: string): WeatherData | null => {
@@ -327,7 +337,7 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         maxZoom: 19,
       }),
-      visible: false,
+      visible: true,
       properties: { name: "satellite" },
     });
 
@@ -408,28 +418,38 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
 
         return new Style({
           image: new Icon({
-            src: "data:image/svg+xml;utf8," + encodeURIComponent(`
-              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="blue" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3" fill="blue"></circle>
-              </svg>
-            `),
+            src:
+              "data:image/svg+xml;utf8," +
+              encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+              <defs>
+                <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:#00ff00;stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+                stroke="#004d00" stroke-width="2" fill="url(#grad)" />
+              <circle cx="12" cy="10" r="3" fill="#004d00"></circle>
+            </svg>
+          `),
             scale: 1.4,
             anchor: [0.5, 1],
           }),
           text: showLabel
             ? new Text({
-                text: String(label),
-                offsetY: -45,
-                font: "bold 12px Arial",
-                fill: new Fill({ color: "#000" }),
-                stroke: new Stroke({ color: "#fff", width: 3 }),
-                textAlign: "center",
-              })
+              text: String(label),
+              offsetY: -45,
+              font: "bold 12px Arial",
+              fill: new Fill({ color: "#000" }),
+              stroke: new Stroke({ color: "#fff", width: 3 }),
+              textAlign: "center",
+            })
             : undefined,
         });
       },
     });
+
 
     selectInteraction.on("select", (e) => {
       if (e.selected && e.selected.length > 0) {
@@ -465,7 +485,7 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
         }
       });
     } catch (err) {
-      // not all OL VectorSource implementations emit featuresloadend in same way; ignore
+
     }
 
     // refresh source to trigger load
