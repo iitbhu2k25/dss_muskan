@@ -1,4 +1,5 @@
 selenium==4.25.0
+PyJWT
 bs4
 PyJWT
 matplotlib_scalebar

@@ -10,7 +10,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
-
+import { FeatureLike } from "ol/Feature";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
@@ -46,7 +46,10 @@ interface WeatherData {
 
 interface WeatherMapContextType {
   mapRef: React.RefObject<HTMLDivElement | null>;
+<<<<<<< HEAD
   
+=======
+>>>>>>> f9f19095cc0e43f0a3f5541bb2e539660939264d
   map: Map | null;
   isLoading: boolean;
   isSatellite: boolean;
@@ -78,39 +81,39 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
   });
 
   // weather station style: label shown only at zoom >= 6
-  const weatherStationStyle = (feature: Feature<Geometry>, resolution: number) => {
-    const label = feature.get("label") || "";
-    const zoom = map?.getView().getZoom() || 5;
-    const showLabel = zoom >= 6;
+ const weatherStationStyle = (
+  feature: FeatureLike,
+  resolution: number
+): Style => {
+  const label = feature.get("label") || "";
+  const zoom = map?.getView().getZoom() ?? 5;
+  const showLabel = zoom >= 6;
 
-    return new Style({
-      image: new Icon({
-        src:
-          "data:image/svg+xml;utf8," +
-          encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24">
-          <defs>
-            <!-- 🔥 Red + Orange Gradient -->
-            <radialGradient id="grad" cx="50%" cy="35%" r="70%">
-              <stop offset="0%" stop-color="#ffe1cc" />       <!-- light orange center -->
-              <stop offset="45%" stop-color="#ff7a29" />      <!-- warm orange middle -->
-              <stop offset="100%" stop-color="#d70000" />     <!-- deep red outer -->
-            </radialGradient>
-          </defs>
+  return new Style({
+    image: new Icon({
+      src:
+        "data:image/svg+xml;utf8," +
+        encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24">
+        <defs>
+          <radialGradient id="grad" cx="50%" cy="35%" r="70%">
+            <stop offset="0%" stop-color="#ffe1cc" />
+            <stop offset="45%" stop-color="#ff7a29" />
+            <stop offset="100%" stop-color="#d70000" />
+          </radialGradient>
+        </defs>
 
-          <!-- Pin shape with gradient fill -->
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
-            fill="url(#grad)" stroke="#8b0000" stroke-width="1.4"/>
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+          fill="url(#grad)" stroke="#8b0000" stroke-width="1.4"/>
 
-          <!-- Inner dot -->
-          <circle cx="12" cy="10" r="3" fill="#b30000"/>
-        </svg>`),
-        scale: 0.9,
-        anchor: [0.5, 1],
-      }),
+        <circle cx="12" cy="10" r="3" fill="#b30000"/>
+      </svg>`),
+      scale: 0.9,
+      anchor: [0.5, 1],
+    }),
 
-      text: showLabel
-        ? new Text({
+    text: showLabel
+      ? new Text({
           text: String(label),
           offsetY: -42,
           font: "600 12px Arial",
@@ -118,9 +121,10 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
           stroke: new Stroke({ color: "#fff", width: 3 }),
           textAlign: "center",
         })
-        : undefined,
-    });
-  };
+      : undefined,
+  });
+};
+
 
 
 
