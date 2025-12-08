@@ -1,3 +1,5 @@
+##################------For Admin---------#####################
+
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
@@ -26,15 +28,37 @@ def register_admin(data):
 def login_admin(email, password):
     try:
         admin = PersonalAdmin.objects.get(email=email)
-        print(f"Found admin: {admin.email}")
     except PersonalAdmin.DoesNotExist:
-        print(f"No admin found with email: {email}")
         return False, "Invalid email or password"
 
     if not check_password(password, admin.password):
-        print(f"Password mismatch for {email}")
         return False, "Invalid email or password"
 
-    print(f"Password correct for {email}")
+    # Reactivate user on login
+    if not admin.is_active:
+        admin.is_active = True
+        admin.save()
+
     token = jwt.encode({"user_id": admin.id}, settings.SECRET_KEY, algorithm="HS256")
     return True, {"user": admin, "token": token}
+
+
+
+
+def logout_admin(token):
+    """Marks the admin as inactive based on JWT token."""
+    if not token:
+        return False, "Token missing"
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+        admin = PersonalAdmin.objects.get(id=user_id)
+    except (jwt.ExpiredSignatureError, jwt.DecodeError, PersonalAdmin.DoesNotExist):
+        return False, "Invalid token"
+
+    admin.is_active = False
+    admin.save()
+    return True, "Logout successful"
+
+

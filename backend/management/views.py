@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
-from .service import register_admin, login_admin
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .service import register_admin, login_admin, logout_admin
 from .serializers import LoginSerializer
+
 
 class RegisterAdminView(APIView):
     permission_classes = [AllowAny]
@@ -69,3 +70,19 @@ class LoginAdminView(APIView):
                 "success": False,
                 "message": result
             }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            
+
+class LogoutAdminView(APIView):
+    permission_classes = [AllowAny] 
+
+    def post(self, request):
+        auth_header = request.headers.get('Authorization')
+        token = auth_header.split(' ')[1] if auth_header and auth_header.startswith('Bearer ') else None
+
+        success, message = logout_admin(token)
+        if success:
+            return Response({"success": True, "message": message}, status=status.HTTP_200_OK)
+        else:
+            return Response({"success": False, "message": message}, status=status.HTTP_401_UNAUTHORIZED)
+            

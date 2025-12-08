@@ -9,6 +9,7 @@ class PersonalAdmin(models.Model):
     department = models.CharField(max_length=100)
     projects = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)  # <-- new column
 
     def save(self, *args, **kwargs):
         if not self.pk:  # hash only on CREATE

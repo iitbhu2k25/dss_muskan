@@ -45,7 +45,8 @@ interface WeatherData {
 }
 
 interface WeatherMapContextType {
-  mapRef: React.RefObject<HTMLDivElement>;
+  mapRef: React.RefObject<HTMLDivElement | null>;
+  
   map: Map | null;
   isLoading: boolean;
   isSatellite: boolean;
@@ -60,6 +61,7 @@ const WeatherMapContext = createContext<WeatherMapContextType | undefined>(undef
 
 export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  
   const [map, setMap] = useState<Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSatellite, setIsSatellite] = useState(true);
@@ -67,6 +69,7 @@ export const WeatherMapProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [selectedStation, setSelectedStation] = useState<string | null>(null);
   const [currentZoom, setCurrentZoom] = useState(5);
+  
 
   // ----- Styles -----
   const indiaBoundaryStyle = new Style({

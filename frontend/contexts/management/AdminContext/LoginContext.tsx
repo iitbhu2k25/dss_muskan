@@ -103,7 +103,7 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
       // Call your backend LOGOUT API
       const token = localStorage.getItem('authToken');
       
-      await fetch('YOUR_BACKEND_URL/api/auth/logout', {
+      await fetch('/django/management/logout', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
