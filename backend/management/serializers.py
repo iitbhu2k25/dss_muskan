@@ -84,15 +84,31 @@ class EmployeeLoginSerializer(serializers.Serializer):
 
 class EmployeeSerializer(serializers.ModelSerializer):
     """Serializer for employee data (without password)"""
+
     projectName = serializers.CharField(source='project_name', read_only=True)
-    
+
+    # ✅ Proper FK email return
+    supervisor_email = serializers.SerializerMethodField()
+
     class Meta:
         model = PersonalEmployee
         fields = [
-            'id', 'name', 'email', 'username',
-            'department', 'supervisor', 'projectName', 'is_active'
+            'id',
+            'name',
+            'email',
+            'username',
+            'department',
+            'supervisor_name',
+            'supervisor_email',
+
+            'projectName',
+            'is_active'
         ]
         read_only_fields = fields
+
+    def get_supervisor_email(self, obj):
+        return obj.supervisor_email.email if obj.supervisor_email else None
+
 
 class ProjectFilterSerializer(serializers.Serializer):
     """Serializer for filtering employees by projects"""

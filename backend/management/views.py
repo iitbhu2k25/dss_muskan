@@ -263,31 +263,32 @@ class FilterEmployeesByProjectView(APIView):
     """
     POST: Filter employees by project names
     Request: {"projects": ["Project A", "Project B"]}
-    Response: List of employees with their name and email
     """
     permission_classes = [AllowAny]
-    
+
     def post(self, request):
         serializer = ProjectFilterSerializer(data=request.data)
-        
+
         if not serializer.is_valid():
             return Response({
                 "success": False,
                 "message": "Invalid data",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         projects = serializer.validated_data['projects']
         success, result = filter_employees_by_projects(projects)
-        
+
         if success:
             employee_serializer = EmployeeSerializer(result, many=True)
+
             return Response({
                 "success": True,
                 "count": result.count(),
                 "projects": projects,
                 "employees": employee_serializer.data
             }, status=status.HTTP_200_OK)
+
         else:
             return Response({
                 "success": False,

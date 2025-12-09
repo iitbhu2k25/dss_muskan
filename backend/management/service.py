@@ -201,7 +201,11 @@ def filter_employees_by_projects(projects):
     Returns all employees matching any of the provided projects
     """
     try:
-        employees = PersonalEmployee.objects.filter(project_name__in=projects)
+        employees = PersonalEmployee.objects.filter(
+            project_name__in=projects,
+            is_active=True
+        )
         return True, employees
+
     except Exception as e:
         return False, f"Error filtering employees: {str(e)}"
