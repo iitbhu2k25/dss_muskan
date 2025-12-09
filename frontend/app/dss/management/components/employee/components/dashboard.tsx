@@ -1,4 +1,6 @@
 // components/management/employee/components/dashboard.tsx
+'use client';
+
 import { useState } from 'react';
 import {
   User,
@@ -14,14 +16,12 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
+import LeaveRequestForm from './applyleave';
 
-interface EmployeeDashboardProps {
-  onApplyLeave?: () => void;
-}
-
-export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardProps) {
+export default function EmployeeDashboard() {
   const { user, logout, isLoading } = useLogin();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
 
   if (!user) {
     return null;
@@ -60,7 +60,8 @@ export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardPro
               <div>
                 <h1 className="text-xl font-bold text-gray-800">Employee Dashboard</h1>
                 <p className="text-sm text-gray-500 flex items-center gap-2">
-                  Welcome back, <span className="font-semibold text-green-600">{user.username}</span>
+                  Welcome back,{' '}
+                  <span className="font-semibold text-green-600">{user.username}</span>
                   {user.is_active && (
                     <span className="flex items-center gap-1 text-green-600">
                       <Activity className="w-3 h-3" />
@@ -164,7 +165,7 @@ export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardPro
                 <p className="text-lg font-bold text-gray-800">Submit Request</p>
               </div>
               <button
-                onClick={onApplyLeave}
+                onClick={() => setShowLeaveForm(true)}
                 disabled={!user.supervisor_email}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 group-hover:rotate-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
                 title={
@@ -195,7 +196,9 @@ export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardPro
             </div>
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-500 font-medium mb-1">Username</p>
-              <p className="text-lg font-semibold text-gray-800">{user.username || 'N/A'}</p>
+              <p className="text-lg font-semibold text-gray-800">
+                {user.username || 'N/A'}
+              </p>
             </div>
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-500 font-medium mb-1">Email Address</p>
@@ -293,7 +296,9 @@ export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardPro
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
               <Briefcase className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">No Project Assigned</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              No Project Assigned
+            </h3>
             <p className="text-gray-500">
               You don't have any project assigned at the moment.
             </p>
@@ -371,6 +376,11 @@ export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardPro
             </div>
           </div>
         </div>
+      )}
+
+      {/* Leave Application Modal */}
+      {showLeaveForm && (
+        <LeaveRequestForm onClose={() => setShowLeaveForm(false)} />
       )}
     </div>
   );
