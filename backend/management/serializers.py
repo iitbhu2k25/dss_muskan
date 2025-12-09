@@ -68,3 +68,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'department', 'supervisor', 'projectName', 'is_active'
         ]
         read_only_fields = fields
+
+class ProjectFilterSerializer(serializers.Serializer):
+    """Serializer for filtering employees by projects"""
+    projects = serializers.ListField(
+        child=serializers.CharField(max_length=200),
+        allow_empty=False
+    )

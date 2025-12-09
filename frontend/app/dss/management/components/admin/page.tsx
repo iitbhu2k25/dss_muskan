@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { LoginProvider, useLogin } from '@/contexts/management/AdminContext/LoginContext';
 import { RegisterProvider } from '@/contexts/management/AdminContext/RegisterContext';
+import { DashboardProvider } from '@/contexts/management/AdminContext/DashboardContext';
 import AdminLogin from './components/login';
 import AdminRegister from './components/register';
 import AdminDashboard from './components/dashboard';
@@ -11,9 +12,13 @@ function AuthWrapper() {
   const { user, loginWithUserData } = useLogin();
   const [showRegister, setShowRegister] = useState(false);
 
-  // If user is logged in, show dashboard
+  // If user is logged in, show dashboard with DashboardProvider
   if (user) {
-    return <AdminDashboard />;
+    return (
+      <DashboardProvider>
+        <AdminDashboard />
+      </DashboardProvider>
+    );
   }
 
   // If showing register screen

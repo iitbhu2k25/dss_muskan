@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterAdminView, LoginAdminView, LogoutAdminView, PersonalAdminListView, RegisterEmployeeView, LoginEmployeeView, LogoutEmployeeView, EmployeeStatusView
+from .views import RegisterAdminView, LoginAdminView, LogoutAdminView, PersonalAdminListView, RegisterEmployeeView, LoginEmployeeView, LogoutEmployeeView, EmployeeStatusView, FilterEmployeesByProjectView
 
 urlpatterns = [
     path('register', RegisterAdminView.as_view()),
@@ -10,4 +10,5 @@ urlpatterns = [
     path('login/employee', LoginEmployeeView.as_view(), name='login_employee'),
     path('logout/employee', LogoutEmployeeView.as_view(), name='logout_employee'),
     path('status/employee', EmployeeStatusView.as_view(), name='employee_status'),
+    path('filter-employees', FilterEmployeesByProjectView.as_view(), name='employee_list'),
 ]
