@@ -53,3 +53,48 @@ class PersonalEmployee(models.Model):
         db_table = 'personal_employee'
         verbose_name = 'Personal Employee'
         verbose_name_plural = 'Personal Employees'
+        
+        
+        
+        
+class LeaveEmployee(models.Model):
+    APPROVAL_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    # Foreign Key to PersonalEmployee
+    employee_email = models.ForeignKey(
+        PersonalEmployee,
+        to_field="email",
+        on_delete=models.CASCADE,
+        related_name="leave_requests"
+    )
+    
+    employee_name = models.CharField(max_length=150)
+    supervisor_email = models.EmailField()
+    
+    from_date = models.DateField()
+    to_date = models.DateField()
+    total_days = models.IntegerField()
+    
+    reason = models.TextField()
+    leave_type = models.CharField(max_length=100)  # ✅ User enters any string
+    approval_status = models.CharField(
+        max_length=20, 
+        choices=APPROVAL_STATUS_CHOICES, 
+        default='pending'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.leave_type} ({self.from_date} to {self.to_date})"
+
+    class Meta:
+        db_table = 'leave_employee'
+        verbose_name = 'Leave Request'
+        verbose_name_plural = 'Leave Requests'
+        ordering = ['-created_at']        
