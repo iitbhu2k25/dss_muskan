@@ -4,7 +4,8 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .service import register_admin, login_admin, logout_admin, get_all_admins
 from .serializers import LoginSerializer, PersonalAdminSerializer
-
+from .service import register_employee, login_employee, logout_employee, get_employee_status
+from .serializers import EmployeeLoginSerializer
 
 class RegisterAdminView(APIView):
     permission_classes = [AllowAny]
@@ -99,8 +100,8 @@ class PersonalAdminListView(APIView):
         }, status=status.HTTP_200_OK)        
             
             
-            
 class RegisterEmployeeView(APIView):
+    """Employee Registration API"""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -118,9 +119,125 @@ class RegisterEmployeeView(APIView):
                     "username": employee.username,
                     "department": employee.department,
                     "supervisor": employee.supervisor,
-                    "project_name": employee.project_name
+                    "projectName": employee.project_name,
+                    "is_active": employee.is_active
                 },
                 "token": token
             }, status=status.HTTP_201_CREATED)
         else:
-            return Response({"success": False, "message": result}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "success": False, 
+                "message": result
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginEmployeeView(APIView):
+    """Employee Login API"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # Validate input using serializer
+        serializer = EmployeeLoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({
+                "success": False,
+                "message": "Invalid input data",
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
+        success, result = login_employee(email, password)
+        
+        if success:
+            employee = result['employee']
+            token = result['token']
+            return Response({
+                "success": True,
+                "message": "Login successful",
+                "user": {
+                    "id": employee.id,
+                    "name": employee.name,
+                    "email": employee.email,
+                    "username": employee.username,
+                    "department": employee.department,
+                    "supervisor": employee.supervisor,
+                    "projectName": employee.project_name,
+                    "is_active": employee.is_active,
+                    "last_login": employee.created_at.isoformat() if employee.created_at else None
+                },
+                "token": token
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "success": False,
+                "message": result
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class LogoutEmployeeView(APIView):
+    """Employee Logout API"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # Get token from header
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header.replace('Bearer ', '') if auth_header.startswith('Bearer ') else None
+
+        if not token:
+            return Response({
+                "success": False,
+                "message": "No token provided"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        success, message = logout_employee(token)
+        
+        if success:
+            return Response({
+                "success": True,
+                "message": message
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "success": False,
+                "message": message
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmployeeStatusView(APIView):
+    """Check if employee is active"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header.replace('Bearer ', '') if auth_header.startswith('Bearer ') else None
+
+        if not token:
+            return Response({
+                "success": False,
+                "message": "No token provided"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        success, result = get_employee_status(token)
+        
+        if success:
+            employee = result['employee']
+            return Response({
+                "success": True,
+                "is_active": result['is_active'],
+                "user": {
+                    "id": employee.id,
+                    "name": employee.name,
+                    "email": employee.email,
+                    "username": employee.username,
+                    "department": employee.department,
+                    "supervisor": employee.supervisor,
+                    "projectName": employee.project_name
+                }
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "success": False,
+                "message": result
+            }, status=status.HTTP_401_UNAUTHORIZED)

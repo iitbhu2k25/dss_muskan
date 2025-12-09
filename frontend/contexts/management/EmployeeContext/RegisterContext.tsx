@@ -179,14 +179,15 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
         return { success: false };
       }
 
-      // Prepare registration data (exclude confirmPassword)
+      // Prepare registration data - TRANSFORM TO MATCH BACKEND
       const registrationData = {
+        name: data.username.trim().toLowerCase(), // Backend expects 'name'
         username: data.username.trim().toLowerCase(),
         email: data.email.trim().toLowerCase(),
         password: data.password,
         department: data.department.trim(),
         supervisor: data.supervisor.trim(),
-        projectName: data.projectName.trim()
+        project_name: data.projectName.trim() // Backend expects 'project_name' not 'projectName'
       };
 
       // Call your backend REGISTER API
@@ -204,8 +205,8 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       if (response.ok && responseData.success) {
         // Store the registered user data
         const userData = {
-          ...responseData.user,
-          token: responseData.token, // if backend returns token
+          ...responseData.employee, // Use 'employee' from response
+          token: responseData.token,
           registeredAt: new Date().toISOString()
         };
 
@@ -215,7 +216,18 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
         // Return user data for auto-login
         return { success: true, userData };
       } else {
-        setError(responseData.message || 'Registration failed. Please try again.');
+        // Handle error - check if it's validation errors or a message
+        if (responseData.message) {
+          setError(responseData.message);
+        } else if (typeof responseData === 'object') {
+          // Handle field-specific errors
+          const errorMessages = Object.entries(responseData)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          setError(errorMessages || 'Registration failed. Please try again.');
+        } else {
+          setError('Registration failed. Please try again.');
+        }
         return { success: false };
       }
     } catch (err) {
@@ -244,4 +256,4 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </RegisterContext.Provider>
   );
-};
+}

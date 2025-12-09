@@ -29,13 +29,20 @@ class PersonalEmployee(models.Model):
     supervisor = models.CharField(max_length=100)
     project_name = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
-    def save(self, *args, **kwargs):
-        if not self.pk:  # hash only on CREATE
-            self.password = make_password(self.password)
-        super().save(*args, **kwargs)
+    # REMOVE THE save() METHOD - Let serializer handle password hashing
+    # def save(self, *args, **kwargs):
+    #     if not self.pk:
+    #         self.password = make_password(self.password)
+    #     super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.username  
+        return self.username
+        
+    class Meta:
+        db_table = 'personal_employee'
+        verbose_name = 'Personal Employee'
+        verbose_name_plural = 'Personal Employees'
 

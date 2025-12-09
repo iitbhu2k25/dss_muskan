@@ -1,32 +1,61 @@
 // components/management/employee/components/dashboard.tsx
-import { User, Mail, Building2, Briefcase, UserCheck, LogOut } from 'lucide-react';
+import { useState } from 'react';
+import { User, Mail, Building2, Briefcase, UserCheck, LogOut, Activity, Clock, Shield, AlertCircle } from 'lucide-react';
 import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
 
 export default function EmployeeDashboard() {
-    const { user, logout } = useLogin();
+    const { user, logout, isLoading } = useLogin();
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     if (!user) {
         return null;
     }
 
+    const handleLogout = async () => {
+        await logout();
+        setShowLogoutConfirm(false);
+    };
+
+    // Format last login time
+    const formatLastLogin = (timestamp?: string) => {
+        if (!timestamp) return 'Recently';
+        const date = new Date(timestamp);
+        return date.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">
             {/* Navigation Bar */}
-            <nav className="bg-white shadow-md">
+            <nav className="bg-white shadow-md border-b-2 border-green-500">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
-                                <User className="w-6 h-6 text-white" />
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <User className="w-7 h-7 text-white" />
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold text-gray-800">Employee Dashboard</h1>
-                                <p className="text-sm text-gray-500">Welcome back, {user?.username}</p>
+                                <p className="text-sm text-gray-500 flex items-center gap-2">
+                                    Welcome back, <span className="font-semibold text-green-600">{user?.username}</span>
+                                    {user?.is_active && (
+                                        <span className="flex items-center gap-1 text-green-600">
+                                            <Activity className="w-3 h-3" />
+                                            Active
+                                        </span>
+                                    )}
+                                </p>
                             </div>
                         </div>
                         <button
-                            onClick={logout}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition transform hover:scale-105"
+                            onClick={() => setShowLogoutConfirm(true)}
+                            disabled={isLoading}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <LogOut className="w-4 h-4" />
                             Logout
@@ -37,43 +66,67 @@ export default function EmployeeDashboard() {
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Active Status Banner */}
+                {user?.is_active && (
+                    <div className="mb-6 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl shadow-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-lg">Your session is active</p>
+                                    <p className="text-sm text-green-50 flex items-center gap-1">
+                                        <Clock className="w-4 h-4" />
+                                        Last login: {formatLastLogin(user?.last_login)}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-lg">
+                                <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+                                <span className="font-medium">Online</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Statistics Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {/* Email Card */}
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 transform hover:scale-105 transition">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 transform hover:scale-105 transition-all hover:shadow-xl">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm font-medium">Email</p>
-                                <p className="text-xl font-bold text-gray-800 mt-1 break-all">{user?.email}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-gray-500 text-sm font-medium mb-1">Email</p>
+                                <p className="text-lg font-bold text-gray-800 truncate">{user?.email}</p>
                             </div>
-                            <div className="bg-green-100 p-3 rounded-lg">
-                                <Mail className="w-10 h-10 text-green-500" />
+                            <div className="bg-green-100 p-3 rounded-lg flex-shrink-0">
+                                <Mail className="w-8 h-8 text-green-500" />
                             </div>
                         </div>
                     </div>
 
                     {/* Department Card */}
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-teal-500 transform hover:scale-105 transition">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-teal-500 transform hover:scale-105 transition-all hover:shadow-xl">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-gray-500 text-sm font-medium">Department</p>
-                                <p className="text-xl font-bold text-gray-800 mt-1">{user?.department || 'N/A'}</p>
+                                <p className="text-gray-500 text-sm font-medium mb-1">Department</p>
+                                <p className="text-lg font-bold text-gray-800 capitalize">{user?.department || 'N/A'}</p>
                             </div>
                             <div className="bg-teal-100 p-3 rounded-lg">
-                                <Building2 className="w-10 h-10 text-teal-500" />
+                                <Building2 className="w-8 h-8 text-teal-500" />
                             </div>
                         </div>
                     </div>
 
                     {/* Supervisor Card */}
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-cyan-500 transform hover:scale-105 transition">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-cyan-500 transform hover:scale-105 transition-all hover:shadow-xl">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-gray-500 text-sm font-medium">Supervisor</p>
-                                <p className="text-xl font-bold text-gray-800 mt-1">{user?.supervisor || 'N/A'}</p>
+                                <p className="text-gray-500 text-sm font-medium mb-1">Supervisor</p>
+                                <p className="text-lg font-bold text-gray-800 capitalize">{user?.supervisor || 'N/A'}</p>
                             </div>
                             <div className="bg-cyan-100 p-3 rounded-lg">
-                                <UserCheck className="w-10 h-10 text-cyan-500" />
+                                <UserCheck className="w-8 h-8 text-cyan-500" />
                             </div>
                         </div>
                     </div>
@@ -86,64 +139,130 @@ export default function EmployeeDashboard() {
                         User Information
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-500 font-medium">Username</p>
-                            <p className="text-lg font-semibold text-gray-800 mt-1">{user?.username || 'N/A'}</p>
+                        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                            <p className="text-sm text-gray-500 font-medium mb-1">Full Name</p>
+                            <p className="text-lg font-semibold text-gray-800">{user?.name || user?.username || 'N/A'}</p>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-500 font-medium">Email Address</p>
-                            <p className="text-lg font-semibold text-gray-800 mt-1">{user?.email || 'N/A'}</p>
+                        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                            <p className="text-sm text-gray-500 font-medium mb-1">Username</p>
+                            <p className="text-lg font-semibold text-gray-800">{user?.username || 'N/A'}</p>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-500 font-medium">Department</p>
-                            <p className="text-lg font-semibold text-gray-800 mt-1">{user?.department || 'N/A'}</p>
+                        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                            <p className="text-sm text-gray-500 font-medium mb-1">Email Address</p>
+                            <p className="text-lg font-semibold text-gray-800 break-all">{user?.email || 'N/A'}</p>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-500 font-medium">Under Supervisor</p>
-                            <p className="text-lg font-semibold text-gray-800 mt-1">{user?.supervisor || 'N/A'}</p>
+                        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                            <p className="text-sm text-gray-500 font-medium mb-1">Department</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{user?.department || 'N/A'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                            <p className="text-sm text-gray-500 font-medium mb-1">Under Supervisor</p>
+                            <p className="text-lg font-semibold text-gray-800 capitalize">{user?.supervisor || 'N/A'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                            <p className="text-sm text-gray-500 font-medium mb-1">Account Status</p>
+                            <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-full ${user?.is_active ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                <p className={`text-lg font-semibold ${user?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                                    {user?.is_active ? 'Active' : 'Inactive'}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Current Project Section */}
-                {user?.projectName && (
+                {user?.projectName ? (
                     <div className="bg-white rounded-xl shadow-lg p-6">
                         <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <Briefcase className="w-6 h-6 text-teal-500" />
                             Current Project
                         </h2>
-                        <div className="p-6 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:shadow-md transition transform hover:scale-105">
+                        <div className="p-6 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:shadow-lg transition-all transform hover:scale-[1.02] bg-gradient-to-br from-green-50 to-teal-50">
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg">
                                     <Briefcase className="w-8 h-8 text-white" />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-2xl font-bold text-gray-800 mb-2">{user.projectName}</h3>
-                                    <div className="flex items-center gap-2">
-                                        <span className="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
-                                        <p className="text-gray-600 font-medium">Active Project</p>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                                        <p className="text-green-600 font-semibold">Active Project</p>
                                     </div>
-                                    <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-                                        <UserCheck className="w-4 h-4" />
-                                        <span>Supervised by {user.supervisor}</span>
+                                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                                        <div className="flex items-center gap-2">
+                                            <UserCheck className="w-4 h-4" />
+                                            <span>Supervised by <span className="font-semibold capitalize">{user.supervisor}</span></span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Building2 className="w-4 h-4" />
+                                            <span className="font-semibold capitalize">{user.department}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                )}
-
-                {/* No Project Message */}
-                {!user?.projectName && (
+                ) : (
                     <div className="bg-white rounded-xl shadow-lg p-8 text-center">
                         <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                             <Briefcase className="w-8 h-8 text-gray-400" />
                         </div>
                         <h3 className="text-xl font-semibold text-gray-800 mb-2">No Project Assigned</h3>
                         <p className="text-gray-500">You don't have any project assigned at the moment.</p>
+                        <p className="text-sm text-gray-400 mt-2">Contact your supervisor for project assignment.</p>
                     </div>
                 )}
             </div>
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full transform transition-all">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                <AlertCircle className="w-6 h-6 text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800">Confirm Logout</h3>
+                                <p className="text-sm text-gray-500">Are you sure you want to log out?</p>
+                            </div>
+                        </div>
+                        <p className="text-gray-600 mb-6">
+                            Your account will be set to <span className="font-semibold text-red-600">inactive</span> and you'll need to log in again to access your dashboard.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowLogoutConfirm(false)}
+                                disabled={isLoading}
+                                className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                disabled={isLoading}
+                                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold hover:from-red-600 hover:to-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Logging out...
+                                    </>
+                                ) : (
+                                    <>
+                                        <LogOut className="w-4 h-4" />
+                                        Logout
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

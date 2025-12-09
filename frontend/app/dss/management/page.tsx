@@ -7,16 +7,56 @@ import EmployeePage from "./components/employee/page";
 export default function ManagementPage() {
   const [activePage, setActivePage] = useState<"admin" | "employee" | null>(null);
 
-  // If a page is active, render it without the main container
+  // Top bar shown only when inside admin/employee
+  const InnerLayout = ({ children }: { children: React.ReactNode }) => (
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-purple-50 flex flex-col">
+      <header className="w-full flex items-center justify-between px-6 py-4 bg-white/80 shadow-sm">
+        <div className="flex gap-3">
+          {/* Back: only logical back inside this page */}
+          <button
+            onClick={() => setActivePage(null)}
+            className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 transition"
+          >
+            ← Back
+          </button>
+
+          {/* Home: same as selection screen (admin/employee options) */}
+          <button
+            onClick={() => setActivePage(null)}
+            className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 transition"
+          >
+            ⌂ Home
+          </button>
+        </div>
+
+        <h2 className="text-lg font-semibold text-gray-800">
+          {activePage === "admin" ? "Admin Management" : "Employee Management"}
+        </h2>
+      </header>
+
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
+  );
+
   if (activePage === "admin") {
-    return <AdminPage />;
+    return (
+      <InnerLayout>
+        <AdminPage />
+      </InnerLayout>
+    );
   }
 
   if (activePage === "employee") {
-    return <EmployeePage />;
+    return (
+      <InnerLayout>
+        <EmployeePage />
+      </InnerLayout>
+    );
   }
 
-  // Default: Show selection screen
+  // Home/selection screen
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-purple-50 flex flex-col items-center justify-center p-8">
       <div className="text-center space-y-4 mb-12">

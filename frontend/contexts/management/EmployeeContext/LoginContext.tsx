@@ -1,13 +1,27 @@
 // contexts/management/EmployeeContext/LoginContext.tsx
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  username: string;
+  department: string;
+  supervisor: string;
+  projectName: string;
+  is_active: boolean;
+  last_login?: string;
+  token?: string;
+}
 
 interface LoginContextType {
-  user: any | null;
+  user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  loginWithUserData: (userData: any) => void;
+  loginWithUserData: (userData: User) => void;
   logout: () => Promise<void>;
   isLoading: boolean;
   error: string;
+  checkAuthStatus: () => Promise<boolean>;
 }
 
 const LoginContext = createContext<LoginContextType | undefined>(undefined);
@@ -19,9 +33,60 @@ export const useLogin = () => {
 };
 
 export const LoginProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const initAuth = async () => {
+      await checkAuthStatus();
+      setIsCheckingAuth(false);
+    };
+    initAuth();
+  }, []);
+
+  const checkAuthStatus = async (): Promise<boolean> => {
+    const token = localStorage.getItem('employeeAuthToken');
+    
+    if (!token) {
+      setUser(null);
+      return false;
+    }
+
+    try {
+      const response = await fetch('/django/management/status/employee', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.is_active) {
+        // User is still logged in and active, set full user data
+        const userData: User = {
+          ...data.user,
+          token: token
+        };
+        setUser(userData);
+        return true;
+      } else {
+        // Token invalid or user inactive
+        localStorage.removeItem('employeeAuthToken');
+        setUser(null);
+        return false;
+      }
+    } catch (err) {
+      console.error('Auth check error:', err);
+      localStorage.removeItem('employeeAuthToken');
+      setUser(null);
+      return false;
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -43,13 +108,16 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Call your backend LOGIN API
-      const response = await fetch('YOUR_BACKEND_URL/api/employee/auth/login', {
+      // Call backend LOGIN API
+      const response = await fetch('/django/management/login/employee', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ 
+          email: email.toLowerCase().trim(), 
+          password 
+        })
       });
       
       const data = await response.json();
@@ -57,16 +125,15 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
       // Check if login was successful
       if (response.ok && data.success) {
         // Store user data from backend
-        const userData = {
+        const userData: User = {
           ...data.user,
-          token: data.token, // if you use JWT tokens
-          loggedInAt: new Date().toISOString()
+          token: data.token,
         };
         
         setUser(userData);
         setError('');
         
-        // Optionally store token in localStorage for persistence
+        // Store token in localStorage for persistence
         if (data.token) {
           localStorage.setItem('employeeAuthToken', data.token);
         }
@@ -86,11 +153,11 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Direct login with user data (used after registration)
-  const loginWithUserData = (userData: any) => {
+  const loginWithUserData = (userData: User) => {
     setUser(userData);
     setError('');
     
-    // Optionally store token if provided
+    // Store token if provided
     if (userData.token) {
       localStorage.setItem('employeeAuthToken', userData.token);
     }
@@ -100,18 +167,26 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Call your backend LOGOUT API
       const token = localStorage.getItem('employeeAuthToken');
       
-      await fetch('YOUR_BACKEND_URL/api/employee/auth/logout', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // if you use JWT
+      if (token) {
+        // Call backend LOGOUT API
+        const response = await fetch('/django/management/logout/employee', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error('Logout API error:', data.message);
         }
-      });
+      }
       
-      // Clear user data and token
+      // Clear user data and token (even if API fails)
       setUser(null);
       setError('');
       localStorage.removeItem('employeeAuthToken');
@@ -127,8 +202,35 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Show loading state while checking initial auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">
+        <div className="text-center">
+          <div className="inline-block">
+            <svg className="animate-spin h-12 w-12 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <LoginContext.Provider value={{ user, login, loginWithUserData, logout, isLoading, error }}>
+    <LoginContext.Provider 
+      value={{ 
+        user, 
+        login, 
+        loginWithUserData, 
+        logout, 
+        isLoading, 
+        error,
+        checkAuthStatus 
+      }}
+    >
       {children}
     </LoginContext.Provider>
   );
