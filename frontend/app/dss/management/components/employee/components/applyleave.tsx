@@ -7,7 +7,7 @@ import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
 import { useLeave } from '@/contexts/management/EmployeeContext/ApplyLeaveContext';
 
 interface LeaveRequestFormProps {
-  onClose?: () => void; // optional, to close modal/drawer
+  onClose?: () => void;
 }
 
 export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
@@ -17,7 +17,8 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [totalDays, setTotalDays] = useState(0);
-  const [remarks, setRemarks] = useState('');
+  const [reason, setReason] = useState('');      // ✅ Backend: reason
+  const [leaveType, setLeaveType] = useState(''); // ✅ Backend: leave_type
   const [localError, setLocalError] = useState('');
 
   const displayError = error || localError;
@@ -46,7 +47,7 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
   const handleSubmit = async () => {
     setLocalError('');
 
-    if (!startDate || !endDate || !remarks.trim()) {
+    if (!startDate || !endDate || !reason.trim() || !leaveType.trim()) {
       setLocalError('Please fill in all required fields');
       return;
     }
@@ -56,19 +57,26 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
       return;
     }
 
+    if (!user.supervisor_email) {
+      setLocalError('No supervisor email assigned');
+      return;
+    }
+
+    // ✅ Backend expects these exact field names
     const success = await createLeaveRequest({
       employee_name: user.name || user.username,
       employee_email: user.email,
-      supervisor_name: user.supervisor_name,
-      supervisor_email: user.supervisor_email,
-      start_date: startDate,
-      end_date: endDate,
-      total_days: totalDays,
-      remarks: remarks.trim(),
+      supervisor_email: user.supervisor_email,  // ✅ Backend field
+      from_date: startDate,                     // ✅ Backend field
+      to_date: endDate,                         // ✅ Backend field
+      total_days: totalDays,                    // ✅ Backend field
+      reason: reason.trim(),                    // ✅ Backend field
+      leave_type: leaveType.trim(),             // ✅ Backend field
     });
 
     if (success) {
-      setRemarks('');
+      setReason('');
+      setLeaveType('');
       setStartDate('');
       setEndDate('');
       setTotalDays(0);
@@ -89,16 +97,11 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Apply for Leave</h2>
-              <p className="text-sm text-gray-500">
-                Fill in the details below to request leave.
-              </p>
+              <p className="text-sm text-gray-500">Fill in the details below to request leave.</p>
             </div>
           </div>
           {onClose && (
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
-            >
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -110,33 +113,20 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
             <p className="text-xs font-medium text-gray-500">Employee Name</p>
             <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
               <User className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold text-gray-800">
-                {user.name || user.username}
-              </span>
+              <span className="font-semibold text-gray-800">{user.name || user.username}</span>
             </div>
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium text-gray-500">Employee Email</p>
             <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
               <Mail className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold text-gray-800 break-all">
-                {user.email}
-              </span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500">Supervisor Name</p>
-            <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              <UserCheck className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold text-gray-800">
-                {user.supervisor_name || 'Not Assigned'}
-              </span>
+              <span className="font-semibold text-gray-800 break-all">{user.email}</span>
             </div>
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium text-gray-500">Supervisor Email</p>
             <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              <Mail className="w-4 h-4 text-gray-400" />
+              <UserCheck className="w-4 h-4 text-gray-400" />
               <span className="font-semibold text-gray-800 break-all">
                 {user.supervisor_email || 'Not Assigned'}
               </span>
@@ -169,14 +159,28 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
           <div className="space-y-1 md:col-span-1">
             <label className="text-sm font-medium text-gray-700">Total Days</label>
             <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm flex items-center">
-              <span className="font-semibold text-gray-800">
-                {totalDays > 0 ? totalDays : '-'}
-              </span>
+              <span className="font-semibold text-gray-800">{totalDays > 0 ? totalDays : '-'}</span>
             </div>
           </div>
         </div>
 
-        {/* Remarks */}
+        {/* Leave Type */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Leave Type</label>
+          <select
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            value={leaveType}
+            onChange={(e) => setLeaveType(e.target.value)}
+          >
+            <option value="">Select Leave Type</option>
+            <option value="Casual Leave">Casual Leave</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Annual Leave">Annual Leave</option>
+            <option value="Emergency Leave">Emergency Leave</option>
+          </select>
+        </div>
+
+        {/* Reason */}
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
             <FileText className="w-4 h-4 text-gray-400" />
@@ -185,8 +189,8 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
           <textarea
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[90px] resize-y"
             placeholder="Describe the reason for your leave..."
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
           />
         </div>
 
@@ -215,12 +219,8 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
           )}
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !user.supervisor_email}
-            title={
-              !user.supervisor_email
-                ? 'No supervisor email assigned – cannot send request'
-                : 'Submit leave request'
-            }
+            disabled={isSubmitting || !user.supervisor_email || totalDays <= 0}
+            title={!user.supervisor_email ? 'No supervisor email assigned' : 'Submit leave request'}
             className="px-5 py-2 text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />

@@ -119,13 +119,13 @@ class ProjectFilterSerializer(serializers.Serializer):
 class ApplyLeaveSerializer(serializers.Serializer):
     employee_name = serializers.CharField()
     employee_email = serializers.EmailField()
-    employee_email_pass = serializers.CharField(write_only=True)
     supervisor_email = serializers.EmailField()
     from_date = serializers.DateField()
     to_date = serializers.DateField()
     total_days = serializers.IntegerField()
     reason = serializers.CharField()
     leave_type = serializers.CharField()
+
 
 
 class ApprovalSerializer(serializers.Serializer):

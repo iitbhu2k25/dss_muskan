@@ -1,15 +1,12 @@
+// admin/components/dashboard.tsx
+'use client';
+
 import React, { useState } from 'react';
 import { User, Mail, Building2, Briefcase, LogOut, ArrowLeft } from 'lucide-react';
 import { useLogin } from '@/contexts/management/AdminContext/LoginContext';
 import { useDashboard } from '@/contexts/management/AdminContext/DashboardContext';
-interface Employee {
-  id: number;
-  email: string;
-  department: string;
-  supervisor: string;
-  is_active: boolean;
-  displayName: string;
-}
+import EmployeeList from './employeelist'; // ✅ Import EmployeeList
+
 export default function AdminDashboard() {
   const { user, logout } = useLogin();
   const { employees, loading, error, filterByProjects } = useDashboard();
@@ -31,7 +28,7 @@ export default function AdminDashboard() {
     setSelectedProjectName('');
   };
 
-  // Show project-specific employees
+  // ✅ Show EmployeeList component instead of table
   if (showProjectEmployees) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -50,7 +47,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-800">{selectedProjectName}</h1>
-                  <p className="text-sm text-gray-500">Project Employees</p>
+                  <p className="text-sm text-gray-500">Project Employees ({employees.length})</p>
                 </div>
               </div>
               <button
@@ -72,75 +69,8 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Project Employees */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Employees in {selectedProjectName} ({employees.length})
-            </h2>
-            {loading ? (
-              <p className="text-gray-500">Loading employees...</p>
-            ) : employees.length === 0 ? (
-              <p className="text-gray-500">No employees found for this project</p>
-            ) : (
-              // Update only the employee table section in AdminDashboard (around line 50-80)
-
-// Replace the existing employee table with this:
-<div className="overflow-x-auto">
-  <table className="w-full">
-    <thead className="bg-gray-50">
-      <tr>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor Email</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-      </tr>
-    </thead>
-    <tbody className="bg-white divide-y divide-gray-200">
-      {employees.map((employee) => (
-        <tr key={employee.id} className="hover:bg-gray-50">
-          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-            {employee.name}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {employee.email}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {employee.username}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {employee.department}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {employee.supervisor_name}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {employee.supervisor_email || 'N/A'}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {employee.projectName}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <span
-              className={`px-2 py-1 text-xs rounded-full ${
-                employee.is_active
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
-              }`}
-            >
-              {employee.is_active ? 'Active' : 'Inactive'}
-            </span>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
-            )}
-          </div>
+          {/* ✅ RENDER EMPLOYEE LIST COMPONENT */}
+          <EmployeeList />
         </div>
       </div>
     );
@@ -231,7 +161,7 @@ export default function AdminDashboard() {
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-500 font-medium">Email Address</p>
-              <p className="text-lg font-semibold text-gray-800 mt-1">{user?.email || 'N/A'}</p>
+              <p className="text-lg font-semibold text-gray-800 mt-1 break-all">{user?.email || 'N/A'}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-500 font-medium">Department</p>
@@ -253,16 +183,16 @@ export default function AdminDashboard() {
                 <button
                   key={index}
                   onClick={() => handleProjectClick(project)}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition transform hover:scale-105 text-left"
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition transform hover:scale-105 text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg group-hover:shadow-xl transition-shadow">
                       <Briefcase className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 truncate">{project}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                        <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         <p className="text-sm text-gray-500">Click to view employees</p>
                       </div>
                     </div>

@@ -5,23 +5,20 @@ from email.mime.multipart import MIMEMultipart
 from .models import LeaveEmployee, PersonalEmployee
 
 
-def send_dynamic_email(sender_email, sender_password, receiver_email, subject, message):
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
+from django.core.mail import EmailMessage
 
-    msg.attach(MIMEText(message, 'plain'))
-
+def send_leave_email_to_admins(admin_emails, subject, message):
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, receiver_email, msg.as_string())
-        server.quit()
+        email = EmailMessage(
+            subject=subject,
+            body=message,
+            from_email=None,            # Uses EMAIL_HOST_USER
+            to=admin_emails             # ✅ LIST of admins
+        )
+        email.send()
         return True
     except Exception as e:
-        print("EMAIL ERROR:", str(e))
+        print("EMAIL ERROR:", e)
         return False
 
 
@@ -40,27 +37,63 @@ def apply_leave_service(data):
             leave_type=data['leave_type'],
         )
 
-        # ✅ DYNAMIC EMAIL SEND
+        # ✅ SEND MAIL TO SUPERVISOR (NO ROLE FIELD USED)
+        admin_emails = [leave.supervisor_email]   # ✅ WORKING 100%
+
+        # ✅ OPTIONAL: ADD FIXED HR / ADMIN EMAILS
+        fixed_admins = [
+            "hr@company.com",
+            "admin@company.com"
+        ]
+
+        admin_emails.extend(fixed_admins)
+
         subject = "New Leave Request"
         message = f"""
 Employee Name: {leave.employee_name}
-From Date: {leave.from_date}
-To Date: {leave.to_date}
-Days: {leave.total_days}
+Employee Email: {employee.email}
+
+From: {leave.from_date}
+To: {leave.to_date}
+Total Days: {leave.total_days}
 
 Reason:
 {leave.reason}
 """
 
-        email_sent = send_dynamic_email(
-            sender_email=data['employee_email'],           # ✅ employee email
-            sender_password=data['employee_email_pass'],  # ✅ employee email password
-            receiver_email=leave.supervisor_email,
+        email_sent = send_leave_email_to_admins(
+            admin_emails=admin_emails,
             subject=subject,
             message=message
         )
 
         return True, leave, email_sent
 
+    except PersonalEmployee.DoesNotExist:
+        return False, "Employee email not registered", False
+
     except Exception as e:
         return False, str(e), False
+
+
+
+
+
+
+def get_leaves_by_employee_email(employee_email):
+    leave_data = LeaveEmployee.objects.filter(
+        employee_email__email=employee_email
+    ).order_by('-created_at')
+
+    return leave_data
+
+
+
+def update_leave_approval_status(leave_id, approval_status):
+    try:
+        leave = LeaveEmployee.objects.get(id=leave_id)
+        leave.approval_status = approval_status
+        leave.save()
+        return True, leave
+    except LeaveEmployee.DoesNotExist:
+        return False, None
