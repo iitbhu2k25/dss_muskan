@@ -1,3 +1,4 @@
+// contexts/management/AdminContext/DashboardContext.tsx
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
@@ -55,9 +56,7 @@ export const DashboardProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   return (
-    <DashboardContext.Provider
-      value={{ employees, loading, error, filterByProjects }}
-    >
+    <DashboardContext.Provider value={{ employees, loading, error, filterByProjects }}>
       {children}
     </DashboardContext.Provider>
   );

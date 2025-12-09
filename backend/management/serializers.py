@@ -86,8 +86,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
     """Serializer for employee data (without password)"""
 
     projectName = serializers.CharField(source='project_name', read_only=True)
-
-    # ✅ Proper FK email return
     supervisor_email = serializers.SerializerMethodField()
 
     class Meta:
@@ -100,7 +98,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'department',
             'supervisor_name',
             'supervisor_email',
-
             'projectName',
             'is_active'
         ]

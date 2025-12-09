@@ -195,6 +195,8 @@ def verify_employee_token(token):
 ##################------Employee Filtering by Projects---------#####################
 
 
+# Update your filter function
+
 def filter_employees_by_projects(projects):
     """
     Filter employees by project names
@@ -202,9 +204,9 @@ def filter_employees_by_projects(projects):
     """
     try:
         employees = PersonalEmployee.objects.filter(
-            project_name__in=projects,
-            is_active=True
-        )
+            project_name__in=projects
+        ).select_related('supervisor_email')  # Optimize FK query
+        
         return True, employees
 
     except Exception as e:
