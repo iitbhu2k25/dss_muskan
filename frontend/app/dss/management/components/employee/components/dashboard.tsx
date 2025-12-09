@@ -1,9 +1,13 @@
 // components/management/employee/components/dashboard.tsx
 import { useState } from 'react';
-import { User, Mail, Building2, Briefcase, UserCheck, LogOut, Activity, Clock, Shield, AlertCircle } from 'lucide-react';
+import { User, Mail, Building2, Briefcase, UserCheck, LogOut, Activity, Clock, Shield, AlertCircle, Calendar } from 'lucide-react';
 import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
 
-export default function EmployeeDashboard() {
+interface EmployeeDashboardProps {
+  onApplyLeave?: () => void;
+}
+
+export default function EmployeeDashboard({ onApplyLeave }: EmployeeDashboardProps) {
     const { user, logout, isLoading } = useLogin();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -28,6 +32,8 @@ export default function EmployeeDashboard() {
             minute: '2-digit'
         });
     };
+
+    const supervisorEmail = user?.supervisor_email || 'Not Assigned';
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">
@@ -91,7 +97,7 @@ export default function EmployeeDashboard() {
                 )}
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {/* Email Card */}
                     <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 transform hover:scale-105 transition-all hover:shadow-xl">
                         <div className="flex items-center justify-between">
@@ -118,16 +124,40 @@ export default function EmployeeDashboard() {
                         </div>
                     </div>
 
-                    {/* Supervisor Card */}
+                    {/* Supervisor Email Card */}
                     <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-cyan-500 transform hover:scale-105 transition-all hover:shadow-xl">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-gray-500 text-sm font-medium mb-1">Supervisor</p>
-                                <p className="text-lg font-bold text-gray-800 capitalize">{user?.supervisor || 'N/A'}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-gray-500 text-sm font-medium mb-1">Supervisor Email</p>
+                                <p className="text-lg font-bold text-gray-800 break-all">
+                                    {supervisorEmail}
+                                </p>
+                                {supervisorEmail === 'Not Assigned' && (
+                                    <p className="text-xs text-orange-600 mt-1">Contact admin</p>
+                                )}
                             </div>
                             <div className="bg-cyan-100 p-3 rounded-lg">
                                 <UserCheck className="w-8 h-8 text-cyan-500" />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Apply Leave Card */}
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 transform hover:scale-105 transition-all hover:shadow-xl group">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-500 text-sm font-medium mb-1">Apply Leave</p>
+                                <p className="text-lg font-bold text-gray-800">Submit Request</p>
+                            </div>
+                            <button
+                                onClick={onApplyLeave}
+                                disabled={!user?.supervisor_email}
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 group-hover:rotate-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
+                                title={!user?.supervisor_email ? "No supervisor assigned – cannot apply for leave" : "Apply for leave"}
+                            >
+                                <Calendar className="w-4 h-4" />
+                                Apply
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -156,8 +186,13 @@ export default function EmployeeDashboard() {
                             <p className="text-lg font-semibold text-gray-800 capitalize">{user?.department || 'N/A'}</p>
                         </div>
                         <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-500 font-medium mb-1">Under Supervisor</p>
-                            <p className="text-lg font-semibold text-gray-800 capitalize">{user?.supervisor || 'N/A'}</p>
+                            <p className="text-sm text-gray-500 font-medium mb-1">Supervisor Email</p>
+                            <p className="text-lg font-semibold text-gray-800 break-all">
+                                {supervisorEmail}
+                            </p>
+                            {supervisorEmail === 'Not Assigned' && (
+                                <p className="text-xs text-orange-600 mt-1">No supervisor assigned</p>
+                            )}
                         </div>
                         <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
                             <p className="text-sm text-gray-500 font-medium mb-1">Account Status</p>
@@ -192,7 +227,7 @@ export default function EmployeeDashboard() {
                                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                                         <div className="flex items-center gap-2">
                                             <UserCheck className="w-4 h-4" />
-                                            <span>Supervised by <span className="font-semibold capitalize">{user.supervisor}</span></span>
+                                            <span>Supervised by <span className="font-semibold break-all">{supervisorEmail}</span></span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Building2 className="w-4 h-4" />

@@ -1,4 +1,3 @@
-// contexts/management/EmployeeContext/LoginContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
@@ -8,6 +7,7 @@ interface User {
   username: string;
   department: string;
   supervisor: string;
+  supervisor_email: string; 
   projectName: string;
   is_active: boolean;
   last_login?: string;
@@ -67,9 +67,10 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
 
       if (response.ok && data.success && data.is_active) {
-        // User is still logged in and active, set full user data
+        // Ensure supervisor_email exists (fallback to supervisor if missing)
         const userData: User = {
           ...data.user,
+          supervisor_email: data.user.supervisor_email || data.user.supervisor || '',
           token: token
         };
         setUser(userData);
@@ -124,9 +125,10 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
 
       // Check if login was successful
       if (response.ok && data.success) {
-        // Store user data from backend
+        // Ensure supervisor_email exists (fallback to supervisor if missing)
         const userData: User = {
           ...data.user,
+          supervisor_email: data.user.supervisor_email || data.user.supervisor || '',
           token: data.token,
         };
         
@@ -153,13 +155,17 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Direct login with user data (used after registration)
-  const loginWithUserData = (userData: User) => {
-    setUser(userData);
+  const loginWithUserData = (userData: any) => {
+    const completeUserData: User = {
+      ...userData,
+      supervisor_email: userData.supervisor_email || userData.supervisor || '',
+    };
+    setUser(completeUserData);
     setError('');
     
     // Store token if provided
-    if (userData.token) {
-      localStorage.setItem('employeeAuthToken', userData.token);
+    if (completeUserData.token) {
+      localStorage.setItem('employeeAuthToken', completeUserData.token);
     }
   };
 
