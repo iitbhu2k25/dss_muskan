@@ -101,10 +101,6 @@ class LeaveByEmployeeEmailView(APIView):
         )
 
 
-
-
-
-
 class UpdateLeaveApprovalStatusView(APIView):
     permission_classes = [AllowAny] 
     def post(self, request):

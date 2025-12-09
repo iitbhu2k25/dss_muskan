@@ -1,7 +1,7 @@
 // components/management/employee/components/dashboard.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   User,
   Mail,
@@ -18,6 +18,7 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
 } from 'lucide-react';
 import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
 import { useLeave } from '@/contexts/management/EmployeeContext/ApplyLeaveContext';
@@ -25,14 +26,35 @@ import LeaveRequestForm from './applyleave';
 
 export default function EmployeeDashboard() {
   const { user, logout, isLoading } = useLogin();
-  const { leaves, totalLeaves, loadingLeaves } = useLeave();
+  const { leaves, totalLeaves, loadingLeaves, fetchLeaves } = useLeave();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
   const [showLeaveHistory, setShowLeaveHistory] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   if (!user) {
     return null;
   }
+
+  // Auto-refresh when leave history is opened
+  useEffect(() => {
+    if (showLeaveHistory && user?.email) {
+      handleRefreshLeaves();
+    }
+  }, [showLeaveHistory]);
+
+  const handleRefreshLeaves = async () => {
+    if (!user?.email) return;
+    
+    setIsRefreshing(true);
+    try {
+      await fetchLeaves(user.email);
+    } catch (error) {
+      console.error('Error refreshing leaves:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -216,7 +238,7 @@ export default function EmployeeDashboard() {
           <p className="text-purple-100 text-sm">Submit a new request</p>
         </div>
 
-        {/* ✅ COLLAPSIBLE Leave History */}
+        {/* ✅ COLLAPSIBLE Leave History with Refresh */}
         {showLeaveHistory && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border-2 border-purple-100">
             <div className="flex items-center justify-between mb-6">
@@ -224,19 +246,31 @@ export default function EmployeeDashboard() {
                 <FileText className="w-7 h-7 text-purple-500" />
                 Leave History
               </h2>
-              <button
-                onClick={() => setShowLeaveHistory(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-all"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefreshLeaves}
+                  disabled={isRefreshing || loadingLeaves}
+                  className="p-2 hover:bg-purple-50 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                  title="Refresh leave history"
+                >
+                  <RefreshCw className={`w-5 h-5 text-purple-500 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                </button>
+                <button
+                  onClick={() => setShowLeaveHistory(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-all"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
             </div>
 
-            {loadingLeaves ? (
+            {loadingLeaves || isRefreshing ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading leave records...</p>
+                  <p className="text-gray-500">
+                    {isRefreshing ? 'Refreshing leave records...' : 'Loading leave records...'}
+                  </p>
                 </div>
               </div>
             ) : leaves.length === 0 ? (

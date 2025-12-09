@@ -13,6 +13,8 @@ import {
   XCircle,
   Clock,
   Calendar,
+  Edit2,
+  RotateCcw,
 } from 'lucide-react';
 import { useDashboard } from '@/contexts/management/AdminContext/DashboardContext';
 
@@ -29,6 +31,7 @@ export default function EmployeeList() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null);
+  const [editingLeave, setEditingLeave] = useState<number | null>(null);
 
   const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,6 +42,7 @@ export default function EmployeeList() {
   const toggleEmployeeLeaves = async (email: string) => {
     if (expandedEmployee === email) {
       setExpandedEmployee(null);
+      setEditingLeave(null);
     } else {
       await fetchEmployeeLeaves(email);
       setExpandedEmployee(email);
@@ -50,7 +54,12 @@ export default function EmployeeList() {
     if (success) {
       // Refresh leaves for this employee
       await fetchEmployeeLeaves(email);
+      setEditingLeave(null);
     }
+  };
+
+  const toggleEditMode = (leaveId: number) => {
+    setEditingLeave(editingLeave === leaveId ? null : leaveId);
   };
 
   const formatDate = (dateString: string) => {
@@ -67,6 +76,14 @@ export default function EmployeeList() {
       case 'approved': return 'bg-green-100 text-green-800 border-green-200';
       case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'bg-green-500 text-white';
+      case 'rejected': return 'bg-red-500 text-white';
+      default: return 'bg-yellow-500 text-white';
     }
   };
 
@@ -203,6 +220,27 @@ export default function EmployeeList() {
                                   </p>
                                 </div>
                               </div>
+                              {/* Edit Button for Approved/Rejected */}
+                              {leave.approval_status !== 'pending' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleEditMode(leave.id);
+                                  }}
+                                  className={`p-1.5 rounded-lg transition-all ${
+                                    editingLeave === leave.id
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600'
+                                  }`}
+                                  title="Edit decision"
+                                >
+                                  {editingLeave === leave.id ? (
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              )}
                             </div>
 
                             {/* Leave Details */}
@@ -224,25 +262,71 @@ export default function EmployeeList() {
                               </div>
                             </div>
 
-                            {/* ✅ APPROVE/REJECT BUTTONS */}
-                            {leave.approval_status === 'pending' && (
-                              <div className="flex gap-2 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleApprove(leave.id, emp.email, 'approved')}
-                                  className="flex-1 py-2 px-3 bg-green-500 hover:bg-green-600 text-white text-xs rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-sm hover:shadow-md disabled:opacity-50"
-                                  disabled={leavesLoading[emp.email]}
-                                >
-                                  <CheckCircle className="w-3 h-3" />
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleApprove(leave.id, emp.email, 'rejected')}
-                                  className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white text-xs rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-sm hover:shadow-md disabled:opacity-50"
-                                  disabled={leavesLoading[emp.email]}
-                                >
-                                  <XCircle className="w-3 h-3" />
-                                  Reject
-                                </button>
+                            {/* ✅ ACTION BUTTONS */}
+                            {/* Show for pending OR when editing approved/rejected */}
+                            {(leave.approval_status === 'pending' || editingLeave === leave.id) && (
+                              <div className="space-y-2 pt-3 border-t border-gray-100">
+                                {editingLeave === leave.id && leave.approval_status !== 'pending' && (
+                                  <div className="flex items-center gap-2 mb-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                                    <Clock className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                                    <p className="text-xs text-blue-700 font-medium">
+                                      Change decision from <span className="font-bold capitalize">{leave.approval_status}</span>
+                                    </p>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleApprove(leave.id, emp.email, 'approved');
+                                    }}
+                                    className={`flex-1 py-2 px-3 text-white text-xs rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-sm hover:shadow-md disabled:opacity-50 ${
+                                      leave.approval_status === 'approved' && editingLeave !== leave.id
+                                        ? 'bg-green-400 cursor-not-allowed'
+                                        : 'bg-green-500 hover:bg-green-600'
+                                    }`}
+                                    disabled={leavesLoading[emp.email] || (leave.approval_status === 'approved' && editingLeave !== leave.id)}
+                                  >
+                                    <CheckCircle className="w-3 h-3" />
+                                    {leave.approval_status === 'approved' && editingLeave !== leave.id ? 'Approved' : 'Approve'}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleApprove(leave.id, emp.email, 'rejected');
+                                    }}
+                                    className={`flex-1 py-2 px-3 text-white text-xs rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-sm hover:shadow-md disabled:opacity-50 ${
+                                      leave.approval_status === 'rejected' && editingLeave !== leave.id
+                                        ? 'bg-red-400 cursor-not-allowed'
+                                        : 'bg-red-500 hover:bg-red-600'
+                                    }`}
+                                    disabled={leavesLoading[emp.email] || (leave.approval_status === 'rejected' && editingLeave !== leave.id)}
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    {leave.approval_status === 'rejected' && editingLeave !== leave.id ? 'Rejected' : 'Reject'}
+                                  </button>
+                                </div>
+                                {editingLeave === leave.id && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingLeave(null);
+                                    }}
+                                    className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg font-medium transition-all"
+                                  >
+                                    Cancel Edit
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Show status badge for approved/rejected when NOT editing */}
+                            {leave.approval_status !== 'pending' && editingLeave !== leave.id && (
+                              <div className="pt-3 border-t border-gray-100">
+                                <div className={`py-2 px-3 rounded-lg text-xs font-semibold text-center ${getStatusBadgeColor(leave.approval_status)}`}>
+                                  {leave.approval_status === 'approved' ? '✓ Approved' : '✗ Rejected'}
+                                  <span className="ml-2 opacity-75">• Click edit to change</span>
+                                </div>
                               </div>
                             )}
                           </div>
