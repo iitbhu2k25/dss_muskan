@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PersonalAdmin, PersonalEmployee
+from .models import PersonalAdmin, PersonalEmployee, LeaveEmployee
 from django.contrib.auth.hashers import make_password
 
 
@@ -112,4 +112,24 @@ class ProjectFilterSerializer(serializers.Serializer):
     projects = serializers.ListField(
         child=serializers.CharField(max_length=200),
         allow_empty=False
+    )
+
+
+
+class ApplyLeaveSerializer(serializers.Serializer):
+    employee_name = serializers.CharField()
+    employee_email = serializers.EmailField()
+    employee_email_pass = serializers.CharField(write_only=True)
+    supervisor_email = serializers.EmailField()
+    from_date = serializers.DateField()
+    to_date = serializers.DateField()
+    total_days = serializers.IntegerField()
+    reason = serializers.CharField()
+    leave_type = serializers.CharField()
+
+
+class ApprovalSerializer(serializers.Serializer):
+    leave_id = serializers.IntegerField()
+    approval_status = serializers.ChoiceField(
+        choices=['approved', 'rejected']
     )
