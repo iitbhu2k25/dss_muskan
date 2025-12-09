@@ -32,7 +32,7 @@ export default function EmployeeRegister({
     password: '',
     confirmPassword: '',
     department: '',
-    supervisor: '',
+    supervisor_email: '', // ✅ matches context
     projectName: '',
   });
 
@@ -49,7 +49,7 @@ export default function EmployeeRegister({
       setFormData((p) => ({
         ...p,
         projectName: '',
-        supervisor: '',
+        supervisor_email: '', // reset when department changes
       }));
       setAvailableSupervisors([]);
     } else {
@@ -64,7 +64,7 @@ export default function EmployeeRegister({
       const sups = getSupervisorsByProject(formData.department, formData.projectName);
       setAvailableSupervisors(sups);
       // reset selection (will be auto-filled later if only one)
-      setFormData((p) => ({ ...p, supervisor: '' }));
+      setFormData((p) => ({ ...p, supervisor_email: '' }));
     } else {
       setAvailableSupervisors([]);
     }
@@ -73,15 +73,15 @@ export default function EmployeeRegister({
   // 3. Auto-select when only ONE supervisor exists
   useEffect(() => {
     if (availableSupervisors.length === 1) {
-      setFormData((p) => ({ ...p, supervisor: availableSupervisors[0] }));
+      setFormData((p) => ({ ...p, supervisor_email: availableSupervisors[0] }));
     } else if (
       availableSupervisors.length > 1 &&
-      formData.supervisor &&
-      !availableSupervisors.includes(formData.supervisor)
+      formData.supervisor_email &&
+      !availableSupervisors.includes(formData.supervisor_email)
     ) {
-      setFormData((p) => ({ ...p, supervisor: '' }));
+      setFormData((p) => ({ ...p, supervisor_email: '' }));
     }
-  }, [availableSupervisors, formData.supervisor]);
+  }, [availableSupervisors, formData.supervisor_email]);
 
   // ------------------------------------------------------------------ HANDLERS
   const handleInputChange = (
@@ -226,8 +226,8 @@ export default function EmployeeRegister({
               <div className="relative">
                 <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
                 <select
-                  name="supervisor"
-                  value={formData.supervisor}
+                  name="supervisor_email"              // ✅ name matches RegisterData
+                  value={formData.supervisor_email}    // ✅ bound to email field
                   onChange={handleInputChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none bg-white disabled:bg-gray-100"
                   disabled={

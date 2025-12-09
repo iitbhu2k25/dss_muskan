@@ -101,14 +101,15 @@ class PersonalAdminListView(APIView):
             
             
 class RegisterEmployeeView(APIView):
-    """Employee Registration API"""
     permission_classes = [AllowAny]
 
     def post(self, request):
         success, result = register_employee(request.data)
+
         if success:
             employee = result['employee']
             token = result['token']
+
             return Response({
                 "success": True,
                 "message": "Employee registration successful",
@@ -118,26 +119,30 @@ class RegisterEmployeeView(APIView):
                     "email": employee.email,
                     "username": employee.username,
                     "department": employee.department,
-                    "supervisor": employee.supervisor,
+
+                    # ✅ UPDATED FIELDS
+                    "supervisor_name": employee.supervisor_name,
+                    "supervisor_email": employee.supervisor_email.email,
+
                     "projectName": employee.project_name,
                     "is_active": employee.is_active
                 },
                 "token": token
             }, status=status.HTTP_201_CREATED)
+
         else:
             return Response({
-                "success": False, 
+                "success": False,
                 "message": result
             }, status=status.HTTP_400_BAD_REQUEST)
-
 
 class LoginEmployeeView(APIView):
     """Employee Login API"""
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # Validate input using serializer
         serializer = EmployeeLoginSerializer(data=request.data)
+
         if not serializer.is_valid():
             return Response({
                 "success": False,
@@ -149,10 +154,11 @@ class LoginEmployeeView(APIView):
         password = serializer.validated_data['password']
 
         success, result = login_employee(email, password)
-        
+
         if success:
             employee = result['employee']
             token = result['token']
+
             return Response({
                 "success": True,
                 "message": "Login successful",
@@ -162,18 +168,28 @@ class LoginEmployeeView(APIView):
                     "email": employee.email,
                     "username": employee.username,
                     "department": employee.department,
-                    "supervisor": employee.supervisor,
+
+                    # ✅ RETURN BOTH SUPERVISOR NAME + EMAIL
+                    "supervisor_name": employee.supervisor_name,
+                    "supervisor_email": (
+                        employee.supervisor_email.email
+                        if employee.supervisor_email else None
+                    ),
+
                     "projectName": employee.project_name,
                     "is_active": employee.is_active,
-                    "last_login": employee.created_at.isoformat() if employee.created_at else None
+                    "last_login": employee.created_at.isoformat()
+                    if employee.created_at else None
                 },
                 "token": token
             }, status=status.HTTP_200_OK)
+
         else:
             return Response({
                 "success": False,
                 "message": result
             }, status=status.HTTP_401_UNAUTHORIZED)
+
 
 
 class LogoutEmployeeView(APIView):

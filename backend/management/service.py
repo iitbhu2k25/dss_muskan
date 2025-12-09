@@ -75,10 +75,15 @@ def register_employee(data):
         return False, "Username already taken"
 
     serializer = EmployeeRegisterSerializer(data=data)
+
     if serializer.is_valid():
         employee = serializer.save()
         token = generate_employee_token(employee.id)
-        return True, {"employee": employee, "token": token}
+
+        return True, {
+            "employee": employee,
+            "token": token
+        }
     else:
         errors = serializer.errors
         error_message = "; ".join([f"{k}: {', '.join(v)}" for k, v in errors.items()])
@@ -88,21 +93,26 @@ def register_employee(data):
 def login_employee(email, password):
     try:
         employee = PersonalEmployee.objects.get(email=email.lower())
-        
+
         if not check_password(password, employee.password):
             return False, "Invalid email or password"
-        
+
         employee.is_active = True
         employee.save(update_fields=['is_active'])
-        
+
         token = generate_employee_token(employee.id)
-        
-        return True, {"employee": employee, "token": token}
-        
+
+        return True, {
+            "employee": employee,
+            "token": token
+        }
+
     except PersonalEmployee.DoesNotExist:
         return False, "Invalid email or password"
+
     except Exception as e:
         return False, f"Login error: {str(e)}"
+
 
 
 def logout_employee(token):

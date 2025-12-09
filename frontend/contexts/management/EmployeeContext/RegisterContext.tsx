@@ -7,7 +7,7 @@ export interface RegisterData {
   password: string;
   confirmPassword: string;
   department: string;
-  supervisor: string; // Now this will be EMAIL
+  supervisor_email: string; // ✅ EMAIL ONLY
   projectName: string;
 }
 
@@ -31,7 +31,7 @@ interface RegisterContextType {
   isLoadingEmployers: boolean;
   departments: string[];
   getProjectsByDepartment: (department: string) => string[];
-  getSupervisorsByProject: (department: string, project: string) => string[]; // Returns EMAILS
+  getSupervisorsByProject: (department: string, project: string) => string[];
 }
 
 const RegisterContext = createContext<RegisterContextType | undefined>(undefined);
@@ -47,12 +47,10 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Employers data states
   const [employersData, setEmployersData] = useState<EmployerData[]>([]);
   const [isLoadingEmployers, setIsLoadingEmployers] = useState(true);
   const [departments, setDepartments] = useState<string[]>([]);
 
-  // Fetch employers data on mount
   useEffect(() => {
     fetchEmployersData();
   }, []);
@@ -60,180 +58,96 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
   const fetchEmployersData = async () => {
     setIsLoadingEmployers(true);
     try {
-      const response = await fetch('/django/management/admindata', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
+      const response = await fetch('/django/management/admindata');
       const result = await response.json();
 
       if (result.success && result.data) {
         setEmployersData(result.data);
-
-        // Extract unique departments
         const uniqueDepartments = [...new Set(result.data.map((emp: EmployerData) => emp.department))] as string[];
         setDepartments(uniqueDepartments);
       } else {
         setError('Failed to load departments data');
       }
     } catch (err) {
-      console.error('Error fetching employers:', err);
-      setError('Error loading departments. Please refresh the page.');
+      setError('Error loading departments.');
     } finally {
       setIsLoadingEmployers(false);
     }
   };
 
-  // Get projects by department
   const getProjectsByDepartment = (department: string): string[] => {
-    if (!department) return [];
-
-    const departmentEmployers = employersData.filter(
-      emp => emp.department === department
-    );
-
-    const allProjects = departmentEmployers.flatMap(emp => emp.projects);
-    const uniqueProjects = [...new Set(allProjects)];
-
-    return uniqueProjects;
+    const departmentEmployers = employersData.filter(emp => emp.department === department);
+    return [...new Set(departmentEmployers.flatMap(emp => emp.projects))];
   };
 
-  // Get SUPERVISOR EMAILS by project and department
   const getSupervisorsByProject = (department: string, project: string): string[] => {
-    if (!department || !project) return [];
-
     const projectSupervisors = employersData.filter(
       emp => emp.department === department && emp.projects.includes(project)
     );
-
-    // RETURN EMAILS instead of usernames
-    const supervisorEmails = projectSupervisors.map(emp => emp.email);
-    return supervisorEmails;
+    return projectSupervisors.map(emp => emp.email);
   };
 
   const validateForm = (data: RegisterData): string | null => {
-    // Check required fields
-    if (!data.username || !data.email || !data.password || !data.department || !data.supervisor || !data.projectName) {
+    if (
+      !data.username ||
+      !data.email ||
+      !data.password ||
+      !data.department ||
+      !data.supervisor_email ||
+      !data.projectName
+    ) {
       return 'Please fill in all required fields';
     }
 
-    // Username validation (alphanumeric, 3-20 characters)
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    if (!usernameRegex.test(data.username)) {
-      return 'Username must be 3-20 characters (letters, numbers, underscore only)';
-    }
-
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      return 'Please enter a valid email address';
-    }
+    if (!emailRegex.test(data.email)) return 'Invalid email';
+    if (!emailRegex.test(data.supervisor_email)) return 'Invalid supervisor email';
 
-    // Password validation
-    if (data.password.length < 6) {
-      return 'Password must be at least 6 characters long';
-    }
-
-    if (data.password !== data.confirmPassword) {
-      return 'Passwords do not match';
-    }
-
-    // Strong password check
-    const hasUpperCase = /[A-Z]/.test(data.password);
-    const hasLowerCase = /[a-z]/.test(data.password);
-    const hasNumber = /[0-9]/.test(data.password);
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
-      return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
-    }
-
-    // Department validation
-    if (data.department.trim().length < 2) {
-      return 'Department name must be at least 2 characters long';
-    }
-
-    // Supervisor EMAIL validation
-    if (!emailRegex.test(data.supervisor)) {
-      return 'Please select a valid supervisor email';
-    }
-
-    // Project name validation
-    if (data.projectName.trim().length < 2) {
-      return 'Project name must be at least 2 characters long';
-    }
+    if (data.password.length < 6) return 'Password must be at least 6 characters';
+    if (data.password !== data.confirmPassword) return 'Passwords do not match';
 
     return null;
   };
 
-  const register = async (data: RegisterData): Promise<{ success: boolean; userData?: any }> => {
+  const register = async (data: RegisterData) => {
     setIsLoading(true);
     setError('');
 
-    try {
-      // Validate form data
-      const validationError = validateForm(data);
-      if (validationError) {
-        setError(validationError);
-        setIsLoading(false);
-        return { success: false };
-      }
+    const validationError = validateForm(data);
+    if (validationError) {
+      setError(validationError);
+      setIsLoading(false);
+      return { success: false };
+    }
 
-      // Prepare registration data - supervisor is now EMAIL
-      const registrationData = {
-        name: data.username.trim().toLowerCase(),
-        username: data.username.trim().toLowerCase(),
-        email: data.email.trim().toLowerCase(),
+    try {
+      const payload = {
+        name: data.username.toLowerCase(),
+        username: data.username.toLowerCase(),
+        email: data.email.toLowerCase(),
         password: data.password,
-        department: data.department.trim(),
-        supervisor_email: data.supervisor.trim(), // SEND AS supervisor_email
-        supervisor: data.supervisor.trim(), // Keep for backward compatibility if needed
-        project_name: data.projectName.trim()
+        department: data.department,
+        project_name: data.projectName,
+        supervisor_email: data.supervisor_email // ✅ MATCHES BACKEND
       };
 
-      // Call your backend REGISTER API
       const response = await fetch('/django/management/register/employee', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(registrationData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      const responseData = await response.json();
+      const result = await response.json();
 
-      // Check if registration was successful
-      if (response.ok && responseData.success) {
-        // Store the registered user data
-        const userData = {
-          ...responseData.employee,
-          token: responseData.token,
-          registeredAt: new Date().toISOString()
-        };
-
-        setRegisteredUser(userData);
-        setError('');
-
-        // Return user data for auto-login
-        return { success: true, userData };
+      if (response.ok && result.success) {
+        setRegisteredUser(result.employee);
+        return { success: true, userData: result };
       } else {
-        // Handle error
-        if (responseData.message) {
-          setError(responseData.message);
-        } else if (typeof responseData === 'object') {
-          const errorMessages = Object.entries(responseData)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          setError(errorMessages || 'Registration failed. Please try again.');
-        } else {
-          setError('Registration failed. Please try again.');
-        }
+        setError(result.message || 'Registration failed');
         return { success: false };
       }
-    } catch (err) {
-      console.error('Registration error:', err);
-      setError('An error occurred during registration. Please try again.');
+    } catch (error) {
+      setError('Server error during registration');
       return { success: false };
     } finally {
       setIsLoading(false);

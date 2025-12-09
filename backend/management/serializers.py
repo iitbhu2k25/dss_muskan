@@ -28,33 +28,58 @@ class LoginSerializer(serializers.Serializer):
 
 
 class EmployeeRegisterSerializer(serializers.ModelSerializer):
-    """Serializer for employee registration"""
+    # ✅ Accept only supervisor_email from frontend
+    supervisor_email = serializers.EmailField(write_only=True)
+
     class Meta:
         model = PersonalEmployee
         fields = [
-            'id', 'name', 'email', 'username', 'password',
-            'department', 'supervisor', 'project_name', 'is_active'
+            'id',
+            'name',
+            'email',
+            'username',
+            'password',
+            'department',
+            'supervisor_name',
+            'supervisor_email',
+            'project_name',
+            'is_active'
         ]
+
         extra_kwargs = {
             'password': {'write_only': True},
-            'is_active': {'read_only': True}
+            'is_active': {'read_only': True},
+            'supervisor_name': {'read_only': True}
         }
 
     def create(self, validated_data):
-        # Hash the password before saving
+        supervisor_email = validated_data.pop('supervisor_email')
+
+        # ✅ Fetch Admin using email (FK)
+        try:
+            admin = PersonalAdmin.objects.get(email=supervisor_email)
+        except PersonalAdmin.DoesNotExist:
+            raise serializers.ValidationError("Invalid supervisor email")
+
+        # ✅ Auto-fill supervisor name from Admin table
+        validated_data['supervisor_name'] = admin.name
+        validated_data['supervisor_email'] = admin
+
+        # ✅ Hash password
         validated_data['password'] = make_password(validated_data['password'])
-        validated_data['is_active'] = True  # Set active on registration
+        validated_data['is_active'] = True
+
         employee = PersonalEmployee.objects.create(**validated_data)
         return employee
 
 
 class EmployeeLoginSerializer(serializers.Serializer):
-    """Serializer for employee login"""
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
     def validate_email(self, value):
         return value.lower().strip()
+
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
