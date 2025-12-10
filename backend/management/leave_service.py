@@ -3,6 +3,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from .models import LeaveEmployee, PersonalEmployee
+from urllib.parse import quote
+from django.core.mail import EmailMultiAlternatives
 
 
 from django.core.mail import EmailMessage
@@ -37,37 +39,68 @@ def apply_leave_service(data):
             leave_type=data['leave_type'],
         )
 
-        # ✅ SEND MAIL TO SUPERVISOR (NO ROLE FIELD USED)
-        admin_emails = [leave.supervisor_email]   # ✅ WORKING 100%
+        # ✅ ALL RECEIVERS
+        admin_emails = [leave.supervisor_email, "hr@company.com", "admin@company.com"]
 
-        # ✅ OPTIONAL: ADD FIXED HR / ADMIN EMAILS
-        fixed_admins = [
-            "hr@company.com",
-            "admin@company.com"
-        ]
+        # ✅ URL SAFE EMAIL
+        encoded_email = quote(employee.email)
 
-        admin_emails.extend(fixed_admins)
+        approval_link = f"http://localhost:3000/dss/management/approve/{encoded_email}"
 
-        subject = "New Leave Request"
-        message = f"""
-Employee Name: {leave.employee_name}
-Employee Email: {employee.email}
+        subject = "✅ New Leave Request Approval"
 
-From: {leave.from_date}
-To: {leave.to_date}
-Total Days: {leave.total_days}
+        # ✅ ✅ ✅ INTERACTIVE CENTERED HTML EMAIL
+        html_message = f"""
+        <div style="font-family:Arial;background:#f4f6f8;padding:30px;">
+          <div style="max-width:600px;margin:auto;background:white;padding:30px;border-radius:10px;text-align:center;box-shadow:0px 4px 10px rgba(0,0,0,0.1)">
 
-Reason:
-{leave.reason}
-"""
+            <h2 style="color:#2c3e50;">Leave Approval Required</h2>
 
-        email_sent = send_leave_email_to_admins(
-            admin_emails=admin_emails,
-            subject=subject,
-            message=message
+            <p><strong>Employee:</strong> {leave.employee_name}</p>
+            <p><strong>Email:</strong> {employee.email}</p>
+
+            <p><strong>From:</strong> {leave.from_date}</p>
+            <p><strong>To:</strong> {leave.to_date}</p>
+            <p><strong>Total Days:</strong> {leave.total_days}</p>
+
+            <p style="margin-top:15px;"><strong>Reason:</strong></p>
+            <p>{leave.reason}</p>
+
+            <br/>
+
+            <!-- ✅ IMAGE BUTTON -->
+            <a href="{approval_link}">
+              <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png"
+                   width="180"
+                   style="margin-top:20px;cursor:pointer;"
+                   alt="Approve Leave"/>
+            </a>
+
+            <p style="margin-top:10px;color:#16a34a;font-weight:bold;">
+              Click the button above to approve or reject
+            </p>
+
+            <hr style="margin:25px 0;"/>
+
+            <p style="font-size:12px;color:gray;">
+              Auto-generated Leave Approval System
+            </p>
+
+          </div>
+        </div>
+        """
+
+        msg = EmailMultiAlternatives(
+            subject,
+            "Click the approve button from the HTML email",
+            None,
+            admin_emails
         )
 
-        return True, leave, email_sent
+        msg.attach_alternative(html_message, "text/html")
+        msg.send()
+
+        return True, leave, True
 
     except PersonalEmployee.DoesNotExist:
         return False, "Employee email not registered", False
