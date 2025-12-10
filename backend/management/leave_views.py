@@ -101,6 +101,52 @@ class LeaveByEmployeeEmailView(APIView):
         )
 
 
+class LeaveByEmployeeEmailGetView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, email):
+        if not email:
+            return Response(
+                {"message": "Employee email is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        leave_records = get_leaves_by_employee_email(email)
+
+        if not leave_records.exists():
+            return Response(
+                {"message": "No leave records found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        data = []
+        for leave in leave_records:
+            data.append({
+                "id": leave.id,
+                "employee_name": leave.employee_name,
+                "employee_email": leave.employee_email.email,
+                "supervisor_email": leave.supervisor_email,
+                "from_date": leave.from_date,
+                "to_date": leave.to_date,
+                "total_days": leave.total_days,
+                "reason": leave.reason,
+                "leave_type": leave.leave_type,
+                "approval_status": leave.approval_status,
+                "created_at": leave.created_at,
+            })
+
+        return Response(
+            {
+                "message": "Leave records fetched successfully",
+                "total_leaves": len(data),
+                "data": data
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+
 class UpdateLeaveApprovalStatusView(APIView):
     permission_classes = [AllowAny] 
     def post(self, request):
