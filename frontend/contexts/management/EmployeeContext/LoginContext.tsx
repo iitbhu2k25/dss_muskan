@@ -1,3 +1,4 @@
+// contexts/management/EmployeeContext/LoginContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
@@ -6,12 +7,12 @@ interface User {
   email: string;
   username: string;
   department: string;
-
-  // ✅ match backend: supervisor_name + supervisor_email + projectName
   supervisor_name: string | null;
   supervisor_email: string | null;
   projectName: string | null;
-
+  joining_date: string | null;      // ✅ NEW FIELD
+  position: string | null;          // ✅ NEW FIELD
+  resign_date: string | null;       // ✅ NEW FIELD
   is_active: boolean;
   last_login?: string;
   token?: string;
@@ -41,7 +42,6 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check authentication on mount
   useEffect(() => {
     const initAuth = async () => {
       await checkAuthStatus();
@@ -75,6 +75,9 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
           supervisor_email: data.user.supervisor_email ?? null,
           supervisor_name: data.user.supervisor_name ?? null,
           projectName: data.user.projectName ?? null,
+          joining_date: data.user.joining_date ?? null,      // ✅ NEW FIELD
+          position: data.user.position ?? null,              // ✅ NEW FIELD
+          resign_date: data.user.resign_date ?? null,        // ✅ NEW FIELD
           token,
         };
         setUser(userData);
@@ -97,7 +100,6 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     setError('');
 
     try {
-      // Basic validation
       if (!email || !password) {
         setError('Please fill in all fields');
         setIsLoading(false);
@@ -111,7 +113,6 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Call backend LOGIN API
       const response = await fetch('/django/management/login/employee', {
         method: 'POST',
         headers: {
@@ -131,6 +132,9 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
           supervisor_email: data.user.supervisor_email ?? null,
           supervisor_name: data.user.supervisor_name ?? null,
           projectName: data.user.projectName ?? null,
+          joining_date: data.user.joining_date ?? null,      // ✅ NEW FIELD
+          position: data.user.position ?? null,              // ✅ NEW FIELD
+          resign_date: data.user.resign_date ?? null,        // ✅ NEW FIELD
           token: data.token,
         };
 
@@ -155,13 +159,15 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Direct login with user data (used after registration)
   const loginWithUserData = (userData: any) => {
     const completeUserData: User = {
       ...userData,
       supervisor_email: userData.supervisor_email ?? null,
       supervisor_name: userData.supervisor_name ?? null,
       projectName: userData.projectName ?? null,
+      joining_date: userData.joining_date ?? null,      // ✅ NEW FIELD
+      position: userData.position ?? null,              // ✅ NEW FIELD
+      resign_date: userData.resign_date ?? null,        // ✅ NEW FIELD
     };
     setUser(completeUserData);
     setError('');
@@ -205,7 +211,6 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Show loading state while checking initial auth
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50">

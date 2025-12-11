@@ -7,8 +7,11 @@ export interface RegisterData {
   password: string;
   confirmPassword: string;
   department: string;
-  supervisor_email: string; // ✅ EMAIL ONLY
+  supervisor_email: string;
   projectName: string;
+  joining_date: string;      // ✅ NEW FIELD (YYYY-MM-DD)
+  position: string;          // ✅ NEW FIELD
+  resign_date?: string;      // ✅ NEW FIELD (optional)
 }
 
 export interface EmployerData {
@@ -94,7 +97,9 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
       !data.password ||
       !data.department ||
       !data.supervisor_email ||
-      !data.projectName
+      !data.projectName ||
+      !data.joining_date ||    // ✅ NEW VALIDATION
+      !data.position           // ✅ NEW VALIDATION
     ) {
       return 'Please fill in all required fields';
     }
@@ -105,6 +110,22 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
 
     if (data.password.length < 6) return 'Password must be at least 6 characters';
     if (data.password !== data.confirmPassword) return 'Passwords do not match';
+
+    // ✅ Validate joining_date is not in future
+    const joiningDate = new Date(data.joining_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (joiningDate > today) {
+      return 'Joining date cannot be in the future';
+    }
+
+    // ✅ Validate resign_date if provided
+    if (data.resign_date) {
+      const resignDate = new Date(data.resign_date);
+      if (resignDate < joiningDate) {
+        return 'Resign date cannot be before joining date';
+      }
+    }
 
     return null;
   };
@@ -128,7 +149,10 @@ export const RegisterProvider = ({ children }: { children: ReactNode }) => {
         password: data.password,
         department: data.department,
         project_name: data.projectName,
-        supervisor_email: data.supervisor_email // ✅ MATCHES BACKEND
+        supervisor_email: data.supervisor_email,
+        joining_date: data.joining_date,        // ✅ NEW FIELD
+        position: data.position,                // ✅ NEW FIELD
+        ...(data.resign_date && { resign_date: data.resign_date })  // ✅ Optional field
       };
 
       const response = await fetch('/django/management/register/employee', {

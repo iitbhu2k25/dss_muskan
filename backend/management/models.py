@@ -29,10 +29,10 @@ class PersonalEmployee(models.Model):
     password = models.CharField(max_length=200)
     department = models.CharField(max_length=100)
 
-    # ✅ Supervisor Name (Simple Text)
+    # Supervisor Name
     supervisor_name = models.CharField(max_length=100)
 
-    # ✅ Supervisor Email (Foreign Key)
+    # Supervisor Email (FK)
     supervisor_email = models.ForeignKey(
         PersonalAdmin,
         to_field="email",
@@ -43,6 +43,12 @@ class PersonalEmployee(models.Model):
     )
 
     project_name = models.CharField(max_length=200)
+
+    # ✅ New Fields
+    joining_date = models.DateField()                # required
+    position = models.CharField(max_length=100)      # required
+    resign_date = models.DateField(null=True, blank=True)  # optional
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
@@ -54,6 +60,7 @@ class PersonalEmployee(models.Model):
         db_table = 'personal_employee'
         verbose_name = 'Personal Employee'
         verbose_name_plural = 'Personal Employees'
+
         
         
         

@@ -29,7 +29,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class EmployeeRegisterSerializer(serializers.ModelSerializer):
-    # ✅ Accept only supervisor_email from frontend
+    # Accept supervisor_email from frontend
     supervisor_email = serializers.EmailField(write_only=True)
 
     class Meta:
@@ -44,29 +44,33 @@ class EmployeeRegisterSerializer(serializers.ModelSerializer):
             'supervisor_name',
             'supervisor_email',
             'project_name',
+            'joining_date',      # ✅ NEW FIELD
+            'position',          # ✅ NEW FIELD
+            'resign_date',       # ✅ NEW FIELD (optional)
             'is_active'
         ]
 
         extra_kwargs = {
             'password': {'write_only': True},
             'is_active': {'read_only': True},
-            'supervisor_name': {'read_only': True}
+            'supervisor_name': {'read_only': True},
+            'resign_date': {'required': False, 'allow_null': True}  # ✅ Optional field
         }
 
     def create(self, validated_data):
         supervisor_email = validated_data.pop('supervisor_email')
 
-        # ✅ Fetch Admin using email (FK)
+        # Fetch Admin using email (FK)
         try:
             admin = PersonalAdmin.objects.get(email=supervisor_email)
         except PersonalAdmin.DoesNotExist:
             raise serializers.ValidationError("Invalid supervisor email")
 
-        # ✅ Auto-fill supervisor name from Admin table
+        # Auto-fill supervisor name from Admin table
         validated_data['supervisor_name'] = admin.name
         validated_data['supervisor_email'] = admin
 
-        # ✅ Hash password
+        # Hash password
         validated_data['password'] = make_password(validated_data['password'])
         validated_data['is_active'] = True
 
@@ -100,6 +104,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'supervisor_name',
             'supervisor_email',
             'projectName',
+            'joining_date',      # ✅ NEW FIELD
+            'position',          # ✅ NEW FIELD
+            'resign_date',       # ✅ NEW FIELD
             'is_active'
         ]
         read_only_fields = fields

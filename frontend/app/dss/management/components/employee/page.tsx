@@ -28,11 +28,11 @@ function AuthWrapper() {
           onSwitchToLogin={() => setShowRegister(false)}
           onRegisterSuccess={(result) => {
             // result is what RegisterContext `register` returns
-            // expected: { success: true, employee: {...} }
+            // expected: { success: true, employee: {...}, token: "..." }
 
             const emp = result.employee;
 
-            // Shape it like LoginContext's User
+            // ✅ Shape it like LoginContext's User interface with ALL fields
             const userPayload = {
               id: emp.id,
               name: emp.name,
@@ -41,10 +41,13 @@ function AuthWrapper() {
               department: emp.department,
               supervisor_email: emp.supervisor_email ?? null,
               supervisor_name: emp.supervisor_name ?? null,
-              projectName: emp.project_name ?? null, // map snake_case → camelCase
+              projectName: emp.projectName ?? null,           // backend returns projectName
+              joining_date: emp.joining_date ?? null,         // ✅ NEW FIELD
+              position: emp.position ?? null,                 // ✅ NEW FIELD
+              resign_date: emp.resign_date ?? null,           // ✅ NEW FIELD
               is_active: emp.is_active,
               last_login: emp.created_at ?? null,
-              token: result.token ?? undefined,      // if you return token on register
+              token: result.token ?? undefined,
             };
 
             loginWithUserData(userPayload);

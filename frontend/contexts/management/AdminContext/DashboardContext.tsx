@@ -12,6 +12,9 @@ export interface Employee {
   supervisor_name: string;
   supervisor_email: string | null;
   projectName: string;
+  joining_date: string | null;      // ✅ NEW FIELD
+  position: string | null;          // ✅ NEW FIELD
+  resign_date: string | null;       // ✅ NEW FIELD
   is_active: boolean;
 }
 
@@ -105,7 +108,6 @@ export const DashboardProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
-  // ✅ SINGLE FUNCTION for both approve & reject
   const approveLeave = async (leaveId: number, status: 'approved' | 'rejected'): Promise<boolean> => {
     try {
       const token = localStorage.getItem('adminAuthToken');
@@ -138,7 +140,7 @@ export const DashboardProvider: React.FC<{ children: ReactNode }> = ({ children 
       employeeLeaves,
       leavesLoading,
       fetchEmployeeLeaves,
-      approveLeave,  // ✅ Single function now
+      approveLeave,
     }}>
       {children}
     </DashboardContext.Provider>

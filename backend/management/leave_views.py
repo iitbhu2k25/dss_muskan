@@ -52,10 +52,6 @@ class LeaveApprovalAPIView(APIView):
         return Response(serializer.errors, status=400)
 
 
-
-
-
-
 class LeaveByEmployeeEmailView(APIView):
     permission_classes = [AllowAny]  
 
@@ -90,6 +86,9 @@ class LeaveByEmployeeEmailView(APIView):
                 "leave_type": leave.leave_type,
                 "approval_status": leave.approval_status,
                 "created_at": leave.created_at,
+                # ✅ NEW: Adding joining_date and position from PersonalEmployee
+                "joining_date": leave.employee_email.joining_date,
+                "position": leave.employee_email.position,
             })
 
         return Response(
@@ -134,6 +133,9 @@ class LeaveByEmployeeEmailGetView(APIView):
                 "leave_type": leave.leave_type,
                 "approval_status": leave.approval_status,
                 "created_at": leave.created_at,
+                # ✅ NEW: Adding joining_date and position from PersonalEmployee
+                "joining_date": leave.employee_email.joining_date,
+                "position": leave.employee_email.position,
             })
 
         return Response(
@@ -144,8 +146,6 @@ class LeaveByEmployeeEmailGetView(APIView):
             },
             status=status.HTTP_200_OK
         )
-
-
 
 
 class UpdateLeaveApprovalStatusView(APIView):
@@ -196,4 +196,4 @@ class UpdateLeaveApprovalStatusView(APIView):
                 }
             },
             status=status.HTTP_200_OK
-        )        
+        )

@@ -120,12 +120,12 @@ class RegisterEmployeeView(APIView):
                     "email": employee.email,
                     "username": employee.username,
                     "department": employee.department,
-
-                    # ✅ UPDATED FIELDS
                     "supervisor_name": employee.supervisor_name,
                     "supervisor_email": employee.supervisor_email.email,
-
                     "projectName": employee.project_name,
+                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,  # ✅ NEW
+                    "position": employee.position,  # ✅ NEW
+                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None,  # ✅ NEW
                     "is_active": employee.is_active
                 },
                 "token": token
@@ -169,18 +169,17 @@ class LoginEmployeeView(APIView):
                     "email": employee.email,
                     "username": employee.username,
                     "department": employee.department,
-
-                    # ✅ RETURN BOTH SUPERVISOR NAME + EMAIL
                     "supervisor_name": employee.supervisor_name,
                     "supervisor_email": (
                         employee.supervisor_email.email
                         if employee.supervisor_email else None
                     ),
-
                     "projectName": employee.project_name,
+                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,  # ✅ NEW
+                    "position": employee.position,  # ✅ NEW
+                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None,  # ✅ NEW
                     "is_active": employee.is_active,
-                    "last_login": employee.created_at.isoformat()
-                    if employee.created_at else None
+                    "last_login": employee.created_at.isoformat() if employee.created_at else None
                 },
                 "token": token
             }, status=status.HTTP_200_OK)
@@ -249,8 +248,12 @@ class EmployeeStatusView(APIView):
                     "email": employee.email,
                     "username": employee.username,
                     "department": employee.department,
-                    "supervisor": employee.supervisor,
-                    "projectName": employee.project_name
+                    "supervisor_name": employee.supervisor_name,
+                    "supervisor_email": employee.supervisor_email.email if employee.supervisor_email else None,
+                    "projectName": employee.project_name,
+                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,  # ✅ NEW
+                    "position": employee.position,  # ✅ NEW
+                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None  # ✅ NEW
                 }
             }, status=status.HTTP_200_OK)
         else:

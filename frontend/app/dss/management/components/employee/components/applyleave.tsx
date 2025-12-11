@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, ChangeEvent, useEffect } from 'react';
-import { Calendar, FileText, User, Mail, UserCheck, X, Send } from 'lucide-react';
+import { Calendar, FileText, User, Mail, UserCheck, X, Send, Briefcase, CalendarDays } from 'lucide-react';
 import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
 import { useLeave } from '@/contexts/management/EmployeeContext/ApplyLeaveContext';
 
@@ -84,13 +84,22 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black/40 fixed inset-0 z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between sticky top-0 bg-white pb-4 border-b">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
               <Calendar className="w-7 h-7 text-white" />
@@ -107,91 +116,123 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
           )}
         </div>
 
-        {/* Employee / Supervisor Info (auto-filled) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500">Employee Name</p>
-            <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold text-gray-800">{user.name || user.username}</span>
+        {/* Employee Information Section */}
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+          <h3 className="text-sm font-bold text-purple-800 mb-3 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Employee Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-gray-500">Employee Name</p>
+              <div className="flex items-center gap-2 text-sm bg-white border border-purple-200 rounded-lg px-3 py-2">
+                <User className="w-4 h-4 text-purple-400" />
+                <span className="font-semibold text-gray-800">{user.name || user.username}</span>
+              </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500">Employee Email</p>
-            <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              <Mail className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold text-gray-800 break-all">{user.email}</span>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-gray-500">Employee Email</p>
+              <div className="flex items-center gap-2 text-sm bg-white border border-purple-200 rounded-lg px-3 py-2">
+                <Mail className="w-4 h-4 text-purple-400" />
+                <span className="font-semibold text-gray-800 break-all">{user.email}</span>
+              </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500">Supervisor Email</p>
-            <div className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              <UserCheck className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold text-gray-800 break-all">
-                {user.supervisor_email || 'Not Assigned'}
-              </span>
+            {/* ✅ NEW: Position */}
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-gray-500">Position</p>
+              <div className="flex items-center gap-2 text-sm bg-white border border-purple-200 rounded-lg px-3 py-2">
+                <Briefcase className="w-4 h-4 text-purple-400" />
+                <span className="font-semibold text-gray-800">{user.position || 'N/A'}</span>
+              </div>
+            </div>
+            {/* ✅ NEW: Joining Date */}
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-gray-500">Joining Date</p>
+              <div className="flex items-center gap-2 text-sm bg-white border border-purple-200 rounded-lg px-3 py-2">
+                <CalendarDays className="w-4 h-4 text-purple-400" />
+                <span className="font-semibold text-gray-800">
+                  {user.joining_date ? formatDate(user.joining_date) : 'N/A'}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <p className="text-xs font-medium text-gray-500">Supervisor Email</p>
+              <div className="flex items-center gap-2 text-sm bg-white border border-purple-200 rounded-lg px-3 py-2">
+                <UserCheck className="w-4 h-4 text-purple-400" />
+                <span className="font-semibold text-gray-800 break-all">
+                  {user.supervisor_email || 'Not Assigned'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Date range + days */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1 md:col-span-1">
-            <label className="text-sm font-medium text-gray-700">From Date</label>
-            <input
-              type="date"
+        {/* Leave Details Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-purple-500" />
+            Leave Details
+          </h3>
+
+          {/* Date range + days */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1 md:col-span-1">
+              <label className="text-sm font-medium text-gray-700">From Date</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                value={startDate}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
+                min={today}
+              />
+            </div>
+            <div className="space-y-1 md:col-span-1">
+              <label className="text-sm font-medium text-gray-700">To Date</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                value={endDate}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
+                min={startDate || today}
+              />
+            </div>
+            <div className="space-y-1 md:col-span-1">
+              <label className="text-sm font-medium text-gray-700">Total Days</label>
+              <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm flex items-center">
+                <span className="font-semibold text-gray-800">{totalDays > 0 ? totalDays : '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Leave Type */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Leave Type</label>
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              value={startDate}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
-              min={today}
+              value={leaveType}
+              onChange={(e) => setLeaveType(e.target.value)}
+            >
+              <option value="">Select Leave Type</option>
+              <option value="Casual Leave">Casual Leave</option>
+              <option value="Sick Leave">Sick Leave</option>
+              <option value="Annual Leave">Annual Leave</option>
+              <option value="Emergency Leave">Emergency Leave</option>
+            </select>
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <FileText className="w-4 h-4 text-gray-400" />
+              Reason for Leave
+            </label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[90px] resize-y"
+              placeholder="Describe the reason for your leave..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
             />
           </div>
-          <div className="space-y-1 md:col-span-1">
-            <label className="text-sm font-medium text-gray-700">To Date</label>
-            <input
-              type="date"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              value={endDate}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
-              min={startDate || today}
-            />
-          </div>
-          <div className="space-y-1 md:col-span-1">
-            <label className="text-sm font-medium text-gray-700">Total Days</label>
-            <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm flex items-center">
-              <span className="font-semibold text-gray-800">{totalDays > 0 ? totalDays : '-'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Leave Type */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Leave Type</label>
-          <select
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            value={leaveType}
-            onChange={(e) => setLeaveType(e.target.value)}
-          >
-            <option value="">Select Leave Type</option>
-            <option value="Casual Leave">Casual Leave</option>
-            <option value="Sick Leave">Sick Leave</option>
-            <option value="Annual Leave">Annual Leave</option>
-            <option value="Emergency Leave">Emergency Leave</option>
-          </select>
-        </div>
-
-        {/* Reason */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-            <FileText className="w-4 h-4 text-gray-400" />
-            Reason for Leave
-          </label>
-          <textarea
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[90px] resize-y"
-            placeholder="Describe the reason for your leave..."
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
         </div>
 
         {/* Error / Success */}
@@ -207,7 +248,7 @@ export default function LeaveRequestForm({ onClose }: LeaveRequestFormProps) {
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 pt-2 sticky bottom-0 bg-white border-t pt-4">
           {onClose && (
             <button
               onClick={onClose}

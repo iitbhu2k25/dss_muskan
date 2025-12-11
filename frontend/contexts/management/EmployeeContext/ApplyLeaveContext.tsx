@@ -14,6 +14,9 @@ export interface LeaveRecord {
   leave_type: string;
   approval_status: string;
   created_at: string;
+  // ✅ NEW: Added from PersonalEmployee
+  joining_date: string;
+  position: string;
 }
 
 export interface LeaveRequestData {
@@ -56,7 +59,12 @@ export const LeaveProvider = ({ children }: { children: ReactNode }) => {
   const [loadingLeaves, setLoadingLeaves] = useState(false);
 
   const fetchLeaves = async (): Promise<void> => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      // No user logged in - clear data
+      setLeaves([]);
+      setTotalLeaves(0);
+      return;
+    }
 
     setLoadingLeaves(true);
     setError('');
@@ -79,24 +87,45 @@ export const LeaveProvider = ({ children }: { children: ReactNode }) => {
       const result = await response.json();
 
       if (response.ok) {
-        setLeaves(result.data || []);
-        setTotalLeaves(result.total_leaves || 0);
+        // ✅ Only update if user email still matches (prevent race condition)
+        if (user.email === user?.email) {
+          setLeaves(result.data || []);
+          setTotalLeaves(result.total_leaves || 0);
+        }
       } else {
         setError(result.message || 'Failed to fetch leave records');
+        // Clear data on error
+        setLeaves([]);
+        setTotalLeaves(0);
       }
     } catch (err) {
       console.error('Fetch leaves error:', err);
       setError('Server error while fetching leave records');
+      // Clear data on error
+      setLeaves([]);
+      setTotalLeaves(0);
     } finally {
       setLoadingLeaves(false);
     }
   };
 
-  // Auto-fetch leaves when user changes
+  // 🔥 Clear leave data when user logs out or changes
   useEffect(() => {
-    if (user?.email) {
-      fetchLeaves();
+    if (!user?.email) {
+      // User logged out - clear all data
+      setLeaves([]);
+      setTotalLeaves(0);
+      setError('');
+      setSuccessMessage('');
+      return;
     }
+
+    // User logged in or changed - clear old data and fetch new
+    setLeaves([]);
+    setTotalLeaves(0);
+    setError('');
+    setSuccessMessage('');
+    fetchLeaves();
   }, [user?.email]);
 
   const createLeaveRequest = async (data: Omit<LeaveRequestData, 'is_approved'>): Promise<boolean> => {

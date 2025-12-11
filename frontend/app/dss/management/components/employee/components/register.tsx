@@ -1,6 +1,6 @@
 // components/management/employee/components/register.tsx
 import { useState, useEffect, ChangeEvent } from 'react';
-import { User, Mail, Lock, Building2, Briefcase, UserCheck } from 'lucide-react';
+import { User, Mail, Lock, Building2, Briefcase, UserCheck, Calendar, Briefcase as BriefcaseIcon } from 'lucide-react';
 import {
   useRegister,
   type RegisterData,
@@ -25,23 +25,41 @@ export default function EmployeeRegister({
     getSupervisorsByProject,
   } = useRegister();
 
-  // ------------------------------------------------------------------ STATE
   const [formData, setFormData] = useState<RegisterData>({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
     department: '',
-    supervisor_email: '', // ✅ matches context
+    supervisor_email: '',
     projectName: '',
+    joining_date: '',
+    position: '',
+    resign_date: '',
   });
 
   const [localError, setLocalError] = useState('');
   const [availableProjects, setAvailableProjects] = useState<string[]>([]);
   const [availableSupervisors, setAvailableSupervisors] = useState<string[]>([]);
 
-  // ------------------------------------------------------------------ EFFECTS
-  // 1. Department → projects
+  // Position options array for easy management
+  const positionOptions = [
+    'Project Attendant',
+    'Scientific Assistant/Field Worker',
+    'Project Asst (Tech)',
+    'JRF',
+    'SRF',
+    'YP (Young Professional)',
+    'RA-I',
+    'RA-II',
+    'RA-III',
+    'Senior Project Manager',
+    'Senior Project Scientific',
+    'Consultant',
+    'Lab Technician'
+  ];
+
+  // Department → projects
   useEffect(() => {
     if (formData.department) {
       const projects = getProjectsByDepartment(formData.department);
@@ -49,7 +67,7 @@ export default function EmployeeRegister({
       setFormData((p) => ({
         ...p,
         projectName: '',
-        supervisor_email: '', // reset when department changes
+        supervisor_email: '',
       }));
       setAvailableSupervisors([]);
     } else {
@@ -58,19 +76,18 @@ export default function EmployeeRegister({
     }
   }, [formData.department, getProjectsByDepartment]);
 
-  // 2. Project → supervisors
+  // Project → supervisors
   useEffect(() => {
     if (formData.projectName && formData.department) {
       const sups = getSupervisorsByProject(formData.department, formData.projectName);
       setAvailableSupervisors(sups);
-      // reset selection (will be auto-filled later if only one)
       setFormData((p) => ({ ...p, supervisor_email: '' }));
     } else {
       setAvailableSupervisors([]);
     }
   }, [formData.projectName, formData.department, getSupervisorsByProject]);
 
-  // 3. Auto-select when only ONE supervisor exists
+  // Auto-select when only ONE supervisor exists
   useEffect(() => {
     if (availableSupervisors.length === 1) {
       setFormData((p) => ({ ...p, supervisor_email: availableSupervisors[0] }));
@@ -83,7 +100,6 @@ export default function EmployeeRegister({
     }
   }, [availableSupervisors, formData.supervisor_email]);
 
-  // ------------------------------------------------------------------ HANDLERS
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -103,11 +119,13 @@ export default function EmployeeRegister({
   const displayError = contextError || localError;
   const isSingleSupervisor = availableSupervisors.length === 1;
 
-  // ------------------------------------------------------------------ RENDER
+  // Get today's date in YYYY-MM-DD format for max date
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-green-50 p-4">
-      <div className="w-full max-w-2xl">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
+      <div className="w-full max-w-3xl">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6 max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-full mb-4">
@@ -213,7 +231,7 @@ export default function EmployeeRegister({
               </div>
             </div>
 
-            {/* Supervisor Email – auto-select when only one */}
+            {/* Supervisor Email */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 flex items-center justify-between">
                 <span>Supervisor Email *</span>
@@ -226,8 +244,8 @@ export default function EmployeeRegister({
               <div className="relative">
                 <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
                 <select
-                  name="supervisor_email"              // ✅ name matches RegisterData
-                  value={formData.supervisor_email}    // ✅ bound to email field
+                  name="supervisor_email"
+                  value={formData.supervisor_email}
                   onChange={handleInputChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none bg-white disabled:bg-gray-100"
                   disabled={
@@ -250,12 +268,50 @@ export default function EmployeeRegister({
                   ))}
                 </select>
               </div>
+            </div>
 
-              {isSingleSupervisor && (
-                <p className="text-xs text-green-600 mt-1">
-                  Only one supervisor for this project – automatically selected.
-                </p>
-              )}
+            {/* Position & Joining Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Position *
+                </label>
+                <div className="relative">
+                  <BriefcaseIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                  <select
+                    name="position"
+                    value={formData.position}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition appearance-none bg-white"
+                    disabled={isLoading || isLoadingEmployers}
+                  >
+                    <option value="">Select Position</option>
+                    {positionOptions.map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Joining Date *
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="date"
+                    name="joining_date"
+                    value={formData.joining_date}
+                    onChange={handleInputChange}
+                    max={today}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+                    disabled={isLoading || isLoadingEmployers}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Passwords */}

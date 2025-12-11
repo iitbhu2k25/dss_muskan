@@ -19,6 +19,8 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  CalendarDays,
+  Briefcase as BriefcaseIcon,
 } from 'lucide-react';
 import { useLogin } from '@/contexts/management/EmployeeContext/LoginContext';
 import { useLeave } from '@/contexts/management/EmployeeContext/ApplyLeaveContext';
@@ -36,7 +38,6 @@ export default function EmployeeDashboard() {
     return null;
   }
 
-  // Auto-refresh when leave history is opened
   useEffect(() => {
     if (showLeaveHistory && user?.email) {
       handleRefreshLeaves();
@@ -48,7 +49,7 @@ export default function EmployeeDashboard() {
     
     setIsRefreshing(true);
     try {
-      await fetchLeaves(user.email);
+      await fetchLeaves();
     } catch (error) {
       console.error('Error refreshing leaves:', error);
     } finally {
@@ -155,13 +156,13 @@ export default function EmployeeDashboard() {
           </div>
         )}
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Statistics Cards - Grid with 5 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           {/* Total Leaves Card */}
           <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 transform hover:scale-105 transition-all hover:shadow-xl cursor-pointer group" onClick={() => setShowLeaveHistory(!showLeaveHistory)}>
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-gray-500 text-sm font-medium mb-1">Total Leave Requests</p>
+                <p className="text-gray-500 text-sm font-medium mb-1">Leave Requests</p>
                 <p className="text-3xl font-bold text-purple-600 group-hover:text-purple-700">{totalLeaves}</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg flex-shrink-0 group-hover:bg-purple-200 transition-all">
@@ -179,7 +180,7 @@ export default function EmployeeDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-gray-500 text-sm font-medium mb-1">Email</p>
-                <p className="text-lg font-bold text-gray-800 truncate">{user.email}</p>
+                <p className="text-sm font-bold text-gray-800 truncate">{user.email}</p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg flex-shrink-0">
                 <Mail className="w-8 h-8 text-green-500" />
@@ -190,38 +191,50 @@ export default function EmployeeDashboard() {
           {/* Department Card */}
           <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-teal-500 transform hover:scale-105 transition-all hover:shadow-xl">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-gray-500 text-sm font-medium mb-1">Department</p>
-                <p className="text-lg font-bold text-gray-800 capitalize">
+                <p className="text-sm font-bold text-gray-800 capitalize truncate">
                   {user.department || 'N/A'}
                 </p>
               </div>
-              <div className="bg-teal-100 p-3 rounded-lg">
+              <div className="bg-teal-100 p-3 rounded-lg flex-shrink-0">
                 <Building2 className="w-8 h-8 text-teal-500" />
               </div>
             </div>
           </div>
 
-          {/* Supervisor Email Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-cyan-500 transform hover:scale-105 transition-all hover:shadow-xl">
+          {/* ✅ Position Card */}
+          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500 transform hover:scale-105 transition-all hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-gray-500 text-sm font-medium mb-1">Supervisor Email</p>
-                <p className="text-lg font-bold text-gray-800 break-all">
-                  {supervisorEmail}
+                <p className="text-gray-500 text-sm font-medium mb-1">Position</p>
+                <p className="text-sm font-bold text-gray-800 truncate">
+                  {user.position || 'N/A'}
                 </p>
-                {supervisorEmail === 'Not Assigned' && (
-                  <p className="text-xs text-orange-600 mt-1">Contact admin</p>
-                )}
               </div>
-              <div className="bg-cyan-100 p-3 rounded-lg">
-                <UserCheck className="w-8 h-8 text-cyan-500" />
+              <div className="bg-blue-100 p-3 rounded-lg flex-shrink-0">
+                <BriefcaseIcon className="w-8 h-8 text-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* ✅ Joining Date Card */}
+          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500 transform hover:scale-105 transition-all hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-500 text-sm font-medium mb-1">Joined On</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {user.joining_date ? formatDate(user.joining_date) : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg flex-shrink-0">
+                <CalendarDays className="w-8 h-8 text-orange-500" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* ✅ SMALL Apply Leave Card */}
+        {/* Apply Leave Card */}
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-xl shadow-xl mb-8 text-center max-w-sm mx-auto hover:shadow-2xl transition-all hover:scale-[1.02]">
           <div className="flex items-center justify-between mb-3">
             <Calendar className="w-10 h-10 opacity-90" />
@@ -238,7 +251,7 @@ export default function EmployeeDashboard() {
           <p className="text-purple-100 text-sm">Submit a new request</p>
         </div>
 
-        {/* ✅ COLLAPSIBLE Leave History with Refresh */}
+        {/* Leave History */}
         {showLeaveHistory && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border-2 border-purple-100">
             <div className="flex items-center justify-between mb-6">
@@ -284,18 +297,33 @@ export default function EmployeeDashboard() {
                 {leaves.map((leave) => (
                   <div key={leave.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:border-purple-300">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className={`px-2 py-1 rounded-full text-xs font-semibold border ${getStatusColor(leave.approval_status)}`}>
                           {leave.approval_status.toUpperCase()}
                         </div>
                         <h4 className="font-bold text-sm text-gray-800">{leave.leave_type}</h4>
                       </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        leave.approval_status === 'approved' ? 'bg-green-100 text-green-800' :
-                        leave.approval_status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {leave.approval_status}
+                    </div>
+                    
+                    {/* ✅ NEW: Display Position and Joining Date from Leave Record */}
+                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-3 mb-3 border border-blue-200">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="text-gray-500 font-medium mb-1 flex items-center gap-1">
+                            <BriefcaseIcon className="w-3 h-3" />
+                            Position
+                          </p>
+                          <p className="font-semibold text-blue-800">{leave.position || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 font-medium mb-1 flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3" />
+                            Joined On
+                          </p>
+                          <p className="font-semibold text-blue-800">
+                            {leave.joining_date ? formatDate(leave.joining_date) : 'N/A'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     
@@ -340,7 +368,7 @@ export default function EmployeeDashboard() {
             <User className="w-6 h-6 text-green-500" />
             User Information
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-500 font-medium mb-1">Full Name</p>
               <p className="text-lg font-semibold text-gray-800">
@@ -365,23 +393,40 @@ export default function EmployeeDashboard() {
                 {user.department || 'N/A'}
               </p>
             </div>
+            {/* ✅ Position */}
+            <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-500 font-medium mb-1">Position</p>
+              <p className="text-lg font-semibold text-gray-800">
+                {user.position || 'N/A'}
+              </p>
+            </div>
+            {/* ✅ Joining Date */}
+            <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-500 font-medium mb-1">Joining Date</p>
+              <p className="text-lg font-semibold text-gray-800">
+                {user.joining_date ? formatDate(user.joining_date) : 'N/A'}
+              </p>
+            </div>
+            {/* ✅ Resign Date (only show if exists) */}
+            {user.resign_date && (
+              <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg border border-red-200">
+                <p className="text-sm text-red-500 font-medium mb-1">Resign Date</p>
+                <p className="text-lg font-semibold text-red-800">
+                  {formatDate(user.resign_date)}
+                </p>
+              </div>
+            )}
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-500 font-medium mb-1">Supervisor</p>
               <p className="text-lg font-semibold text-gray-800 break-all">
                 {supervisorName}
               </p>
-              {supervisorName === 'Not Assigned' && (
-                <p className="text-xs text-orange-600 mt-1">No supervisor assigned</p>
-              )}
             </div>
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-500 font-medium mb-1">Supervisor Email</p>
               <p className="text-lg font-semibold text-gray-800 break-all">
                 {supervisorEmail}
               </p>
-              {supervisorEmail === 'Not Assigned' && (
-                <p className="text-xs text-orange-600 mt-1">No supervisor assigned</p>
-              )}
             </div>
             <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-500 font-medium mb-1">Account Status</p>
