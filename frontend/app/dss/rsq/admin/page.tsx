@@ -8,6 +8,7 @@ import { LocationProvider, useLocation } from "@/contexts/rsq/admin/LocationCont
 import { MapProvider } from "@/contexts/rsq/admin/MapContext";
 import { RSQProvider } from "@/contexts/rsq/admin/RsqContext";
 
+
 /* ================= MAIN CONTENT ================= */
 function RSQAssessmentContent() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
@@ -45,7 +46,9 @@ function RSQAssessmentContent() {
       
       {/* RSQ Analysis - Only show after location confirmed */}
       {locationConfirmed && <RSQAnalysis />}
+     
     </div>
+    
   );
 
   /* ================= RIGHT PANEL (MAP) ================= */
@@ -60,6 +63,7 @@ function RSQAssessmentContent() {
       </button>
       {/* MAP */}
       <Map />
+      
     </div>
   );
 

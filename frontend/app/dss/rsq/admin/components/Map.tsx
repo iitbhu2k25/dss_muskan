@@ -1,8 +1,8 @@
-// frontend/app/dss/rsq/admin/components/Map.tsx
 'use client';
 
 import React, { useRef, useEffect } from 'react';
 import { useMapContext } from '@/contexts/rsq/admin/MapContext';
+import { useRSQ } from '@/contexts/rsq/admin/RsqContext';
 import { FaEye, FaEyeSlash, FaLayerGroup, FaMapMarkerAlt, FaGlobe, FaTractor, FaBuilding, FaTint, FaRegDotCircle } from 'react-icons/fa';
 import 'ol/ol.css';
 
@@ -12,8 +12,8 @@ const layerIcons: Record<string, React.ReactElement> = {
   state: <FaMapMarkerAlt className="text-blue-500" />,
   district: <FaRegDotCircle className="text-green-600" />,
   block: <FaBuilding className="text-yellow-600" />,
-  village: <FaTractor className="text-gray-500" />, // Simple village boundary
-  rsq: <FaTint className="text-teal-600" />, // RSQ data layer
+  village: <FaTractor className="text-gray-500" />,
+  rsq: <FaTint className="text-teal-600" />,
 };
 
 const Map: React.FC = () => {
@@ -26,8 +26,11 @@ const Map: React.FC = () => {
     toggleLabels,
     toggleLayerVisibility,
     layerVisibility = {},
-    activeLayers = {}, // Use the new activeLayers state
+    activeLayers = {},
+    activeRSQYear,
   } = useMapContext();
+  
+  const { selectedYear } = useRSQ();
 
   useEffect(() => {
     if (mapRef.current) {
@@ -43,25 +46,22 @@ const Map: React.FC = () => {
     { key: 'district', label: 'District Boundaries' },
     { key: 'block', label: 'Block Boundaries' },
     { key: 'village', label: 'Village Boundaries (Base)' },
-    { key: 'rsq', label: 'RSQ Groundwater Data' },
+    { key: 'rsq', label: `RSQ Data${activeRSQYear ? ` (${activeRSQYear})` : ''}` },
   ];
 
   // Filter layers based on which ones are active on the map AND sort them for logical display
   const visibleLayers = allLayers
     .filter(layer => activeLayers[layer.key])
     .sort((a, b) => {
-      // Custom sort order to display layers from broadest to finest, 
-      // and RSQ (data) on top of Village (base).
       const order = ['india', 'state', 'district', 'block', 'village', 'rsq'];
       return order.indexOf(a.key) - order.indexOf(b.key);
     });
-
 
   if (error) {
     return (
       <div className="w-full h-screen bg-red-50 border-2 border-red-200 rounded-xl shadow-lg flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="text-6xl mb-4">Map Error</div>
+          <div className="text-6xl mb-4">⚠️ Map Error</div>
           <p className="text-red-600 mb-4">{error}</p>
           <button onClick={() => window.location.reload()} className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg">
             Reload Map
@@ -77,7 +77,7 @@ const Map: React.FC = () => {
       <div ref={mapRef} className="w-full h-full" />
 
       {/* Layer Control Panel */}
-      <div className="absolute top-3 right-3 bg-white rounded-lg shadow-xl p-2 z-10 w-56">
+      <div className="absolute top-3 right-3 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
         {/* Header */}
         <div className="flex items-center gap-2 mb-2 pb-2 border-b">
           <FaLayerGroup className="text-blue-600 text-base" />
@@ -92,7 +92,7 @@ const Map: React.FC = () => {
                 key={key}
                 className="flex items-center justify-between px-2 py-1 rounded-md hover:bg-gray-100 transition-all"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1">
                   <span className="text-sm">{layerIcons[key]}</span>
                   <span className="text-xs font-medium text-gray-700">
                     {label}
@@ -105,6 +105,7 @@ const Map: React.FC = () => {
                       ? "bg-blue-500 text-white hover:bg-blue-600"
                       : "bg-gray-300 text-gray-600 hover:bg-gray-400"
                     }`}
+                  title={layerVisibility[key] !== false ? "Hide layer" : "Show layer"}
                 >
                   {layerVisibility[key] !== false ? <FaEye /> : <FaEyeSlash />}
                 </button>
@@ -117,8 +118,19 @@ const Map: React.FC = () => {
           )}
         </div>
 
-      </div>
 
+        {/* Year Info if RSQ is active */}
+        {activeRSQYear && activeLayers.rsq && (
+          <div className="mt-2 pt-2 border-t">
+            <div className="text-xs text-gray-600 text-center">
+              <span className="font-medium">Assessment Year:</span>
+              <span className="block text-sm font-bold text-blue-600 mt-1">
+                {activeRSQYear}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Loading */}
       {isLoading && (

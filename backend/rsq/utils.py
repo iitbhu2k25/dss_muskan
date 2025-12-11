@@ -1,12 +1,22 @@
+# rsq/utils.py
+
 def get_stage_status_and_color(stage):
-    if stage is None:
-        return "No Data", "#95A5A6"  # Grey
+    """
+    Standard CGWB India Classification for Stage of Ground Water Extraction (%)
+    """
+    if stage is None or stage == "" or stage == "null":
+        return "No Data", "#95a5a6"        # Gray
+
+    try:
+        stage = float(stage)
+    except (TypeError, ValueError):
+        return "No Data", "#95a5a6"
 
     if stage <= 70:
-        return "Safe", "#2ECC71"  # Green
+        return "Safe", "#27ae60"            # Green
     elif stage <= 90:
-        return "Semi-Critical", "#F1C40F"  # Yellow
+        return "Semi-Critical", "#f39c12"    # Orange
     elif stage <= 100:
-        return "Critical", "#E67E22"  # Orange
+        return "Critical", "#e74c3c"         # Red
     else:
-        return "Over-Exploited", "#E74C3C"  # Red
+        return "Over-Exploited", "#c0392b"   # Dark Red

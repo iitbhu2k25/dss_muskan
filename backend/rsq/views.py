@@ -1,171 +1,176 @@
+# rsq/views.py – FINAL VERSION WITH CRS FOR EPSG:3857
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+
 from .models import Block, Village, GroundWaterData
-from .serializers import BlockSerializer, VillageSerializer, GroundWaterDataSerializer
+from .serializers import BlockSerializer, VillageSerializer
+from .utils import get_stage_status_and_color
+
 import os
 import geopandas as gpd
 from django.conf import settings
-from .utils import get_stage_status_and_color
+import traceback
 
+
+# ==============================================================
+# 1. Block by District
+# ==============================================================
 class BlockByDistrictAPI(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         districtcodes = request.data.get('districtcodes')
 
-
         if not districtcodes or not isinstance(districtcodes, list):
-            return Response(
-                {"error": "districtcodes must be a non-empty list"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "districtcodes must be a non-empty list"}, status=400)
 
-      
         blocks = Block.objects.filter(districtcode__in=districtcodes)
         serializer = BlockSerializer(blocks, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
+        return Response(serializer.data)
 
 
+# ==============================================================
+# 2. Village by Block
+# ==============================================================
 class VillageByBlockAPI(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         blockcodes = request.data.get('blockcodes')
 
- 
         if not blockcodes or not isinstance(blockcodes, list):
-            return Response(
-                {"error": "blockcodes must be a non-empty list"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "blockcodes must be a non-empty list"}, status=400)
 
-        
         villages = Village.objects.filter(blockcode__in=blockcodes)
         serializer = VillageSerializer(villages, many=True)
+        return Response(serializer.data)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
+# ==============================================================
+# 3. RSQ GeoJSON API – WITH CRS DECLARATION FOR EPSG:3857
+# ==============================================================
 class VillageGroundWaterGeoJSONAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         try:
-            # ✅ 1. READ REQUEST DATA
-            year_full = request.data.get("year")
-            vlcodes = request.data.get("vlcodes")
+            year_full = request.data.get("year")        # e.g. "2022 - 23"
+            vlcodes = request.data.get("vlcodes")       # [210151, 210152, ...]
 
-            if not year_full or not vlcodes:
-                return Response(
-                    {"error": "year and vlcodes are required"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            if not year_full or not vlcodes or not isinstance(vlcodes, list):
+                return Response({"error": "year and vlcodes are required"}, status=400)
 
-            # ✅ 2. CONVERT YEAR FORMAT (2020 - 21)
+            # Convert year format: "2022 - 23" → "2022-23"
             db_year = year_full[:4] + "-" + year_full[7:9]
 
-            # ✅ 3. CONVERT VLCODES TO STRING (FOR SHAPEFILE MATCH)
+            # Convert vlcodes to strings for shapefile matching
             vlcodes_str = [str(v) for v in vlcodes]
 
-            # ✅ 4. FETCH DB DATA (ALL COLUMNS)
+            # Fetch groundwater data
             gw_data_qs = GroundWaterData.objects.filter(
                 Year=db_year,
                 vlcode__in=vlcodes
-            )
+            ).values()
 
             if not gw_data_qs.exists():
-                return Response(
-                    {
-                        "error": "No matching groundwater data found",
-                        "debug_year_used": db_year,
-                        "debug_vlcodes": vlcodes
-                    },
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({
+                    "error": "No groundwater data found for this year",
+                    "year": db_year,
+                    "villages_requested": len(vlcodes)
+                }, status=404)
 
-            serializer = GroundWaterDataSerializer(gw_data_qs, many=True)
-            db_data_list = serializer.data
-
-            # ✅ 5. LOAD SHAPEFILE
+            # Load village shapefile
             shp_path = os.path.join(
                 settings.MEDIA_ROOT,
-                "gwa_data",
-                "gwa_shp",
-                "Final_Village",
-                "Village_New.shp"
+                "gwa_data", "gwa_shp", "Final_Village", "Village_New.shp"
             )
 
             if not os.path.exists(shp_path):
-                return Response(
-                    {"error": "Village shapefile not found"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+                return Response({"error": "Village shapefile not found on server"}, status=500)
 
+            # Read shapefile and reproject to EPSG:3857 (Web Mercator)
             gdf = gpd.read_file(shp_path)
 
-            # ✅ ✅ ✅  ADD PROJECTION CHANGE HERE (TO EPSG:3857)
+            # Set CRS if missing
             if gdf.crs is None:
-                gdf = gdf.set_crs(epsg=4326)     # assume WGS84 if missing
+                gdf = gdf.set_crs("EPSG:4326")
 
-            gdf = gdf.to_crs(epsg=3857)         # ✅ REPROJECT TO WEB MERCATOR
+            # Reproject to EPSG:3857 for map-optimized coordinates
+            gdf_3857 = gdf.to_crs("EPSG:3857")
 
-            # ✅ 6. ENSURE vlcode STRING TYPE
-            gdf["vlcode"] = gdf["vlcode"].astype(str)
-
-            # ✅ 7. FILTER SHAPEFILE
-            gdf_filtered = gdf[gdf["vlcode"].isin(vlcodes_str)]
+            # Filter by vlcode
+            gdf_filtered = gdf_3857[gdf_3857["vlcode"].astype(str).isin(vlcodes_str)]
 
             if gdf_filtered.empty:
-                return Response(
-                    {
-                        "error": "No matching villages found in shapefile",
-                        "debug_vlcodes_str": vlcodes_str
-                    },
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({"error": "No villages found in shapefile"}, status=404)
 
-            # ✅ 8. CONVERT SHAPEFILE → GEOJSON
-            geojson = gdf_filtered.__geo_interface__   # ✅ SAME OUTPUT STRUCTURE
-
-            # ✅ 9. BUILD DB DICTIONARY WITH ALL FIELDS + STATUS + COLOR
+            # Build DB lookup: vlcode (int) → full groundwater data + status + color
             db_dict = {}
+            for item in gw_data_qs:
+                try:
+                    vlcode_key = int(item["vlcode"])
+                except (TypeError, ValueError):
+                    continue
 
-            for item in db_data_list:
                 stage = item.get("Stage_of_Ground_Water_Extraction")
-
                 status_text, color = get_stage_status_and_color(stage)
 
-                item["status"] = status_text
-                item["color"] = color
+                item_dict = dict(item)
+                item_dict["status"] = status_text
+                item_dict["color"] = color
 
-                db_dict[int(item["vlcode"])] = item
+                db_dict[vlcode_key] = item_dict
 
-            # ✅ 10. MERGE SHAPEFILE + DATABASE (FULL COLUMN MERGE)
-            final_features = []
+            # Build final GeoJSON features with EPSG:3857 coordinates
+            features = []
+            for _, row in gdf_filtered.iterrows():
+                try:
+                    vlcode_int = int(float(row["vlcode"]))
+                except:
+                    continue
 
-            for feature in geojson["features"]:
-                shp_vlcode_str = feature["properties"]["vlcode"]
-                shp_vlcode_int = int(shp_vlcode_str)
+                # Base info from shapefile
+                props = {
+                    "vlcode": vlcode_int,
+                    "village": (
+                        row.get("village") or
+                        row.get("VILL_NAME") or
+                        row.get("VILLAGE") or
+                        "Unknown Village"
+                    ),
+                    "blockname": row.get("blockname") or row.get("BLOCK_NAME") or "",
+                }
 
-                if shp_vlcode_int in db_dict:
-                    feature["properties"] = db_dict[shp_vlcode_int]
+                # Merge groundwater data
+                if vlcode_int in db_dict:
+                    props.update(db_dict[vlcode_int])
 
-                final_features.append(feature)
+                features.append({
+                    "type": "Feature",
+                    "geometry": row.geometry.__geo_interface__,   # EPSG:3857 coordinates
+                    "properties": props
+                })
 
-            # ✅ 11. FINAL GEOJSON OUTPUT (UNCHANGED FOR FRONTEND)
+            # ADD CRS DECLARATION HERE – CRITICAL FOR OPENLAYERS!
             final_geojson = {
                 "type": "FeatureCollection",
-                "features": final_features
+                "crs": {  # Declare source CRS
+                    "type": "name",
+                    "properties": {
+                        "name": "urn:ogc:def:crs:EPSG::3857"  # Tells OL: "This is 3857"
+                    }
+                },
+                "features": features
             }
 
-            return Response(final_geojson, status=status.HTTP_200_OK)
+            return Response(final_geojson, status=200)
 
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
+            traceback.print_exc()
+            return Response({
+                "error": "Server error",
+                "detail": str(e)
+            }, status=500)

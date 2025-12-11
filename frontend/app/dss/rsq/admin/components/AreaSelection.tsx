@@ -1,3 +1,4 @@
+// frontend/app/dss/rsq/admin/components/AreaSelection.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";

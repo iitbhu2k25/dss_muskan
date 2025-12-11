@@ -1,4 +1,3 @@
-// frontend/contexts/rsq/admin/RsqContext.tsx
 "use client";
 
 import React, {
@@ -79,21 +78,31 @@ const RSQContext = createContext<RSQContextType>({
 
 export const RSQProvider = ({ children }: { children: ReactNode }) => {
   const [selectedYear, setSelectedYear] = useState("");
-  const [groundWaterData, setGroundWaterData] =
-    useState<GroundWaterGeoJSON | null>(null);
+  const [groundWaterData, setGroundWaterData] = useState<GroundWaterGeoJSON | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { selectedVillages } = useLocation();
-  // In RsqContext.tsx, replace the manual useEffect with auto-fetch
-  useEffect(() => {
-    if (selectedYear && selectedVillages.length > 0) {
-      console.log('Year selected, auto-fetching RSQ data...');
-      fetchGroundWaterData();
-    }
-  }, [selectedYear, selectedVillages.length]);  // Add selectedYear dependency
 
-  // Remove the manual useEffect from rsq.tsx component
+// In RsqContext.tsx — THIS IS CRITICAL
+useEffect(() => {
+  if (selectedYear && selectedVillages.length > 0) {
+    console.log('RSQ: Fetching data for', selectedYear, selectedVillages.length, 'villages');
+    setGroundWaterData(null);
+    const timer = setTimeout(() => fetchGroundWaterData(), 300);
+    return () => clearTimeout(timer);
+  } else {
+    setGroundWaterData(null);
+  }
+}, [selectedYear, selectedVillages]); // ← MUST INCLUDE selectedVillages
+
+  // Clear data when villages change
+  useEffect(() => {
+    console.log('🌊 Villages changed - clearing RSQ data');
+    setGroundWaterData(null);
+    setError(null);
+    setSelectedYear("");
+  }, [selectedVillages]);
 
   const fetchGroundWaterData = async () => {
     if (selectedVillages.length === 0 || !selectedYear) {
@@ -130,9 +139,11 @@ export const RSQProvider = ({ children }: { children: ReactNode }) => {
 
       console.log("🌊 ✅ RSQ Data received:", {
         features: data.features?.length || 0,
+        year: selectedYear,
         firstFeature: data.features?.[0]?.properties,
       });
 
+      // Set the new data
       setGroundWaterData(data);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Fetch failed";
@@ -144,10 +155,8 @@ export const RSQProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // NO AUTO-FETCH - Only manual fetch when year is selected
-
   const clearData = () => {
-    console.log("🌊 Clearing RSQ data");
+    console.log("🌊 Manually clearing all RSQ data");
     setGroundWaterData(null);
     setError(null);
     setSelectedYear("");
