@@ -1,6 +1,6 @@
 // components/management/admin/components/register.tsx
 import { useState } from 'react';
-import { User, Mail, Lock, Building2, Briefcase, Plus, X } from 'lucide-react';
+import { User, Mail, Lock, Building2, Briefcase, Check, X } from 'lucide-react';
 import { useRegister, RegisterData } from '@/contexts/management/AdminContext/RegisterContext';
 
 interface RegisterProps {
@@ -16,30 +16,29 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
     username: '',
     password: '',
     confirmPassword: '',
-    department: ''
+    department: 'Civil',
+    projects: [] as string[]
   });
-  const [projects, setProjects] = useState<string[]>(['']);
   const [localError, setLocalError] = useState('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
     setLocalError('');
   };
 
-  const handleProjectChange = (index: number, value: string) => {
-    const newProjects = [...projects];
-    newProjects[index] = value;
-    setProjects(newProjects);
-    setLocalError('');
-  };
-
-  const addProject = () => {
-    setProjects([...projects, '']);
-  };
-
-  const removeProject = (index: number) => {
-    if (projects.length > 1) {
-      setProjects(projects.filter((_, i) => i !== index));
+  const toggleProject = (project: string, checked: boolean) => {
+    const currentProjects = formData.projects;
+    if (checked) {
+      setFormData({ 
+        ...formData, 
+        projects: [...currentProjects, project] 
+      });
+    } else {
+      setFormData({ 
+        ...formData, 
+        projects: currentProjects.filter(p => p !== project) 
+      });
     }
   };
 
@@ -47,19 +46,24 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
     setLocalError('');
 
     const registrationData: RegisterData = {
-      ...formData,
-      projects: projects.filter(p => p.trim() !== '')
+      ...formData
     };
 
     const result = await register(registrationData);
     
     if (result.success && result.userData) {
-      // Registration successful - auto-login with user data
       onRegisterSuccess(result.userData);
     }
   };
 
   const displayError = contextError || localError;
+
+  const projectOptions = [
+    { value: 'DSS', label: 'DSS' },
+    { value: 'SLCR', label: 'SLCR' },
+    { value: 'Danish', label: 'Danish' },
+    { value: 'Kumbh', label: 'Kumbh' }
+  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4">
@@ -124,60 +128,57 @@ export default function AdminRegister({ onSwitchToLogin, onRegisterSuccess }: Re
               </div>
             </div>
 
+            {/* Department dropdown - only Civil */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Department *</label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
+                <select
                   name="department"
                   value={formData.department}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="Engineering"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition appearance-none bg-white"
                   disabled={isLoading}
-                />
+                >
+                  <option value="Civil">Civil</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
             </div>
 
+            {/* Projects checkboxes */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Projects *</label>
-              <div className="space-y-2">
-                {projects.map((project, index) => (
-                  <div key={index} className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <input
-                        type="text"
-                        value={project}
-                        onChange={(e) => handleProjectChange(index, e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                        placeholder={`Project ${index + 1}`}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    {projects.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeProject(index)}
-                        disabled={isLoading}
-                        className="px-3 py-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addProject}
-                  disabled={isLoading}
-                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-purple-500 hover:text-purple-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Project
-                </button>
+              <label className="text-sm font-medium text-gray-700">Projects * (Select multiple)</label>
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-2 max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {projectOptions.map((project) => (
+                    <label key={project.value} className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded-lg transition">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={formData.projects.includes(project.value)}
+                          onChange={(e) => toggleProject(project.value, e.target.checked)}
+                          className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          disabled={isLoading}
+                        />
+                        <Check className="w-4 h-4 absolute inset-0 pointer-events-none text-purple-600 opacity-0 group-hover:opacity-20" />
+                      </div>
+                      <span className="text-sm text-gray-700">{project.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                <Briefcase className="w-3 h-3" />
+                {formData.projects.length > 0 
+                  ? `Selected: ${formData.projects.join(', ')}`
+                  : 'Select at least one project'
+                }
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

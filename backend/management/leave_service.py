@@ -46,7 +46,7 @@ def apply_leave_service(data):
         # ✅ URL SAFE EMAIL
         encoded_email = quote(employee.email)
 
-        approval_link = f"http://localhost:3000/dss/management/approve/{encoded_email}"
+        approval_link = f"lems-two.vercel.app/dss/management/approve/{encoded_email}"
 
         subject = "✅ New Leave Request Approval"
 
