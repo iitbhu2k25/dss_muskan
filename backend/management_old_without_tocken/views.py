@@ -7,12 +7,9 @@ from .service import register_admin, login_admin, logout_admin, get_all_admins
 from .serializers import LoginSerializer, PersonalAdminSerializer
 from .service import register_employee, login_employee, logout_employee, get_employee_status, filter_employees_by_projects
 from .serializers import EmployeeLoginSerializer, EmployeeRegisterSerializer, EmployeeSerializer, ProjectFilterSerializer
-from management.middleware.permissions import IsAdminUser
-
-from management.middleware.permissions import IsEmployeeUser
 
 class RegisterAdminView(APIView):
-    permission_classes = [AllowAny]  # Public - anyone can register
+    permission_classes = [AllowAny]
 
     def post(self, request):
         success, result = register_admin(request.data)
@@ -40,7 +37,7 @@ class RegisterAdminView(APIView):
 
 
 class LoginAdminView(APIView):
-    permission_classes = [AllowAny]  # Public - anyone can login
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -75,10 +72,11 @@ class LoginAdminView(APIView):
                 "success": False,
                 "message": result
             }, status=status.HTTP_401_UNAUTHORIZED)
-
+            
+            
 
 class LogoutAdminView(APIView):
-    permission_classes = [IsAuthenticated]  # ✅ Require authentication
+    permission_classes = [AllowAny] 
 
     def post(self, request):
         auth_header = request.headers.get('Authorization')
@@ -89,25 +87,24 @@ class LogoutAdminView(APIView):
             return Response({"success": True, "message": message}, status=status.HTTP_200_OK)
         else:
             return Response({"success": False, "message": message}, status=status.HTTP_401_UNAUTHORIZED)
-
+        
+        
 
 class PersonalAdminListView(APIView):
-    permission_classes = [AllowAny]  # ✅ Only authenticated users
-
+    permission_classes = [AllowAny] 
     def get(self, request):
         admins = get_all_admins()
         serializer = PersonalAdminSerializer(admins, many=True)
         return Response({
             "success": True,
             "data": serializer.data
-        }, status=status.HTTP_200_OK)
-
-
+        }, status=status.HTTP_200_OK)        
+            
+            
 class RegisterEmployeeView(APIView):
-    permission_classes = [AllowAny]  # Public registration
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        from .service import register_employee
         success, result = register_employee(request.data)
 
         if success:
@@ -124,29 +121,27 @@ class RegisterEmployeeView(APIView):
                     "username": employee.username,
                     "department": employee.department,
                     "supervisor_name": employee.supervisor_name,
-                    "supervisor_email": employee.supervisor_email.email if employee.supervisor_email else None,
+                    "supervisor_email": employee.supervisor_email.email,
                     "projectName": employee.project_name,
-                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,
-                    "position": employee.position,
-                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None,
+                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,  # ✅ NEW
+                    "position": employee.position,  # ✅ NEW
+                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None,  # ✅ NEW
                     "is_active": employee.is_active
                 },
                 "token": token
             }, status=status.HTTP_201_CREATED)
+
         else:
             return Response({
                 "success": False,
                 "message": result
             }, status=status.HTTP_400_BAD_REQUEST)
 
-
 class LoginEmployeeView(APIView):
-    permission_classes = [AllowAny]  # Public login
+    """Employee Login API"""
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        from .serializers import EmployeeLoginSerializer
-        from .service import login_employee
-        
         serializer = EmployeeLoginSerializer(data=request.data)
 
         if not serializer.is_valid():
@@ -175,16 +170,20 @@ class LoginEmployeeView(APIView):
                     "username": employee.username,
                     "department": employee.department,
                     "supervisor_name": employee.supervisor_name,
-                    "supervisor_email": employee.supervisor_email.email if employee.supervisor_email else None,
+                    "supervisor_email": (
+                        employee.supervisor_email.email
+                        if employee.supervisor_email else None
+                    ),
                     "projectName": employee.project_name,
-                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,
-                    "position": employee.position,
-                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None,
+                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,  # ✅ NEW
+                    "position": employee.position,  # ✅ NEW
+                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None,  # ✅ NEW
                     "is_active": employee.is_active,
                     "last_login": employee.created_at.isoformat() if employee.created_at else None
                 },
                 "token": token
             }, status=status.HTTP_200_OK)
+
         else:
             return Response({
                 "success": False,
@@ -192,12 +191,13 @@ class LoginEmployeeView(APIView):
             }, status=status.HTTP_401_UNAUTHORIZED)
 
 
+
 class LogoutEmployeeView(APIView):
-    permission_classes = [IsAuthenticated]  # ✅ Require authentication
+    """Employee Logout API"""
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        from .service import logout_employee
-        
+        # Get token from header
         auth_header = request.headers.get('Authorization', '')
         token = auth_header.replace('Bearer ', '') if auth_header.startswith('Bearer ') else None
 
@@ -222,11 +222,10 @@ class LogoutEmployeeView(APIView):
 
 
 class EmployeeStatusView(APIView):
-    permission_classes = [IsAuthenticated, IsEmployeeUser]  # ✅ Only authenticated employees
-
+    """Check if employee is active"""
+    permission_classes = [AllowAny]
+    
     def get(self, request):
-        from .service import get_employee_status
-        
         auth_header = request.headers.get('Authorization', '')
         token = auth_header.replace('Bearer ', '') if auth_header.startswith('Bearer ') else None
 
@@ -252,9 +251,9 @@ class EmployeeStatusView(APIView):
                     "supervisor_name": employee.supervisor_name,
                     "supervisor_email": employee.supervisor_email.email if employee.supervisor_email else None,
                     "projectName": employee.project_name,
-                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,
-                    "position": employee.position,
-                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None
+                    "joining_date": employee.joining_date.isoformat() if employee.joining_date else None,  # ✅ NEW
+                    "position": employee.position,  # ✅ NEW
+                    "resign_date": employee.resign_date.isoformat() if employee.resign_date else None  # ✅ NEW
                 }
             }, status=status.HTTP_200_OK)
         else:
@@ -262,15 +261,16 @@ class EmployeeStatusView(APIView):
                 "success": False,
                 "message": result
             }, status=status.HTTP_401_UNAUTHORIZED)
-
-
+            
+            
 class FilterEmployeesByProjectView(APIView):
-    permission_classes = [IsAuthenticated]  # ✅ Only authenticated users
+    """
+    POST: Filter employees by project names
+    Request: {"projects": ["Project A", "Project B"]}
+    """
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        from .serializers import ProjectFilterSerializer, EmployeeSerializer
-        from .service import filter_employees_by_projects
-        
         serializer = ProjectFilterSerializer(data=request.data)
 
         if not serializer.is_valid():
@@ -292,6 +292,7 @@ class FilterEmployeesByProjectView(APIView):
                 "projects": projects,
                 "employees": employee_serializer.data
             }, status=status.HTTP_200_OK)
+
         else:
             return Response({
                 "success": False,

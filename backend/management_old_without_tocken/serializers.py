@@ -7,7 +7,7 @@ from django.contrib.auth.hashers import make_password
 class PersonalAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = PersonalAdmin
-        exclude = ('password',)
+        fields = "__all__"
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:

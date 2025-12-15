@@ -49,6 +49,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "management.middleware.auth_middleware.TokenAuthenticationMiddleware",
+
 ]
 
 ROOT_URLCONF = "main.urls"
@@ -135,7 +137,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://192.168.1.2:3000",
     "http://127.0.0.1:3000",
-    "http://172.16.32.69:3000", 
+    "http://172.16.32.69:3000",
+    "https://a5594a7c150e.ngrok-free.app", 
+    "https://lems-two.vercel.app",
     # Add your frontend domain here
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -155,6 +159,7 @@ CORS_ALLOWED_HEADERS = [
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'management.middleware.auth_middleware.JWTAuthentication', 
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
@@ -179,6 +184,8 @@ ALLOWED_HOSTS = [
     '172.16.32.94',
     '172.22.176.1',
     '172.16.32.69',
+    'lems-two.vercel.app',
+    'a5594a7c150e.ngrok-free.app',
     # Add any other IPs you need
 ]
 # Media files (User uploaded files)
@@ -194,3 +201,17 @@ EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = 'ak2968028@gmail.com'
 EMAIL_HOST_PASSWORD = 'ascy zoee zdsg jkef'
+
+
+# JWT Settings
+JWT_SECRET_KEY = SECRET_KEY
+JWT_ALGORITHM = 'HS256'
+JWT_EXPIRATION_DAYS = 30
+
+# Session settings for added security
+SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'

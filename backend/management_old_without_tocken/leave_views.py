@@ -6,22 +6,15 @@ from rest_framework import status
 from .leave_service import apply_leave_service, get_leaves_by_employee_email, update_leave_approval_status
 from .serializers import ApplyLeaveSerializer, ApprovalSerializer
 from .models import LeaveEmployee
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from management.middleware.permissions import IsEmployeeUser, IsAdminUser
+from rest_framework.permissions import AllowAny
 
 class ApplyLeaveAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsEmployeeUser]  # ✅ Only authenticated employees
+    permission_classes = [AllowAny]  
 
     def post(self, request):
         serializer = ApplyLeaveSerializer(data=request.data)
 
         if serializer.is_valid():
-            # ✅ Verify the request is for the authenticated employee
-            if request.user.email != serializer.validated_data['employee_email']:
-                return Response({
-                    "error": "You can only apply for your own leave"
-                }, status=403)
-            
             success, result, mail_sent = apply_leave_service(serializer.validated_data)
 
             if success:
@@ -37,8 +30,6 @@ class ApplyLeaveAPIView(APIView):
 
 
 class LeaveApprovalAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]  # ✅ Only admins can approve
-
     def post(self, request):
         serializer = ApprovalSerializer(data=request.data)
 
@@ -51,12 +42,6 @@ class LeaveApprovalAPIView(APIView):
             if not leave:
                 return Response({"error": "Leave request not found"}, status=404)
 
-            # ✅ Verify admin is the supervisor for this leave
-            if request.user.email != leave.supervisor_email:
-                return Response({
-                    "error": "You are not authorized to approve this leave"
-                }, status=403)
-
             leave.approval_status = approval_status
             leave.save()
 
@@ -68,7 +53,7 @@ class LeaveApprovalAPIView(APIView):
 
 
 class LeaveByEmployeeEmailView(APIView):
-    permission_classes = [IsAuthenticated]  # ✅ Authenticated users only
+    permission_classes = [AllowAny]  
 
     def post(self, request):
         employee_email = request.data.get("employee_email")
@@ -78,14 +63,6 @@ class LeaveByEmployeeEmailView(APIView):
                 {"message": "Employee email is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # ✅ Authorization check: Employees can only see their own leaves
-        if hasattr(request, 'user_type') and request.user_type == 'employee':
-            if request.user.email != employee_email:
-                return Response(
-                    {"message": "You can only view your own leave records"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
 
         leave_records = get_leaves_by_employee_email(employee_email)
 
@@ -109,6 +86,7 @@ class LeaveByEmployeeEmailView(APIView):
                 "leave_type": leave.leave_type,
                 "approval_status": leave.approval_status,
                 "created_at": leave.created_at,
+                # ✅ NEW: Adding joining_date and position from PersonalEmployee
                 "joining_date": leave.employee_email.joining_date,
                 "position": leave.employee_email.position,
             })
@@ -124,7 +102,7 @@ class LeaveByEmployeeEmailView(APIView):
 
 
 class LeaveByEmployeeEmailGetView(APIView):
-    permission_classes = [IsAuthenticated]  # ✅ Authenticated users only
+    permission_classes = [AllowAny]
 
     def get(self, request, email):
         if not email:
@@ -132,14 +110,6 @@ class LeaveByEmployeeEmailGetView(APIView):
                 {"message": "Employee email is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        # ✅ Authorization check
-        if hasattr(request, 'user_type') and request.user_type == 'employee':
-            if request.user.email != email:
-                return Response(
-                    {"message": "You can only view your own leave records"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
 
         leave_records = get_leaves_by_employee_email(email)
 
@@ -163,6 +133,7 @@ class LeaveByEmployeeEmailGetView(APIView):
                 "leave_type": leave.leave_type,
                 "approval_status": leave.approval_status,
                 "created_at": leave.created_at,
+                # ✅ NEW: Adding joining_date and position from PersonalEmployee
                 "joining_date": leave.employee_email.joining_date,
                 "position": leave.employee_email.position,
             })
@@ -178,12 +149,12 @@ class LeaveByEmployeeEmailGetView(APIView):
 
 
 class UpdateLeaveApprovalStatusView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]  # ✅ Only admins
-
+    permission_classes = [AllowAny] 
     def post(self, request):
         leave_id = request.data.get("leave_id")
         approval_status = request.data.get("approval_status")
 
+        # ✅ Validation
         if not leave_id or not approval_status:
             return Response(
                 {
@@ -211,16 +182,6 @@ class UpdateLeaveApprovalStatusView(APIView):
                     "message": "Leave request not found"
                 },
                 status=status.HTTP_404_NOT_FOUND
-            )
-
-        # ✅ Verify admin is the supervisor
-        if request.user.email != leave.supervisor_email:
-            return Response(
-                {
-                    "success": False,
-                    "message": "You are not authorized to update this leave"
-                },
-                status=status.HTTP_403_FORBIDDEN
             )
 
         return Response(

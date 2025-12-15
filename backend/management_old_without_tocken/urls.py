@@ -1,4 +1,3 @@
-# backend/management/urls.py
 from django.urls import path
 from .views import RegisterAdminView, LoginAdminView, LogoutAdminView, PersonalAdminListView, RegisterEmployeeView, LoginEmployeeView, LogoutEmployeeView, EmployeeStatusView, FilterEmployeesByProjectView
 from .leave_views import ApplyLeaveAPIView, LeaveApprovalAPIView, LeaveByEmployeeEmailView, UpdateLeaveApprovalStatusView, LeaveByEmployeeEmailGetView

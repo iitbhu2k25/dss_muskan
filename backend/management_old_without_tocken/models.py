@@ -13,15 +13,6 @@ class PersonalAdmin(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
-    # Required for DRF authentication checks
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
-
     def save(self, *args, **kwargs):
         if not self.pk:
             self.password = make_password(self.password)
@@ -38,8 +29,10 @@ class PersonalEmployee(models.Model):
     password = models.CharField(max_length=200)
     department = models.CharField(max_length=100)
 
+    # Supervisor Name
     supervisor_name = models.CharField(max_length=100)
 
+    # Supervisor Email (FK)
     supervisor_email = models.ForeignKey(
         PersonalAdmin,
         to_field="email",
@@ -51,22 +44,14 @@ class PersonalEmployee(models.Model):
 
     project_name = models.CharField(max_length=200)
 
-    joining_date = models.DateField()
-    position = models.CharField(max_length=100)
-    resign_date = models.DateField(null=True, blank=True)
+    # ✅ New Fields
+    joining_date = models.DateField()                # required
+    position = models.CharField(max_length=100)      # required
+    resign_date = models.DateField(null=True, blank=True)  # optional
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
-
-    # Required for DRF authentication checks
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
 
     def __str__(self):
         return self.username
@@ -76,7 +61,10 @@ class PersonalEmployee(models.Model):
         verbose_name = 'Personal Employee'
         verbose_name_plural = 'Personal Employees'
 
-
+        
+        
+        
+        
 class LeaveEmployee(models.Model):
     APPROVAL_STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -84,29 +72,29 @@ class LeaveEmployee(models.Model):
         ('rejected', 'Rejected'),
     ]
 
+    # Foreign Key to PersonalEmployee
     employee_email = models.ForeignKey(
         PersonalEmployee,
         to_field="email",
         on_delete=models.CASCADE,
         related_name="leave_requests"
     )
-
+    
     employee_name = models.CharField(max_length=150)
     supervisor_email = models.EmailField()
-
+    
     from_date = models.DateField()
     to_date = models.DateField()
     total_days = models.IntegerField()
-
+    
     reason = models.TextField()
-    leave_type = models.CharField(max_length=100)
-
+    leave_type = models.CharField(max_length=100)  # ✅ User enters any string
     approval_status = models.CharField(
-        max_length=20,
-        choices=APPROVAL_STATUS_CHOICES,
+        max_length=20, 
+        choices=APPROVAL_STATUS_CHOICES, 
         default='pending'
     )
-
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -117,4 +105,4 @@ class LeaveEmployee(models.Model):
         db_table = 'leave_employee'
         verbose_name = 'Leave Request'
         verbose_name_plural = 'Leave Requests'
-        ordering = ['-created_at']
+        ordering = ['-created_at']        
