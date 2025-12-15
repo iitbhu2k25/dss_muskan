@@ -28,7 +28,7 @@ export default function RSQAnalysis() {
   const [globalSearch, setGlobalSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
 
@@ -167,48 +167,9 @@ export default function RSQAnalysis() {
     return { categories };
   }, [groundWaterData]);
 
-  /* ================= ROW SELECTION ================= */
 
-  const toggleRowSelection = (index: number) => {
-    const newSelected = new Set(selectedRows);
-    if (newSelected.has(index)) {
-      newSelected.delete(index);
-    } else {
-      newSelected.add(index);
-    }
-    setSelectedRows(newSelected);
-  };
 
-  const toggleAllRows = () => {
-    if (selectedRows.size === paginatedData.length) {
-      setSelectedRows(new Set());
-    } else {
-      const allIndices = paginatedData.map((_, i) => i);
-      setSelectedRows(new Set(allIndices));
-    }
-  };
-
-  /* ================= EXPORT SELECTED ================= */
-
-  const exportSelected = () => {
-    const selected = paginatedData.filter((_, i) => selectedRows.has(i));
-    const csv = [
-      [...allColumns, "status"].join(","),
-      ...selected.map((f) =>
-        [...allColumns, "status"]
-          .map((col) => `"${f.properties[col] || ""}"`)
-          .join(",")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `rsq-export-${selectedYear}.csv`;
-    a.click();
-  };
-
+ 
   /* ================= CLEAR FILTERS ================= */
 
   const clearAllFilters = () => {
@@ -350,14 +311,6 @@ export default function RSQAnalysis() {
                 </button>
               )}
 
-              {selectedRows.size > 0 && (
-                <button
-                  onClick={exportSelected}
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 font-semibold"
-                >
-                  📥 Export {selectedRows.size}
-                </button>
-              )}
             </div>
           </div>
 
@@ -382,90 +335,70 @@ export default function RSQAnalysis() {
           {groundWaterData && !isLoading && (
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white sticky top-0">
-                    <tr>
-                      <th className="px-2 py-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedRows.size === paginatedData.length && paginatedData.length > 0}
-                          onChange={toggleAllRows}
-                          className="w-5 h-5 cursor-pointer rounded"
-                        />
-                      </th>
-                      {allColumns.map((key) => (
-                        <th key={key} className="px-0 -py-5 text-left">
-                          <div
-                            className="flex items-center gap-2 cursor-pointer hover:text-yellow-300 transition-colors select-none"
-                            onClick={() => handleSort(key)}
-                          >
-                            <span className="font-bold text-sm">{formatColumnName(key)}</span>
-                            {sortConfig?.key === key ? (
-                              <span className="text-yellow-300 text-lg">
-                                {sortConfig.direction === "asc" ? "↑" : "↓"}
-                              </span>
-                            ) : (
-                              <span className="text-white opacity-30">↕</span>
-                            )}
-                          </div>
-                        </th>
-                      ))}
-                      <th className="px-6 py-4 text-left">
-                        <span className="font-bold text-sm">Status</span>
-                      </th>
-                    </tr>
-                  </thead>
+               <table className="min-w-full text-sm">
+  <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white sticky top-0">
+    <tr>
+      {allColumns.map((key) => (
+        <th key={key} className="px-6 py-4 text-left">
+          <div
+            className="flex items-center gap-2 cursor-pointer hover:text-yellow-300 transition-colors select-none"
+            onClick={() => handleSort(key)}
+          >
+            <span className="font-bold text-sm">{formatColumnName(key)}</span>
+            {sortConfig?.key === key ? (
+              <span className="text-yellow-300 text-lg">
+                {sortConfig.direction === "asc" ? "↑" : "↓"}
+              </span>
+            ) : (
+              <span className="text-white opacity-30">↕</span>
+            )}
+          </div>
+        </th>
+      ))}
+      <th className="px-6 py-4 text-left">
+        <span className="font-bold text-sm">Status</span>
+      </th>
+    </tr>
+  </thead>
 
-                  <tbody>
-                    {paginatedData.length === 0 ? (
-                      <tr>
-                        <td colSpan={allColumns.length + 2} className="text-center py-12">
-                          <div className="text-6xl mb-4">🔍</div>
-                          <p className="text-gray-500 font-medium">No data matches your filters</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedData.map((f, i) => {
-                        const p = f.properties;
-                        const isSelected = selectedRows.has(i);
+  <tbody>
+    {paginatedData.length === 0 ? (
+      <tr>
+        <td colSpan={allColumns.length + 1} className="text-center py-12">
+          <div className="text-6xl mb-4">🔍</div>
+          <p className="text-gray-500 font-medium">No data matches your filters</p>
+        </td>
+      </tr>
+    ) : (
+      paginatedData.map((f, i) => {
+        const p = f.properties;
 
-                        return (
-                          <tr
-                            key={i}
-                            className={`border-b border-gray-100 transition-all ${isSelected
-                                ? "bg-blue-50 hover:bg-blue-100"
-                                : "hover:bg-gray-50"
-                              }`}
-                          >
-                            <td className="px-6 py-4">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleRowSelection(i)}
-                                className="w-5 h-5 cursor-pointer rounded"
-                              />
-                            </td>
-                            {allColumns.map((key) => (
-                              <td key={key} className="px-6 py-4 font-medium text-gray-700">
-                                {typeof p[key] === "string"
-                                  ? highlightText(formatCellValue(p[key]), globalSearch)
-                                  : formatCellValue(p[key])}
-                              </td>
-                            ))}
-                            <td className="px-6 py-4">
-                              <span
-                                className="px-4 py-2 rounded-xl text-white text-xs font-bold inline-block shadow-md"
-                                style={{ backgroundColor: p.color || "#999" }}
-                              >
-                                {p.status || "No Data"}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+        return (
+          <tr
+            key={i}
+            className="border-b border-gray-100 hover:bg-gray-50 transition-all"
+          >
+            {allColumns.map((key) => (
+              <td key={key} className="px-6 py-4 font-medium text-gray-700">
+                {typeof p[key] === "string"
+                  ? highlightText(formatCellValue(p[key]), globalSearch)
+                  : formatCellValue(p[key])}
+              </td>
+            ))}
+            <td className="px-6 py-4">
+              <span
+                className="px-4 py-2 rounded-xl text-white text-xs font-bold inline-block shadow-md"
+                style={{ backgroundColor: p.color || "#999" }}
+              >
+                {p.status || "No Data"}
+              </span>
+            </td>
+          </tr>
+        );
+      })
+    )}
+  </tbody>
+</table>
               </div>
             </div>
           )}

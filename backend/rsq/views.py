@@ -91,18 +91,19 @@ class VillageGroundWaterGeoJSONAPIView(APIView):
             if not os.path.exists(shp_path):
                 return Response({"error": "Village shapefile not found on server"}, status=500)
 
-            # Read shapefile and reproject to EPSG:3857 (Web Mercator)
+            # Read shapefile
             gdf = gpd.read_file(shp_path)
 
             # Set CRS if missing
             if gdf.crs is None:
                 gdf = gdf.set_crs("EPSG:4326")
-
-            # Reproject to EPSG:3857 for map-optimized coordinates
-            gdf_3857 = gdf.to_crs("EPSG:3857")
+            
+            # ALWAYS ensure we're in EPSG:4326 (lat/lon)
+            if gdf.crs.to_epsg() != 4326:
+                gdf = gdf.to_crs("EPSG:4326")
 
             # Filter by vlcode
-            gdf_filtered = gdf_3857[gdf_3857["vlcode"].astype(str).isin(vlcodes_str)]
+            gdf_filtered = gdf[gdf["vlcode"].astype(str).isin(vlcodes_str)]
 
             if gdf_filtered.empty:
                 return Response({"error": "No villages found in shapefile"}, status=404)
@@ -124,7 +125,7 @@ class VillageGroundWaterGeoJSONAPIView(APIView):
 
                 db_dict[vlcode_key] = item_dict
 
-            # Build final GeoJSON features with EPSG:3857 coordinates
+            # Build final GeoJSON features with EPSG:4326 coordinates
             features = []
             for _, row in gdf_filtered.iterrows():
                 try:
@@ -150,19 +151,13 @@ class VillageGroundWaterGeoJSONAPIView(APIView):
 
                 features.append({
                     "type": "Feature",
-                    "geometry": row.geometry.__geo_interface__,   # EPSG:3857 coordinates
+                    "geometry": row.geometry.__geo_interface__,   # EPSG:4326 coordinates (lat/lon)
                     "properties": props
                 })
 
-            # ADD CRS DECLARATION HERE – CRITICAL FOR OPENLAYERS!
+            # Return standard GeoJSON in EPSG:4326 (no CRS declaration needed - it's the default)
             final_geojson = {
                 "type": "FeatureCollection",
-                "crs": {  # Declare source CRS
-                    "type": "name",
-                    "properties": {
-                        "name": "urn:ogc:def:crs:EPSG::3857"  # Tells OL: "This is 3857"
-                    }
-                },
                 "features": features
             }
 
