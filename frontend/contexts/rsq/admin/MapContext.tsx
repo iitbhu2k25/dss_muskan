@@ -22,11 +22,10 @@ import OSM from "ol/source/OSM";
 import XYZ from "ol/source/XYZ";
 import { fromLonLat } from "ol/proj";
 import { Feature } from "ol";
-import { Geometry, Polygon } from "ol/geom";
+import { Geometry } from "ol/geom";
 import { bbox as bboxStrategy } from "ol/loadingstrategy";
 import { defaults as defaultControls } from "ol/control";
 import { useLocation } from "./LocationContext";
-import { useRSQ } from "./RsqContext";
 
 const baseMaps = {
   osm: {
@@ -63,7 +62,6 @@ interface MapContextType {
   layerVisibility: Record<string, boolean>;
   toggleLayerVisibility: (layerName: string) => void;
   activeLayers: Record<string, boolean>;
-  activeRSQYear: string | null;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -76,7 +74,6 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const districtLayerRef = useRef<VectorLayer<any> | null>(null);
   const blockLayerRef = useRef<VectorLayer<any> | null>(null);
   const villageLayerRef = useRef<VectorLayer<any> | null>(null);
-  const rsqLayerRef = useRef<VectorLayer<any> | null>(null);
   const hoverOverlayRef = useRef<Overlay | null>(null);
   const highlightLayerRef = useRef<VectorLayer<any> | null>(null);
 
@@ -86,20 +83,17 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [error, setError] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedBaseMap, setSelectedBaseMap] = useState("openstreet");
-  const [activeRSQYear, setActiveRSQYear] = useState<string | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     india: true,
     state: true,
     district: true,
     block: true,
     village: true,
-    rsq: true,
   });
 
   const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({});
 
   const { selectedState, selectedDistricts, selectedBlocks, selectedVillages } = useLocation();
-  const { groundWaterData, selectedYear } = useRSQ();
 
   const toggleLabels = () => setShowLabels((v) => !v);
 
@@ -107,15 +101,6 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const hideLayer = (ref: React.MutableRefObject<VectorLayer<any> | null>) => {
     if (ref.current) {
       ref.current.setVisible(false);
-    }
-  };
-
-  // Remove layer completely
-  const removeLayer = (ref: React.MutableRefObject<VectorLayer<any> | null>, layerName: string) => {
-    if (mapRef.current && ref.current) {
-      console.log(`🗺️ Removing layer: ${layerName}`);
-      mapRef.current.removeLayer(ref.current);
-      ref.current = null;
     }
   };
 
@@ -127,7 +112,6 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       district: districtLayerRef,
       block: blockLayerRef,
       village: villageLayerRef,
-      rsq: rsqLayerRef,
     }[layerName];
 
     if (layerRef && layerRef.current) {
@@ -171,39 +155,6 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const makeDistrictStyle = (f: any) => districtStyle(f, districtBase, ["district_name", "DISTRICT_N", "DISTRICT_C"]);
   const makeBlockStyle = (f: any) => blockStyle(f, blockBase, ["block_name", "BLOCK_NAME", "block"]);
   const makeVillageStyle = (f: any) => villageStyle(f, villageBase, ["village_name", "VILL_NAME", "vlcode", "village"], "10px");
-
-  // RSQ Style Function - PROPERLY USING API COLOR
-  const makeRSQStyle = (feature: any) => {
-    const stage = feature.get("Stage_of_Ground_Water_Extraction") || 0;
-    const status = feature.get("status") || "No Data";
-    const color = feature.get("color") || "#999999";
-
-    const style = new Style({
-      stroke: new Stroke({
-        color: "#1e40af",
-        width: 2.5
-      }),
-      fill: new Fill({
-        color: color
-      }),
-    });
-
-    if (showLabels) {
-      const village = feature.get("village") || feature.get("vlcode") || "Unknown";
-      style.setText(
-        new Text({
-          text: `${village}\n${stage.toFixed(1)}%\n${status}`,
-          font: "bold 10px sans-serif",
-          fill: new Fill({ color: "#ffffff" }),
-          stroke: new Stroke({ color: "#000000", width: 4 }),
-          overflow: true,
-          offsetY: 0,
-        })
-      );
-    }
-
-    return style;
-  };
 
   // Base map change
   const changeBaseMap = (key: string) => {
@@ -308,45 +259,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             props.state_name ||
             "";
 
-          let displayText = `<strong>${name}</strong>`;
-          if (props.Stage_of_Ground_Water_Extraction !== undefined) {
-            const stage = props.Stage_of_Ground_Water_Extraction;
-            const status = props.status || "No Data";
-            const year = props.Year || selectedYear;
-            const color = props.color || "#999999";
-
-            displayText = `
-              <div style="line-height: 1.6;">
-                <div style="font-size: 13px; margin-bottom: 6px;"><strong>${name}</strong></div>
-                <div style="padding: 4px 0; border-top: 1px solid #ddd;">
-                  <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                    <span>Year:</span>
-                    <strong>${year}</strong>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                    <span>Stage:</span>
-                    <strong>${stage.toFixed(1)}%</strong>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-                    <span>Category:</span>
-                    <strong style="color: ${color};">${status}</strong>
-                  </div>
-                  ${props.Total_Extraction ? `
-                    <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-                      <span>Extraction:</span>
-                      <strong>${props.Total_Extraction.toFixed(2)}</strong>
-                    </div>
-                  ` : ''}
-                  ${props.Total_Annual_Ground_Water_Recharge ? `
-                    <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-                      <span>Recharge:</span>
-                      <strong>${props.Total_Annual_Ground_Water_Recharge.toFixed(2)}</strong>
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-            `;
-          }
+          const displayText = `<strong>${name}</strong>`;
 
           if (name) {
             hs.addFeature(f.clone() as Feature<Geometry>);
@@ -478,27 +391,16 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Village layer
   useEffect(() => {
     const layerName = 'village';
-    console.log('🗺️ Village:', selectedVillages.length, 'RSQ:', !!groundWaterData?.features?.length);
+    console.log('🗺️ Village layer update:', selectedVillages.length, 'villages');
 
     if (!mapRef.current || selectedVillages.length === 0) {
       if (villageLayerRef.current) {
-        removeLayer(villageLayerRef, 'village');
+        hideLayer(villageLayerRef);
         setActiveLayers(prev => ({ ...prev, village: false }));
       }
       return;
     }
 
-    // If RSQ data exists, don't create village layer at all
-    if (groundWaterData && groundWaterData.features && groundWaterData.features.length > 0) {
-      console.log('🚫 RSQ active - skipping village layer');
-      if (villageLayerRef.current) {
-        removeLayer(villageLayerRef, 'village');
-      }
-      setActiveLayers(prev => ({ ...prev, village: false }));
-      return;
-    }
-
-    // Create village layer only if no RSQ data
     hideLayer(stateLayerRef);
     hideLayer(districtLayerRef);
     hideLayer(blockLayerRef);
@@ -537,177 +439,32 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       }
     });
-  }, [selectedVillages, groundWaterData?.features?.length, layerVisibility.village]);
+  }, [selectedVillages, layerVisibility.village]);
 
-  // RSQ Layer - STANDARD GEOJSON 4326 FORMAT
-// RSQ Layer - COMPLETE DEBUG VERSION
-useEffect(() => {
-  console.log('='.repeat(50));
-  console.log('🎯 RSQ LAYER EFFECT TRIGGERED');
-  console.log('='.repeat(50));
-  console.log('groundWaterData:', groundWaterData);
-  console.log('groundWaterData type:', typeof groundWaterData);
-  console.log('features count:', groundWaterData?.features?.length);
-  console.log('selectedYear:', selectedYear);
-  console.log('mapRef.current:', !!mapRef.current);
-  console.log('layerVisibility.rsq:', layerVisibility.rsq);
-
-  if (!mapRef.current) {
-    console.log('❌ NO MAP INSTANCE');
-    return;
-  }
-
-  // Remove old layer
-  if (rsqLayerRef.current) {
-    console.log('🗑️ Removing old RSQ layer');
-    mapRef.current.removeLayer(rsqLayerRef.current);
-    rsqLayerRef.current = null;
-    setActiveLayers(prev => ({ ...prev, rsq: false }));
-  }
-
-  // Check if we have data
-  if (!groundWaterData || !groundWaterData.features || groundWaterData.features.length === 0) {
-    console.log('❌ NO RSQ DATA AVAILABLE');
-    setActiveLayers(prev => ({ ...prev, rsq: false }));
-    setActiveRSQYear(null);
-    
-    // Show village layer back
-    if (selectedVillages.length > 0 && villageLayerRef.current) {
-      console.log('🔄 Showing village layer back');
-      villageLayerRef.current.setVisible(true);
-      setActiveLayers(prev => ({ ...prev, village: true }));
-    }
-    return;
-  }
-
-  // We have data - proceed
-  console.log('✅ RSQ DATA AVAILABLE - PROCEEDING');
-  console.log('Raw data sample:', JSON.stringify(groundWaterData.features[0]).substring(0, 300));
-
-  try {
-    // Hide village layer FIRST
-    if (villageLayerRef.current) {
-      console.log('🚫 Hiding village layer');
-      villageLayerRef.current.setVisible(false);
-      setActiveLayers(prev => ({ ...prev, village: false }));
-    }
-
-    // Create GeoJSON format
-    console.log('📊 Creating GeoJSON format reader');
-    const geojsonFormat = new GeoJSON({
-      dataProjection: 'EPSG:4326',
-      featureProjection: 'EPSG:3857'
-    });
-
-    // Read features
-    console.log('📖 Reading features from GeoJSON');
-    const features = geojsonFormat.readFeatures(groundWaterData);
-    console.log('✅ Features read:', features.length);
-
-    if (features.length === 0) {
-      console.error('❌ NO FEATURES PARSED!');
-      return;
-    }
-
-    // Debug first feature
-    const firstFeature = features[0];
-    const geom = firstFeature.getGeometry();
-    console.log('🔍 FIRST FEATURE DEBUG:');
-    console.log('  - Village:', firstFeature.get('village'));
-    console.log('  - Color:', firstFeature.get('color'));
-    console.log('  - Status:', firstFeature.get('status'));
-    console.log('  - Stage:', firstFeature.get('Stage_of_Ground_Water_Extraction'));
-    console.log('  - Geometry type:', geom?.getType());
-    console.log('  - Geometry extent:', geom?.getExtent());
-    console.log('  - All properties:', firstFeature.getProperties());
-
-    // Create source
-    console.log('📦 Creating VectorSource');
-    const source = new VectorSource({ features });
-    
-    // Create layer
-    console.log('🗺️ Creating VectorLayer');
-    const rsqLayer = new VectorLayer({
-      source: source,
-      style: makeRSQStyle,
-      zIndex: 20,
-      opacity: 0.9,
-      visible: true, // FORCE VISIBLE
-    });
-
-    rsqLayer.set("name", "rsq-layer");
-    
-    // Add to map
-    console.log('➕ Adding RSQ layer to map');
-    mapRef.current.addLayer(rsqLayer);
-    rsqLayerRef.current = rsqLayer;
-
-    // Update state
-    console.log('📝 Updating active layers state');
-    setActiveLayers(prev => {
-      const updated = { ...prev, rsq: true };
-      console.log('Active layers updated:', updated);
-      return updated;
-    });
-    setActiveRSQYear(selectedYear);
-
-    console.log('✅ RSQ LAYER SUCCESSFULLY ADDED TO MAP!');
-
-    // Get extent and fit
-    const extent = source.getExtent();
-    console.log('📍 Source extent:', extent);
-
-    if (extent && isFinite(extent[0]) && isFinite(extent[1])) {
-      console.log('🔍 Fitting map to extent');
-      mapRef.current.getView().fit(extent, {
-        duration: 1000,
-        padding: [100, 100, 100, 100],
-        maxZoom: 16,
-      });
-      console.log('✅ Map fitted to extent');
-    } else {
-      console.warn('⚠️ Invalid extent:', extent);
-    }
-
-    // Verify layer was added
-    const allLayers = mapRef.current.getLayers().getArray();
-    console.log('📋 All layers on map:', allLayers.map(l => l.get('name')));
-    console.log('📋 RSQ layer visible?', rsqLayer.getVisible());
-    console.log('📋 RSQ layer opacity:', rsqLayer.getOpacity());
-    console.log('📋 RSQ layer zIndex:', rsqLayer.getZIndex());
-
-  } catch (err) {
-    console.error('❌ RSQ LAYER CREATION FAILED');
-    console.error('Error:', err);
-    console.error('Stack:', err instanceof Error ? err.stack : 'No stack');
-  }
-
-  console.log('='.repeat(50));
-}, [groundWaterData, selectedYear, layerVisibility.rsq, selectedVillages.length]);
   // Label toggle refresh
   useEffect(() => {
-    [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef, rsqLayerRef].forEach((ref) => {
+    [stateLayerRef, districtLayerRef, blockLayerRef, villageLayerRef].forEach((ref) => {
       ref.current?.changed();
     });
   }, [showLabels]);
 
-const value = useMemo(
-  () => ({
-    mapInstance,
-    selectedBaseMap,
-    changeBaseMap,
-    setMapContainer,
-    isLoading,
-    error,
-    showLabels,
-    toggleLabels,
-    layerVisibility,
-    toggleLayerVisibility,
-    activeLayers,
-    activeRSQYear,
-  }),
-  [mapInstance, selectedBaseMap, isLoading, error, showLabels, layerVisibility, activeLayers, activeRSQYear]
-);
+  const value = useMemo(
+    () => ({
+      mapInstance,
+      selectedBaseMap,
+      changeBaseMap,
+      setMapContainer,
+      isLoading,
+      error,
+      showLabels,
+      toggleLabels,
+      layerVisibility,
+      toggleLayerVisibility,
+      activeLayers,
+    }),
+    [mapInstance, selectedBaseMap, isLoading, error, showLabels, layerVisibility, activeLayers]
+  );
+  
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 };
 

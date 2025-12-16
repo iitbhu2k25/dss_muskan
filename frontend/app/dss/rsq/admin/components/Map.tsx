@@ -2,8 +2,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useMapContext } from '@/contexts/rsq/admin/MapContext';
-import { useRSQ } from '@/contexts/rsq/admin/RsqContext';
-import { FaEye, FaEyeSlash, FaLayerGroup, FaMapMarkerAlt, FaGlobe, FaTractor, FaBuilding, FaTint, FaRegDotCircle } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaLayerGroup, FaMapMarkerAlt, FaGlobe, FaTractor, FaBuilding, FaRegDotCircle } from 'react-icons/fa';
 import 'ol/ol.css';
 
 // Define a map for professional-looking icons
@@ -13,7 +12,6 @@ const layerIcons: Record<string, React.ReactElement> = {
   district: <FaRegDotCircle className="text-green-600" />,
   block: <FaBuilding className="text-yellow-600" />,
   village: <FaTractor className="text-gray-500" />,
-  rsq: <FaTint className="text-teal-600" />,
 };
 
 const Map: React.FC = () => {
@@ -27,10 +25,7 @@ const Map: React.FC = () => {
     toggleLayerVisibility,
     layerVisibility = {},
     activeLayers = {},
-    activeRSQYear,
   } = useMapContext();
-  
-  const { selectedYear } = useRSQ();
 
   useEffect(() => {
     if (mapRef.current) {
@@ -45,15 +40,14 @@ const Map: React.FC = () => {
     { key: 'state', label: 'State Boundary' },
     { key: 'district', label: 'District Boundaries' },
     { key: 'block', label: 'Block Boundaries' },
-    { key: 'village', label: 'Village Boundaries (Base)' },
-    { key: 'rsq', label: `RSQ Data${activeRSQYear ? ` (${activeRSQYear})` : ''}` },
+    { key: 'village', label: 'Village Boundaries' },
   ];
 
   // Filter layers based on which ones are active on the map AND sort them for logical display
   const visibleLayers = allLayers
     .filter(layer => activeLayers[layer.key])
     .sort((a, b) => {
-      const order = ['india', 'state', 'district', 'block', 'village', 'rsq'];
+      const order = ['india', 'state', 'district', 'block', 'village'];
       return order.indexOf(a.key) - order.indexOf(b.key);
     });
 
@@ -117,19 +111,6 @@ const Map: React.FC = () => {
             </p>
           )}
         </div>
-
-
-        {/* Year Info if RSQ is active */}
-        {activeRSQYear && activeLayers.rsq && (
-          <div className="mt-2 pt-2 border-t">
-            <div className="text-xs text-gray-600 text-center">
-              <span className="font-medium">Assessment Year:</span>
-              <span className="block text-sm font-bold text-blue-600 mt-1">
-                {activeRSQYear}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Loading */}
