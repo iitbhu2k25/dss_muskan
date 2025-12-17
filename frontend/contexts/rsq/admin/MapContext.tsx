@@ -94,6 +94,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     district: true,
     block: true,
     village: true,
+    groundwater: true,
   });
 
   const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({});
@@ -121,12 +122,14 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const toggleLayerVisibility = (layerName: string) => {
     setLayerVisibility(prev => ({ ...prev, [layerName]: !prev[layerName] }));
+    
     const layerRef = {
       india: indiaLayerRef,
       state: stateLayerRef,
       district: districtLayerRef,
       block: blockLayerRef,
       village: villageLayerRef,
+      groundwater: groundwaterLayerRef,
     }[layerName];
 
     if (layerRef && layerRef.current) {
@@ -226,6 +229,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           source: vectorSource,
           style: groundwaterStyleFunction,
           zIndex: 15,
+          visible: layerVisibility.groundwater,
         });
 
         groundwaterLayer.set("name", "groundwater-layer");

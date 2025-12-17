@@ -167,9 +167,6 @@ export default function RSQAnalysis() {
     return { categories };
   }, [groundWaterData]);
 
-
-
- 
   /* ================= CLEAR FILTERS ================= */
 
   const clearAllFilters = () => {
@@ -181,39 +178,42 @@ export default function RSQAnalysis() {
   if (selectedVillages.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg">
-          <div className="text-6xl mb-4">📍</div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">No Villages Selected</h3>
-          <p className="text-gray-600">Please select villages to view RSQ analysis</p>
+        <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-100">
+          <svg className="w-16 h-16 mx-auto mb-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">No Villages Selected</h3>
+          <p className="text-sm text-gray-600">Please select villages to view RSQ analysis</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-4 space-y-4 bg-gray-50 min-h-screen">
 
       {/* ================= YEAR SELECTION CARD ================= */}
 
-      <div className="bg-white rounded-2xl shadow-lg p-6">
+      <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Select Assessment Year</h3>
-            <p className="text-sm text-gray-600">
-              📊 Selected {selectedVillages.length} villages for assessment
+            <h3 className="text-base font-semibold text-gray-800 mb-1">Select Assessment Year</h3>
+            <p className="text-xs text-gray-600">
+              Selected {selectedVillages.length} villages for assessment
             </p>
           </div>
 
           <select
             value={selectedYear}
             onChange={(e) => {
-              console.log("📅 Year changed to:", e.target.value);
+              console.log("Year changed to:", e.target.value);
               setSelectedYear(e.target.value);
             }}
-            className="border-2 border-blue-400 px-4 py-2 rounded-xl shadow-sm hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white font-medium text-lg"
+            className="border border-gray-300 px-3 py-2 rounded-md shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm font-medium"
             disabled={isLoading}
           >
-            <option value="">-- Select Year --</option>
+            <option value="">Select Year</option>
             {YEAR_OPTIONS.map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -227,13 +227,13 @@ export default function RSQAnalysis() {
           {/* ================= STATUS LEGEND CARD ================= */}
 
           {stats && (
-            <div className="bg-white rounded-2xl shadow-lg p-2">
-              <div className="flex gap-3 flex-wrap items-center">
-                <span className="text-sm font-bold text-gray-700 mr-2">🏷️ Filter by Status:</span>
+            <div className="bg-white rounded-lg shadow-md p-3 border border-gray-200">
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs font-semibold text-gray-700 mr-2">Filter by Status:</span>
                 <button
                   onClick={() => setStatusFilter("all")}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 ${statusFilter === "all"
-                      ? "bg-gradient-to-r from-gray-700 to-gray-900 text-white shadow-lg"
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${statusFilter === "all"
+                      ? "bg-gray-800 text-white shadow-md"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
@@ -249,8 +249,9 @@ export default function RSQAnalysis() {
                     <button
                       key={cat}
                       onClick={() => setStatusFilter(cat)}
-                      className={`px-4 py-2 rounded-xl text-white text-sm font-semibold transition-all transform hover:scale-105 ${statusFilter === cat ? "ring-4 ring-offset-2 shadow-lg" : "hover:opacity-80 shadow-md"
-                        } ${statusFilter === cat ? "ring-" + color : ''}`}
+                      className={`px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all ${statusFilter === cat ? "ring-2 ring-offset-1 shadow-md scale-105" : "hover:opacity-90 shadow-sm"
+                        }`}
+                      style={{ backgroundColor: color }}
                     >
                       {cat}: {count}
                     </button>
@@ -262,12 +263,12 @@ export default function RSQAnalysis() {
 
           {/* ================= SEARCH & ACTIONS CARD ================= */}
 
-          <div className="bg-white rounded-2xl shadow-lg p-2">
-            <div className="flex gap-4 items-center flex-wrap">
-              <div className="flex-1 min-w-[300px] relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
-                  🔍
-                </div>
+          <div className="bg-white rounded-lg shadow-md p-3 border border-gray-200">
+            <div className="flex gap-3 items-center flex-wrap">
+              <div className="flex-1 min-w-[250px] relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 <input
                   type="text"
                   placeholder="Search across all columns..."
@@ -276,14 +277,16 @@ export default function RSQAnalysis() {
                     setGlobalSearch(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="border-2 border-gray-200 pl-12 pr-12 py-3 rounded-xl w-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="border border-gray-300 pl-9 pr-9 py-2 rounded-md w-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
                 {globalSearch && (
                   <button
                     onClick={() => setGlobalSearch("")}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-xl transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
                   >
-                    ✕
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 )}
               </div>
@@ -294,7 +297,7 @@ export default function RSQAnalysis() {
                   setRowsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm font-medium hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="border border-gray-300 px-3 py-2 rounded-md text-sm shadow-sm font-medium hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               >
                 <option value={10}>10 rows</option>
                 <option value={25}>25 rows</option>
@@ -305,100 +308,109 @@ export default function RSQAnalysis() {
               {(globalSearch || statusFilter !== "all") && (
                 <button
                   onClick={clearAllFilters}
-                  className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 font-semibold"
+                  className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-all shadow-sm hover:shadow-md font-medium"
                 >
-                  🗑️ Clear Filters
+                  Clear Filters
                 </button>
               )}
-
             </div>
           </div>
 
           {/* ================= LOADING / ERROR ================= */}
 
           {isLoading && (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-              <p className="mt-4 text-gray-600 font-medium">Loading RSQ data for {selectedYear}...</p>
+            <div className="bg-white rounded-lg shadow-md p-8 text-center border border-gray-200">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+              <p className="mt-3 text-sm text-gray-600 font-medium">Loading RSQ data for {selectedYear}...</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl shadow-lg">
-              <span className="text-2xl mr-2">⚠️</span>
-              <span className="font-medium">{error}</span>
+            <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg shadow-sm">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium">{error}</span>
+              </div>
             </div>
           )}
 
           {/* ================= TABLE CARD ================= */}
 
           {groundWaterData && !isLoading && (
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
               <div className="overflow-x-auto">
-               <table className="min-w-full text-sm">
-  <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white sticky top-0">
-    <tr>
-      {allColumns.map((key) => (
-        <th key={key} className="px-6 py-4 text-left">
-          <div
-            className="flex items-center gap-2 cursor-pointer hover:text-yellow-300 transition-colors select-none"
-            onClick={() => handleSort(key)}
-          >
-            <span className="font-bold text-sm">{formatColumnName(key)}</span>
-            {sortConfig?.key === key ? (
-              <span className="text-yellow-300 text-lg">
-                {sortConfig.direction === "asc" ? "↑" : "↓"}
-              </span>
-            ) : (
-              <span className="text-white opacity-30">↕</span>
-            )}
-          </div>
-        </th>
-      ))}
-      <th className="px-6 py-4 text-left">
-        <span className="font-bold text-sm">Status</span>
-      </th>
-    </tr>
-  </thead>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gradient-to-r from-slate-700 to-slate-800">
+                    <tr>
+                      {allColumns.map((key) => (
+                        <th key={key} className="px-4 py-3 text-left">
+                          <div
+                            className="flex items-center gap-1.5 cursor-pointer hover:text-blue-300 transition-colors select-none group"
+                            onClick={() => handleSort(key)}
+                          >
+                            <span className="font-semibold text-xs text-white uppercase tracking-wide">
+                              {formatColumnName(key)}
+                            </span>
+                            {sortConfig?.key === key ? (
+                              <span className="text-blue-300 text-sm">
+                                {sortConfig.direction === "asc" ? "↑" : "↓"}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                ↕
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 text-left">
+                        <span className="font-semibold text-xs text-white uppercase tracking-wide">Status</span>
+                      </th>
+                    </tr>
+                  </thead>
 
-  <tbody>
-    {paginatedData.length === 0 ? (
-      <tr>
-        <td colSpan={allColumns.length + 1} className="text-center py-12">
-          <div className="text-6xl mb-4">🔍</div>
-          <p className="text-gray-500 font-medium">No data matches your filters</p>
-        </td>
-      </tr>
-    ) : (
-      paginatedData.map((f, i) => {
-        const p = f.properties;
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedData.length === 0 ? (
+                      <tr>
+                        <td colSpan={allColumns.length + 1} className="text-center py-12">
+                          <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <p className="text-sm text-gray-500 font-medium">No data matches your filters</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedData.map((f, i) => {
+                        const p = f.properties;
 
-        return (
-          <tr
-            key={i}
-            className="border-b border-gray-100 hover:bg-gray-50 transition-all"
-          >
-            {allColumns.map((key) => (
-              <td key={key} className="px-6 py-4 font-medium text-gray-700">
-                {typeof p[key] === "string"
-                  ? highlightText(formatCellValue(p[key]), globalSearch)
-                  : formatCellValue(p[key])}
-              </td>
-            ))}
-            <td className="px-6 py-4">
-              <span
-                className="px-4 py-2 rounded-xl text-white text-xs font-bold inline-block shadow-md"
-                style={{ backgroundColor: p.color || "#999" }}
-              >
-                {p.status || "No Data"}
-              </span>
-            </td>
-          </tr>
-        );
-      })
-    )}
-  </tbody>
-</table>
+                        return (
+                          <tr
+                            key={i}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            {allColumns.map((key) => (
+                              <td key={key} className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                                {typeof p[key] === "string"
+                                  ? highlightText(formatCellValue(p[key]), globalSearch)
+                                  : formatCellValue(p[key])}
+                              </td>
+                            ))}
+                            <td className="px-4 py-3">
+                              <span
+                                className="px-2.5 py-1 rounded-md text-white text-xs font-semibold inline-block shadow-sm"
+                                style={{ backgroundColor: p.color || "#999" }}
+                              >
+                                {p.status || "No Data"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -406,45 +418,45 @@ export default function RSQAnalysis() {
           {/* ================= PAGINATION CARD ================= */}
 
           {totalPages > 1 && (
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <div className="flex gap-4 items-center justify-between flex-wrap">
-                <div className="text-sm text-gray-600 font-medium">
-                  📄 Showing <span className="font-bold text-gray-900">{(currentPage - 1) * rowsPerPage + 1}</span> to{" "}
-                  <span className="font-bold text-gray-900">{Math.min(currentPage * rowsPerPage, processedData.length)}</span> of{" "}
-                  <span className="font-bold text-gray-900">{processedData.length}</span> results
+            <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
+              <div className="flex gap-3 items-center justify-between flex-wrap">
+                <div className="text-xs text-gray-600 font-medium">
+                  Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * rowsPerPage + 1}</span> to{" "}
+                  <span className="font-semibold text-gray-900">{Math.min(currentPage * rowsPerPage, processedData.length)}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{processedData.length}</span> results
                 </div>
 
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-1.5 items-center">
                   <button
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
                   >
-                    ⏮ First
+                    First
                   </button>
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-5 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
                   >
-                    ← Prev
+                    Previous
                   </button>
-                  <span className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold shadow-md">
+                  <span className="px-4 py-1.5 text-xs bg-slate-700 text-white rounded-md font-semibold shadow-sm">
                     {currentPage} / {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-5 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
                   >
-                    Next →
+                    Next
                   </button>
                   <button
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 border-2 border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400 transform hover:scale-105"
+                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
                   >
-                    Last ⏭
+                    Last
                   </button>
                 </div>
               </div>
