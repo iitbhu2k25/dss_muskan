@@ -100,12 +100,12 @@ function RSQAssessmentContent() {
 /* ================= PROVIDER WRAPPER ================= */
 export default function RSQAssessmentAdmin() {
   return (
-    <LocationProvider>
-      <MapProvider>
-        <RSQProvider>
+<LocationProvider>
+  <RSQProvider>
+    <MapProvider>
           <RSQAssessmentContent />
-        </RSQProvider>
-      </MapProvider>
-    </LocationProvider>
+    </MapProvider>
+  </RSQProvider>
+</LocationProvider>
   );
 }

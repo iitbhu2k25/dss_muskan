@@ -26,6 +26,8 @@ import { Geometry } from "ol/geom";
 import { bbox as bboxStrategy } from "ol/loadingstrategy";
 import { defaults as defaultControls } from "ol/control";
 import { useLocation } from "./LocationContext";
+import { useRSQ } from "./RsqContext";
+
 
 const baseMaps = {
   osm: {
@@ -62,6 +64,7 @@ interface MapContextType {
   layerVisibility: Record<string, boolean>;
   toggleLayerVisibility: (layerName: string) => void;
   activeLayers: Record<string, boolean>;
+  removeGroundwaterLayer: () => void;
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined);
@@ -76,6 +79,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const villageLayerRef = useRef<VectorLayer<any> | null>(null);
   const hoverOverlayRef = useRef<Overlay | null>(null);
   const highlightLayerRef = useRef<VectorLayer<any> | null>(null);
+  const groundwaterLayerRef = useRef<VectorLayer<any> | null>(null);
 
   const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
   const [mapInstance, setMapInstance] = useState<Map | null>(null);
@@ -83,6 +87,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [error, setError] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedBaseMap, setSelectedBaseMap] = useState("openstreet");
+  
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     india: true,
     state: true,
@@ -96,6 +101,16 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const { selectedState, selectedDistricts, selectedBlocks, selectedVillages } = useLocation();
 
   const toggleLabels = () => setShowLabels((v) => !v);
+  const { groundWaterData } = useRSQ();
+
+  // Function to remove groundwater layer
+  const removeGroundwaterLayer = () => {
+    if (groundwaterLayerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(groundwaterLayerRef.current);
+      groundwaterLayerRef.current = null;
+      setActiveLayers(prev => ({ ...prev, groundwater: false }));
+    }
+  };
 
   // Hide layer without removing from map
   const hideLayer = (ref: React.MutableRefObject<VectorLayer<any> | null>) => {
@@ -170,6 +185,71 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     mapRef.current.getLayers().insertAt(0, layer);
     setSelectedBaseMap(key);
   };
+
+  // Log RSQ data in MapContext when API response arrives
+  useEffect(() => {
+    if (groundWaterData) {
+      console.log("🧪 MapContext: RSQ data available in context:", groundWaterData);
+      
+      // Plot groundwater GeoJSON data
+      if (mapRef.current && groundWaterData.type === 'FeatureCollection') {
+        // Remove existing groundwater layer
+        removeGroundwaterLayer();
+
+        // Hide all other layers
+        hideLayer(stateLayerRef);
+        hideLayer(districtLayerRef);
+        hideLayer(blockLayerRef);
+        hideLayer(villageLayerRef);
+
+        // Create vector source from GeoJSON
+        const vectorSource = new VectorSource({
+          features: new GeoJSON().readFeatures(groundWaterData, {
+            featureProjection: 'EPSG:3857', // Web Mercator projection
+          }),
+        });
+
+        // Create style function that uses color from feature properties
+        const groundwaterStyleFunction = (feature: any) => {
+          const props = feature.getProperties();
+          const color = props.color || props.Color || props.fill || props.Fill || '#00BCD4';
+          
+          // Use the color from properties for fill
+          return new Style({
+            stroke: new Stroke({ color: '#333333', width: 1.5 }),
+            fill: new Fill({ color: color }),
+          });
+        };
+
+        // Create vector layer
+        const groundwaterLayer = new VectorLayer({
+          source: vectorSource,
+          style: groundwaterStyleFunction,
+          zIndex: 15,
+        });
+
+        groundwaterLayer.set("name", "groundwater-layer");
+        groundwaterLayerRef.current = groundwaterLayer;
+        mapRef.current.addLayer(groundwaterLayer);
+        setActiveLayers(prev => ({ ...prev, groundwater: true }));
+
+        // Fit map to groundwater layer extent
+        const extent = vectorSource.getExtent();
+        if (extent[0] < extent[2]) {
+          mapRef.current.getView().fit(extent, {
+            duration: 1000,
+            padding: [60, 60, 60, 60],
+            maxZoom: 17,
+          });
+        }
+
+        console.log("✅ Groundwater layer plotted successfully");
+      }
+    } else {
+      console.log("🧪 MapContext: RSQ data is null (no data or cleared)");
+      removeGroundwaterLayer();
+    }
+  }, [groundWaterData]);
 
   // Map initialization
   useEffect(() => {
@@ -250,6 +330,27 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         (f, l) => {
           if (l?.get("name") === "highlight-layer") return;
           const props = f.getProperties();
+          
+          // Check if it's groundwater layer
+          if (l?.get("name") === "groundwater-layer") {
+            // Display all properties for groundwater features
+            let displayText = "<strong>Groundwater Data</strong><br/>";
+            Object.keys(props).forEach(key => {
+              if (key !== 'geometry') {
+                const value = props[key];
+                displayText += `<strong>${key}:</strong> ${value}<br/>`;
+              }
+            });
+            
+            hs.addFeature(f.clone() as Feature<Geometry>);
+            hoverEl.innerHTML = displayText;
+            overlay.setPosition(e.coordinate);
+            found = true;
+            map.getTargetElement()!.style.cursor = "pointer";
+            return;
+          }
+          
+          // Handle other layers
           const name =
             props.village ||
             props.VILL_NAME ||
@@ -461,6 +562,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       layerVisibility,
       toggleLayerVisibility,
       activeLayers,
+      removeGroundwaterLayer,
     }),
     [mapInstance, selectedBaseMap, isLoading, error, showLabels, layerVisibility, activeLayers]
   );

@@ -79,6 +79,7 @@ const RSQContext = createContext<RSQContextType>({
 export const RSQProvider = ({ children }: { children: ReactNode }) => {
   const [selectedYear, setSelectedYear] = useState("");
   const [groundWaterData, setGroundWaterData] = useState<GroundWaterGeoJSON | null>(null);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
