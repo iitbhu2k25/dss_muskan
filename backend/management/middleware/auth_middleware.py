@@ -52,15 +52,24 @@ class JWTAuthentication(BaseAuthentication):
         return 'Bearer'
 
 
+# management/middleware/auth_middleware.py
 class TokenAuthenticationMiddleware:
-    # Public endpoints that do NOT require auth
+    # Public endpoints that do NOT require auth (exact paths only)
     PUBLIC_ENDPOINTS = {
         '/django/management/register',
         '/django/management/login',
         '/django/management/register/employee',
         '/django/management/login/employee',
         '/django/management/admindata',
+        '/django/management/leave-update-status',
+        # ⚠️ remove this, it will never match because of <path:email>:
+        # '/django/management/leave-employee-email-get/<path:email>'
     }
+
+    # Prefix-based public endpoints (for dynamic segments)
+    PUBLIC_PREFIXES = (
+        '/django/management/leave-employee-email-get/',  # note trailing slash
+    )
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -72,9 +81,14 @@ class TokenAuthenticationMiddleware:
         if not path.startswith('/django/management'):
             return self.get_response(request)
 
-        # Skip public endpoints
+        # Skip public endpoints (exact)
         if path in self.PUBLIC_ENDPOINTS:
             return self.get_response(request)
+
+        # Skip public endpoints by prefix (for dynamic URL parts like email)
+        for prefix in self.PUBLIC_PREFIXES:
+            if path.startswith(prefix.rstrip('/')):
+                return self.get_response(request)
 
         # Skip OPTIONS requests (CORS preflight)
         if request.method == 'OPTIONS':
@@ -85,7 +99,7 @@ class TokenAuthenticationMiddleware:
         if not auth_header or not auth_header.startswith('Bearer '):
             return JsonResponse({
                 'success': False,
-                'message': 'Authentication required'
+                'message': 'Auth6259665entication required'
             }, status=401)
 
         token = auth_header.split(' ')[1]

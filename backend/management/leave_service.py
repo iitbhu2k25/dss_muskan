@@ -6,7 +6,8 @@ from email.mime.multipart import MIMEMultipart
 from .models import LeaveEmployee, PersonalEmployee
 from urllib.parse import quote
 from django.core.mail import EmailMultiAlternatives
-
+from .utils.approval_token import generate_approval_token
+from django.conf import settings
 
 from django.core.mail import EmailMessage
 
@@ -40,17 +41,20 @@ def apply_leave_service(data):
             leave_type=data['leave_type'],
         )
 
-        # ✅ ALL RECEIVERS
         admin_emails = [leave.supervisor_email, "hr@company.com", "admin@company.com"]
 
-        # ✅ URL SAFE EMAIL
+        # URL SAFE EMAIL
         encoded_email = quote(employee.email)
 
-        approval_link = f"http://localhost:3000/dss/management/approve/{encoded_email}"
+        # ✅ Generate approval token specific to this leave + supervisor
+        approval_token = generate_approval_token(leave.id, leave.supervisor_email)
+
+        # ✅ Build frontend base URL from settings
+        frontend_base_url = getattr(settings, "FRONTEND_BASE_URL", "https://lems-two.vercel.app")
+        approval_link = f"{frontend_base_url}/dss/management/approve/{encoded_email}?token={approval_token}"
 
         subject = "✅ New Leave Request Approval"
 
-        # ✅ ✅ ✅ INTERACTIVE CENTERED HTML EMAIL
         html_message = f"""
         <div style="font-family:Arial;background:#f4f6f8;padding:30px;">
           <div style="max-width:600px;margin:auto;background:white;padding:30px;border-radius:10px;text-align:center;box-shadow:0px 4px 10px rgba(0,0,0,0.1)">
@@ -69,7 +73,6 @@ def apply_leave_service(data):
 
             <br/>
 
-            <!-- ✅ IMAGE BUTTON -->
             <a href="{approval_link}">
               <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png"
                    width="180"
@@ -97,7 +100,6 @@ def apply_leave_service(data):
             None,
             admin_emails
         )
-
         msg.attach_alternative(html_message, "text/html")
         msg.send()
 
@@ -108,7 +110,6 @@ def apply_leave_service(data):
 
     except Exception as e:
         return False, str(e), False
-
 
 
 
