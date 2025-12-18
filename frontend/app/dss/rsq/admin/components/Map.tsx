@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useMapContext } from '@/contexts/rsq/admin/MapContext';
-import { FaEye, FaEyeSlash, FaLayerGroup, FaMapMarkerAlt, FaGlobe, FaTractor, FaBuilding, FaRegDotCircle, FaTint } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaLayerGroup, FaMapMarkerAlt, FaGlobe, FaTractor, FaBuilding, FaRegDotCircle, FaTint, FaTimes } from 'react-icons/fa';
 import 'ol/ol.css';
 
 // Define a map for professional-looking icons
@@ -36,6 +36,9 @@ const Map: React.FC = () => {
     layerVisibility = {},
     activeLayers = {},
   } = useMapContext();
+
+  const [showLayerPanel, setShowLayerPanel] = useState(true);
+  const [showLegendPanel, setShowLegendPanel] = useState(true);
 
   useEffect(() => {
     if (mapRef.current) {
@@ -81,55 +84,75 @@ const Map: React.FC = () => {
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full" />
 
-      {/* Layer Control Panel */}
-      <div className="absolute top-3 right-3 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-2 pb-2 border-b">
-          <FaLayerGroup className="text-blue-600 text-base" />
-          <h3 className="font-semibold text-sm text-gray-800">Active Layers</h3>
-        </div>
+      {/* Layer Control Panel - LEFT SIDE */}
+      {showLayerPanel && (
+        <div className="absolute top-3 left-3 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-2 pb-2 border-b">
+            <div className="flex items-center gap-2">
+              <FaLayerGroup className="text-blue-600 text-base" />
+              <h3 className="font-semibold text-sm text-gray-800">Active Layers</h3>
+            </div>
+            <button
+              onClick={() => setShowLayerPanel(false)}
+              className="text-gray-500 hover:text-red-600 p-1 transition-colors"
+              title="Close panel"
+            >
+              <FaTimes className="text-sm" />
+            </button>
+          </div>
 
-        {/* Layers List */}
-        <div className="space-y-1">
-          {visibleLayers.length > 0 ? (
-            visibleLayers.map(({ key, label }) => (
-              <div
-                key={key}
-                className="flex items-center justify-between px-2 py-1 rounded-md hover:bg-gray-100 transition-all"
-              >
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="text-sm">{layerIcons[key]}</span>
-                  <span className="text-xs font-medium text-gray-700">
-                    {label}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => toggleLayerVisibility(key)}
-                  className={`p-1 rounded-full transition-all text-xs ${layerVisibility[key] !== false
-                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                      : "bg-gray-300 text-gray-600 hover:bg-gray-400"
-                    }`}
-                  title={layerVisibility[key] !== false ? "Hide layer" : "Show layer"}
+          {/* Layers List */}
+          <div className="space-y-1">
+            {visibleLayers.length > 0 ? (
+              visibleLayers.map(({ key, label }) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between px-2 py-1 rounded-md hover:bg-gray-100 transition-all"
                 >
-                  {layerVisibility[key] !== false ? <FaEye /> : <FaEyeSlash />}
-                </button>
-              </div>
-            ))
-          ) : (
-            <p className="text-xs text-gray-500 text-center py-1">
-              No layers loaded
-            </p>
-          )}
-        </div>
-      </div>
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-sm">{layerIcons[key]}</span>
+                    <span className="text-xs font-medium text-gray-700">
+                      {label}
+                    </span>
+                  </div>
 
-      {/* RSQ Legend - Show only when groundwater layer is active and visible */}
-      {activeLayers.groundwater && layerVisibility.groundwater !== false && (
-        <div className="absolute bottom-6 right-3 bg-white rounded-lg shadow-xl p-3 z-10 w-56">
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b">
-            <FaTint className="text-blue-600 text-sm" />
-            <h3 className="font-semibold text-xs text-gray-800">RSQ Classification</h3>
+                  <button
+                    onClick={() => toggleLayerVisibility(key)}
+                    className={`p-1 rounded-full transition-all text-xs ${layerVisibility[key] !== false
+                        ? "bg-blue-500 text-white hover:bg-blue-600"
+                        : "bg-gray-300 text-gray-600 hover:bg-gray-400"
+                      }`}
+                    title={layerVisibility[key] !== false ? "Hide layer" : "Show layer"}
+                  >
+                    {layerVisibility[key] !== false ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-500 text-center py-1">
+                No layers loaded
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* RSQ Legend - LEFT SIDE BOTTOM - Show only when groundwater layer is active and visible */}
+      {activeLayers.groundwater && layerVisibility.groundwater !== false && showLegendPanel && (
+        <div className="absolute bottom-6 left-3 bg-white rounded-lg shadow-xl p-3 z-10 w-56">
+          <div className="flex items-center justify-between mb-2 pb-2 border-b">
+            <div className="flex items-center gap-2">
+              {/* <FaTint className="text-blue-600 text-sm" /> */}
+              <h3 className="font-semibold text-xs text-gray-800">RSQ Classification</h3>
+            </div>
+            <button
+              onClick={() => setShowLegendPanel(false)}
+              className="text-gray-500 hover:text-red-600 p-1 transition-colors"
+              title="Close legend"
+            >
+              <FaTimes className="text-sm" />
+            </button>
           </div>
           <div className="space-y-1.5">
             {RSQ_LEGEND.map((item, index) => (
@@ -148,6 +171,32 @@ const Map: React.FC = () => {
           <div className="mt-2 pt-2 border-t">
             <p className="text-xs text-gray-500 italic">Stage of Ground Water Extraction</p>
           </div>
+        </div>
+      )}
+
+      {/* Control Buttons - TOP LEFT when panels are hidden */}
+      <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+        {!showLayerPanel && (
+          <button
+            onClick={() => setShowLayerPanel(true)}
+            className="bg-white rounded-lg shadow-xl p-2 hover:bg-blue-50 transition-all"
+            title="Show layers panel"
+          >
+            <FaLayerGroup className="text-blue-600 text-base" />
+          </button>
+        )}
+      </div>
+
+      {/* Control Button - BOTTOM LEFT when legend is hidden */}
+      {activeLayers.groundwater && layerVisibility.groundwater !== false && !showLegendPanel && (
+        <div className="absolute bottom-6 left-3 z-10">
+          <button
+            onClick={() => setShowLegendPanel(true)}
+            className="bg-white rounded-lg shadow-xl p-2 hover:bg-blue-50 transition-all"
+            title="Show legend"
+          >
+            <FaTint className="text-blue-600 text-base" />
+          </button>
         </div>
       )}
 

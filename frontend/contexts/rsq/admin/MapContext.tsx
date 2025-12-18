@@ -87,7 +87,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [error, setError] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedBaseMap, setSelectedBaseMap] = useState("openstreet");
-  
+
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     india: true,
     state: true,
@@ -122,7 +122,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const toggleLayerVisibility = (layerName: string) => {
     setLayerVisibility(prev => ({ ...prev, [layerName]: !prev[layerName] }));
-    
+
     const layerRef = {
       india: indiaLayerRef,
       state: stateLayerRef,
@@ -193,7 +193,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     if (groundWaterData) {
       console.log("🧪 MapContext: RSQ data available in context:", groundWaterData);
-      
+
       // Plot groundwater GeoJSON data
       if (mapRef.current && groundWaterData.type === 'FeatureCollection') {
         // Remove existing groundwater layer
@@ -216,7 +216,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const groundwaterStyleFunction = (feature: any) => {
           const props = feature.getProperties();
           const color = props.color || props.Color || props.fill || props.Fill || '#00BCD4';
-          
+
           // Use the color from properties for fill
           return new Style({
             stroke: new Stroke({ color: '#333333', width: 1.5 }),
@@ -256,135 +256,176 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [groundWaterData]);
 
   // Map initialization
-  useEffect(() => {
-    if (!mapContainer || mapRef.current) return;
+useEffect(() => {
+  if (!mapContainer || mapRef.current) return;
 
-    const base = new TileLayer({
-      source: baseMaps.openstreet.source(),
-      zIndex: 0,
-    });
+  const base = new TileLayer({
+    source: baseMaps.openstreet.source(),
+    zIndex: 0,
+  });
 
-    base.set("name", "basemap");
-    baseLayerRef.current = base;
+  base.set("name", "basemap");
+  baseLayerRef.current = base;
 
-    const india = new VectorLayer({
-      source: new VectorSource({
-        format: new GeoJSON(),
-        url: "/geoserver/api/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:India&outputFormat=application/json",
-      }),
-      style: new Style({
-        stroke: new Stroke({ color: "#1e88e5", width: 2 }),
-        fill: new Fill({ color: "rgba(30,136,229,0.04)" }),
-      }),
-      zIndex: 1,
-      visible: layerVisibility.india,
-    });
-    india.set("name", "india");
-    indiaLayerRef.current = india;
-    setActiveLayers(prev => ({ ...prev, india: true }));
+  const india = new VectorLayer({
+    source: new VectorSource({
+      format: new GeoJSON(),
+      url: "/geoserver/api/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:India&outputFormat=application/json",
+    }),
+    style: new Style({
+      stroke: new Stroke({ color: "#1e88e5", width: 2 }),
+      fill: new Fill({ color: "rgba(30,136,229,0.04)" }),
+    }),
+    zIndex: 1,
+    visible: layerVisibility.india,
+  });
+  india.set("name", "india");
+  indiaLayerRef.current = india;
+  setActiveLayers(prev => ({ ...prev, india: true }));
 
-    const map = new Map({
-      target: mapContainer,
-      layers: [base, india],
-      view: new View({ center: fromLonLat([78.9629, 20.5937]), zoom: 5 }),
-      controls: defaultControls({ zoom: true, rotate: false }),
-    });
+  const map = new Map({
+    target: mapContainer,
+    layers: [base, india],
+    view: new View({ center: fromLonLat([78.9629, 20.5937]), zoom: 5 }),
+    controls: defaultControls({ zoom: true, rotate: false }),
+  });
 
-    mapRef.current = map;
-    setMapInstance(map);
-    map.updateSize();
+  mapRef.current = map;
+  setMapInstance(map);
+  map.updateSize();
 
-    // Hover setup
-    const hoverEl = document.createElement("div");
-    hoverEl.className = "ol-hover-popup";
-    hoverEl.style.cssText = `
-      background: rgba(255, 255, 255, 0.95);
-      border: 2px solid #333;
-      padding: 10px 14px;
-      border-radius: 6px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      font-size: 12px;
-      font-weight: 600;
-      max-width: 280px;
-      min-width: 200px;
-    `;
-    const overlay = new Overlay({ element: hoverEl, positioning: "bottom-center", offset: [0, -15] });
-    map.addOverlay(overlay);
-    hoverOverlayRef.current = overlay;
+  // Create fixed info panel on the right side (for RSQ layer only)
+  const infoPanel = document.createElement("div");
+  infoPanel.className = "ol-info-panel";
+  infoPanel.style.cssText = `
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #333;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-size: 12px;
+    max-width: 320px;
+    min-width: 250px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+  `;
+  mapContainer.appendChild(infoPanel);
 
-    const highlight = new VectorLayer({
-      source: new VectorSource(),
-      style: new Style({
-        fill: new Fill({ color: "rgba(59, 130, 246, 0.3)" }),
-        stroke: new Stroke({ color: "#FFD700", width: 4 }),
-      }),
-      zIndex: 999,
-    });
-    highlight.set("name", "highlight-layer");
-    map.addLayer(highlight);
-    highlightLayerRef.current = highlight;
+  // Hover setup for other layers
+  const hoverEl = document.createElement("div");
+  hoverEl.className = "ol-hover-popup";
+  hoverEl.style.cssText = `
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #333;
+    padding: 10px 14px;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    font-size: 12px;
+    font-weight: 600;
+    max-width: 280px;
+    min-width: 200px;
+  `;
+  const overlay = new Overlay({ element: hoverEl, positioning: "bottom-center", offset: [0, -15] });
+  map.addOverlay(overlay);
+  hoverOverlayRef.current = overlay;
 
-    map.on("pointermove", (e) => {
-      const hs = highlight.getSource()!;
-      hs.clear();
-      let found = false;
+  const highlight = new VectorLayer({
+    source: new VectorSource(),
+    style: new Style({
+      fill: new Fill({ color: "rgba(59, 130, 246, 0.3)" }),
+      stroke: new Stroke({ color: "#FFD700", width: 4 }),
+    }),
+    zIndex: 999,
+  });
+  highlight.set("name", "highlight-layer");
+  map.addLayer(highlight);
+  highlightLayerRef.current = highlight;
 
-      map.forEachFeatureAtPixel(
-        e.pixel,
-        (f, l) => {
-          if (l?.get("name") === "highlight-layer") return;
-          const props = f.getProperties();
+  map.on("pointermove", (e) => {
+    const hs = highlight.getSource()!;
+    hs.clear();
+    let found = false;
+
+    map.forEachFeatureAtPixel(
+      e.pixel,
+      (f, l) => {
+        if (l?.get("name") === "highlight-layer") return;
+        const props = f.getProperties();
+
+        // Check if it's groundwater layer - show in fixed panel
+        if (l?.get("name") === "groundwater-layer") {
+          // Display all properties for groundwater features EXCEPT excluded ones
+          const excludedProps = ['geometry', 'vlcode', 'blockcode', 'color', 'SUBDIS_COD', 'srno'];
+          let displayText = "<div style='border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px;'><strong style='font-size: 14px;'>Groundwater Data</strong></div>";
           
-          // Check if it's groundwater layer
-          if (l?.get("name") === "groundwater-layer") {
-            // Display all properties for groundwater features
-            let displayText = "<strong>Groundwater Data</strong><br/>";
-            Object.keys(props).forEach(key => {
-              if (key !== 'geometry') {
-                const value = props[key];
-                displayText += `<strong>${key}:</strong> ${value}<br/>`;
-              }
-            });
-            
-            hs.addFeature(f.clone() as Feature<Geometry>);
-            hoverEl.innerHTML = displayText;
-            overlay.setPosition(e.coordinate);
-            found = true;
-            map.getTargetElement()!.style.cursor = "pointer";
-            return;
-          }
-          
-          // Handle other layers
-          const name =
-            props.village ||
-            props.VILL_NAME ||
-            props.block_name ||
-            props.blockname ||
-            props.district_name ||
-            props.state_name ||
-            "";
+          Object.keys(props).forEach(key => {
+            if (!excludedProps.includes(key)) {
+              const value = props[key];
+              const formattedKey = key.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+              ).join(' ');
+              
+              displayText += `
+                <div style='margin-bottom: 6px; display: flex; justify-content: space-between; gap: 10px;'>
+                  <span style='color: #555; font-weight: 600;'>${formattedKey}:</span>
+                  <span style='color: #000; font-weight: 500; text-align: right;'>${value !== null && value !== undefined ? value : '-'}</span>
+                </div>
+              `;
+            }
+          });
 
-          const displayText = `<strong>${name}</strong>`;
+          hs.addFeature(f.clone() as Feature<Geometry>);
+          infoPanel.innerHTML = displayText;
+          infoPanel.style.display = 'block';
+          overlay.setPosition(undefined); // Hide moving popup
+          found = true;
+          map.getTargetElement()!.style.cursor = "pointer";
+          return;
+        }
 
-          if (name) {
-            hs.addFeature(f.clone() as Feature<Geometry>);
-            hoverEl.innerHTML = displayText;
-            overlay.setPosition(e.coordinate);
-            found = true;
-            map.getTargetElement()!.style.cursor = "pointer";
-          }
-        },
-        { hitTolerance: 5 }
-      );
+        // Handle other layers - show in moving popup
+        const name =
+          props.village ||
+          props.VILL_NAME ||
+          props.block_name ||
+          props.blockname ||
+          props.district_name ||
+          props.state_name ||
+          "";
 
-      if (!found) {
-        overlay.setPosition(undefined);
-        map.getTargetElement()!.style.cursor = "";
-      }
-    });
+        const displayText = `<strong>${name}</strong>`;
 
-    return () => map.setTarget(undefined);
-  }, [mapContainer]);
+        if (name) {
+          hs.addFeature(f.clone() as Feature<Geometry>);
+          hoverEl.innerHTML = displayText;
+          overlay.setPosition(e.coordinate);
+          infoPanel.style.display = 'none'; // Hide fixed panel
+          found = true;
+          map.getTargetElement()!.style.cursor = "pointer";
+        }
+      },
+      { hitTolerance: 5 }
+    );
+
+    if (!found) {
+      overlay.setPosition(undefined);
+      infoPanel.style.display = 'none';
+      map.getTargetElement()!.style.cursor = "";
+    }
+  });
+
+  return () => {
+    map.setTarget(undefined);
+    if (infoPanel.parentNode) {
+      infoPanel.parentNode.removeChild(infoPanel);
+    }
+  };
+}, [mapContainer]);
 
   // State layer
   useEffect(() => {
@@ -570,7 +611,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }),
     [mapInstance, selectedBaseMap, isLoading, error, showLabels, layerVisibility, activeLayers]
   );
-  
+
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 };
 

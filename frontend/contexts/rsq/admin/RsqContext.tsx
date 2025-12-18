@@ -15,10 +15,8 @@ export interface GroundWaterFeature {
   type: "Feature";
   id?: string;
   properties: {
-    vlcode: number;
     village: string;
     blockname?: string;
-    blockcode?: number;
     Year: string;
 
     Total_Annual_Ground_Water_Recharge?: number;
@@ -37,9 +35,7 @@ export interface GroundWaterFeature {
     Recharge_from_Other_Sources_NM?: number;
     Total_Natural_Discharges?: number;
 
-    // ✅ FROM BACKEND
     status?: "Safe" | "Semi-Critical" | "Critical" | "Over-Exploited" | "No Data";
-    color?: string;
 
     [key: string]: any;
   };
@@ -48,7 +44,6 @@ export interface GroundWaterFeature {
     coordinates: any;
   };
 }
-
 export interface GroundWaterGeoJSON {
   type: "FeatureCollection";
   features: GroundWaterFeature[];
