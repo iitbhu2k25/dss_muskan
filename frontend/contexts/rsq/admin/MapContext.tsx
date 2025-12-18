@@ -270,7 +270,7 @@ useEffect(() => {
   const india = new VectorLayer({
     source: new VectorSource({
       format: new GeoJSON(),
-      url: "/geoserver/api/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:India&outputFormat=application/json",
+      url: "/geoserver/api/myworkspace/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:B_State&outputFormat=application/json",
     }),
     style: new Style({
       stroke: new Stroke({ color: "#1e88e5", width: 2 }),
