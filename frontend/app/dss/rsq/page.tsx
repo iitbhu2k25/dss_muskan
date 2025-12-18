@@ -14,7 +14,7 @@ interface ModernSwitchProps {
 }
 
 import RSQAssessmentAdmin from "./admin/page";
-// import GroundwaterAssessmentDrain from "./drain/page";
+import RSQAssessmentDrain from "./drain/page";
 
 
 const ModernSwitch: React.FC<ModernSwitchProps> = ({
@@ -120,7 +120,7 @@ const GroundwaterAssessmentPage: React.FC = () => {
 
       <div className="transition-all duration-500 ease-in-out">
         {activeView === "admin" && <RSQAssessmentAdmin />}
-        {/* {activeView === "user" && <GroundwaterAssessmentDrain />} */}
+        {activeView === "user" && <RSQAssessmentDrain />}
       </div>
     </div>
   );

@@ -79,19 +79,24 @@ const Map: React.FC = () => {
     );
   }
 
-  return (
-    <div className="relative w-full h-screen bg-gray-100">
+ return (
+  <div className="relative w-full h-screen bg-gray-100 px-2  sm:px-3 py-3">
+    {/* MAP WRAPPER (adds margin + rounding) */}
+    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-white shadow-lg">
+      
       {/* Map Container */}
-      <div ref={mapRef} className="w-full h-full" />
+      <div ref={mapRef} className="w-full h-full " />
 
       {/* Layer Control Panel - LEFT SIDE */}
       {showLayerPanel && (
-        <div className="absolute top-3 left-3 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
+        <div className="absolute top-2 left-3 ml-7 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
           {/* Header */}
           <div className="flex items-center justify-between mb-2 pb-2 border-b">
             <div className="flex items-center gap-2">
               <FaLayerGroup className="text-blue-600 text-base" />
-              <h3 className="font-semibold text-sm text-gray-800">Active Layers</h3>
+              <h3 className="font-semibold text-sm text-gray-800">
+                Active Layers
+              </h3>
             </div>
             <button
               onClick={() => setShowLayerPanel(false)}
@@ -119,11 +124,16 @@ const Map: React.FC = () => {
 
                   <button
                     onClick={() => toggleLayerVisibility(key)}
-                    className={`p-1 rounded-full transition-all text-xs ${layerVisibility[key] !== false
+                    className={`p-1 rounded-full transition-all text-xs ${
+                      layerVisibility[key] !== false
                         ? "bg-blue-500 text-white hover:bg-blue-600"
                         : "bg-gray-300 text-gray-600 hover:bg-gray-400"
-                      }`}
-                    title={layerVisibility[key] !== false ? "Hide layer" : "Show layer"}
+                    }`}
+                    title={
+                      layerVisibility[key] !== false
+                        ? "Hide layer"
+                        : "Show layer"
+                    }
                   >
                     {layerVisibility[key] !== false ? <FaEye /> : <FaEyeSlash />}
                   </button>
@@ -138,45 +148,54 @@ const Map: React.FC = () => {
         </div>
       )}
 
-      {/* RSQ Legend - LEFT SIDE BOTTOM - Show only when groundwater layer is active and visible */}
-      {activeLayers.groundwater && layerVisibility.groundwater !== false && showLegendPanel && (
-        <div className="absolute bottom-6 left-3 bg-white rounded-lg shadow-xl p-3 z-10 w-56">
-          <div className="flex items-center justify-between mb-2 pb-2 border-b">
-            <div className="flex items-center gap-2">
-              {/* <FaTint className="text-blue-600 text-sm" /> */}
-              <h3 className="font-semibold text-xs text-gray-800">RSQ Classification</h3>
+      {/* RSQ Legend - BOTTOM LEFT */}
+      {activeLayers.groundwater &&
+        layerVisibility.groundwater !== false &&
+        showLegendPanel && (
+          <div className="absolute bottom-6 left-3 bg-white rounded-lg shadow-xl p-3 z-10 w-56">
+            <div className="flex items-center justify-between mb-2 pb-2 border-b">
+              <h3 className="font-semibold text-xs text-gray-800">
+                RSQ Classification
+              </h3>
+              <button
+                onClick={() => setShowLegendPanel(false)}
+                className="text-gray-500 hover:text-red-600 p-1 transition-colors"
+                title="Close legend"
+              >
+                <FaTimes className="text-sm" />
+              </button>
             </div>
-            <button
-              onClick={() => setShowLegendPanel(false)}
-              className="text-gray-500 hover:text-red-600 p-1 transition-colors"
-              title="Close legend"
-            >
-              <FaTimes className="text-sm" />
-            </button>
-          </div>
-          <div className="space-y-1.5">
-            {RSQ_LEGEND.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div 
-                  className="w-5 h-5 rounded border border-gray-300 flex-shrink-0"
-                  style={{ backgroundColor: item.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-gray-800">{item.label}</div>
-                  <div className="text-xs text-gray-500">{item.range}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 pt-2 border-t">
-            <p className="text-xs text-gray-500 italic">Stage of Ground Water Extraction</p>
-          </div>
-        </div>
-      )}
 
-      {/* Control Buttons - TOP LEFT when panels are hidden */}
-      <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-        {!showLayerPanel && (
+            <div className="space-y-1.5">
+              {RSQ_LEGEND.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div
+                    className="w-5 h-5 rounded border border-gray-300"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <div>
+                    <div className="text-xs font-medium text-gray-800">
+                      {item.label}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {item.range}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs text-gray-500 italic">
+                Stage of Ground Water Extraction
+              </p>
+            </div>
+          </div>
+        )}
+
+      {/* Show Layers Button */}
+      {!showLayerPanel && (
+        <div className="absolute top-3 left-3 z-10">
           <button
             onClick={() => setShowLayerPanel(true)}
             className="bg-white rounded-lg shadow-xl p-2 hover:bg-blue-50 transition-all"
@@ -184,30 +203,36 @@ const Map: React.FC = () => {
           >
             <FaLayerGroup className="text-blue-600 text-base" />
           </button>
-        )}
-      </div>
-
-      {/* Control Button - BOTTOM LEFT when legend is hidden */}
-      {activeLayers.groundwater && layerVisibility.groundwater !== false && !showLegendPanel && (
-        <div className="absolute bottom-6 left-3 z-10">
-          <button
-            onClick={() => setShowLegendPanel(true)}
-            className="bg-white rounded-lg shadow-xl p-2 hover:bg-blue-50 transition-all"
-            title="Show legend"
-          >
-            <FaTint className="text-blue-600 text-base" />
-          </button>
         </div>
       )}
+
+      {/* Show Legend Button */}
+      {activeLayers.groundwater &&
+        layerVisibility.groundwater !== false &&
+        !showLegendPanel && (
+          <div className="absolute bottom-6 left-3 z-10">
+            <button
+              onClick={() => setShowLegendPanel(true)}
+              className="bg-white rounded-lg shadow-xl p-2 hover:bg-blue-50 transition-all"
+              title="Show legend"
+            >
+              <FaTint className="text-blue-600 text-base" />
+            </button>
+          </div>
+        )}
 
       {/* Loading */}
       {isLoading && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg">
-          <span className="text-sm font-medium">Loading layers...</span>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg z-20">
+          <span className="text-sm font-medium">
+            Loading layers...
+          </span>
         </div>
       )}
     </div>
-  );
+  </div>
+);
+
 };
 
 export default Map;

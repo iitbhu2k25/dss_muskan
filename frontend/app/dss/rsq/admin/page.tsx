@@ -52,20 +52,17 @@ function RSQAssessmentContent() {
   );
 
   /* ================= RIGHT PANEL (MAP) ================= */
-  const rightPanel = (
-    <div className="relative h-full bg-gray-100">
-      {/* Floating Close Button for Mobile */}
-      <button
-        onClick={() => setIsMobileMapVisible(false)}
-        className="lg:hidden absolute top-3 right-3 z-50 bg-black/60 text-white px-3 py-1 rounded-md"
-      >
-        ✕
-      </button>
-      {/* MAP */}
+const rightPanel = (
+  <div className="relative h-full bg-gray-100 px-2 sm:px-3">
+    {/* Floating Close Button for Mobile */}
+    {/* Map Card */}
+    <div className="h-full mt-3 mb-3 rounded-2xl border border-gray-300 shadow-lg overflow-hidden bg-white">
       <Map />
-      
     </div>
-  );
+  </div>
+);
+
+
 
   /* ================= RENDER ================= */
   return (
