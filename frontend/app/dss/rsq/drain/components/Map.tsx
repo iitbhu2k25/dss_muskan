@@ -4,8 +4,8 @@ import 'ol/ol.css';
 import { toLonLat } from 'ol/proj';
 import { METERS_PER_UNIT } from 'ol/proj/Units';
 import VectorSource from 'ol/source/Vector';
-import { useMap } from '@/contexts/rsq/drain/MapContext';
-import { useLocation } from '@/contexts/rsq/drain/LocationContext';
+import { useMap } from '@/contexts/groundwater_assessment/drain/MapContext';
+import { useLocation } from '@/contexts/groundwater_assessment/drain/LocationContext';
 
 // Base maps configuration
 const baseMapNames: Record<string, { name: string; icon: string }> = {
