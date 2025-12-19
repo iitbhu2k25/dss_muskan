@@ -382,8 +382,9 @@ const MapComponent: React.FC = () => {
   return (
     <div
       ref={mapContainerRef}
-      className={`relative ${isFullscreen ? 'fixed inset-0 z-50' : 'w-full h-full'}`}
+      className={`relative ${isFullscreen ? 'fixed inset-0 z-50 rounded-lg mr-4 mb-4 overflow-hidden' : 'w-full h-full'}`}
     >
+      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-white shadow-lg">
       <div className="relative w-full h-full" ref={mapRef} />
 
       {/* Basemap Selector */}
@@ -656,6 +657,7 @@ const MapComponent: React.FC = () => {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };

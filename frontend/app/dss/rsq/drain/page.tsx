@@ -53,7 +53,7 @@ function RSQAssessmentContent() {
 
   /* ================= RIGHT PANEL (MAP) ================= */
   const rightPanel = (
-    <div className="relative h-full bg-gray-100">
+    <div className="relative h-full bg-gray-100 px-2 sm:px-3">
       {/* Floating Close Button for Mobile */}
       <button
         onClick={() => setIsMobileMapVisible(false)}
@@ -62,8 +62,10 @@ function RSQAssessmentContent() {
         ✕
       </button>
       {/* MAP */}
+      <div className="h-full mt-3 mb-3 rounded-2xl border border-gray-300 shadow-lg overflow-hidden bg-white">
+   
       <Map />
-      
+      </div>
     </div>
   );
 
