@@ -35,19 +35,18 @@ interface LayerInfo {
   id: string;
   name: string;
   visible: boolean;
-  type: 'drainage' | 'raster' | 'wells' | 'village-overlay' | 'contour' | 'trend';
+  type: 'drainage';
 }
 
-type LayerOpacityState ={
-  basemap: number;
-  boundaries: number;
-  raster: number;
-  contour: number;
-  trend: number;
-  gsr: number;
-  wellPoints: number;
-  villageOverlay:number;
-}
+// RSQ Legend data based on CGWB classification
+const RSQ_LEGEND = [
+  { label: 'Safe', color: '#27ae60', range: '≤ 70%' },
+  { label: 'Semi-Critical', color: '#f39c12', range: '70-90%' },
+  { label: 'Critical', color: '#e74c3c', range: '90-100%' },
+  { label: 'Over-Exploited', color: '#c0392b', range: '> 100%' },
+  { label: 'No Data', color: '#95a5a6', range: 'N/A' },
+];
+
 const MapComponent: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -56,23 +55,10 @@ const MapComponent: React.FC = () => {
     selectedBaseMap,
     setMapContainer,
     changeBaseMap,
-    isRasterDisplayed,
-    isContourDisplayed,
     mapInstance,
     zoomToCurrentExtent,
-    isVillageOverlayVisible,
-    toggleVillageOverlay,
-    removeContourLayer,
-    isTrendDisplayed,
-    removeTrendLayer,
-    legendData,
     showLabels,
-    isGsrDisplayed,
     toggleLabels,
-    // NEW: Opacity controls
-    layerOpacities,
-    setLayerOpacity,
-    resetAllOpacities
   } = useMap();
 
   // Get drainage system selections from LocationContext
@@ -80,21 +66,19 @@ const MapComponent: React.FC = () => {
     selectedRiver,
     selectedStretch,
     selectedDrain,
-    selectedCatchments,
     selectedVillages,
-    areaConfirmed
   } = useLocation();
 
   // UI State
   const [isBasemapPanelOpen, setIsBasemapPanelOpen] = useState<boolean>(false);
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState<boolean>(false);
   const [isLegendPanelOpen, setIsLegendPanelOpen] = useState<boolean>(false);
-  const [isOpacityPanelOpen, setIsOpacityPanelOpen] = useState<boolean>(false); // NEW: Opacity panel
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
   const [scale, setScale] = useState<string>('');
+  const [isGroundwaterDisplayed, setIsGroundwaterDisplayed] = useState<boolean>(false);
 
-  // Updated layer visibility state for drainage system
+  // Layer visibility state for drainage system
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
     'basin-boundary': true,
     rivers: true,
@@ -102,22 +86,12 @@ const MapComponent: React.FC = () => {
     drains: true,
     catchments: true,
     villages: true,
-    'manual-wells': true,
-    raster: true,
-    'village-overlay': true,
-    contours: true,
-    'trend-wells': true,
-    gsr: true
+    groundwater: true
   });
 
   const basemapPanelRef = useRef<HTMLDivElement>(null);
   const layerPanelRef = useRef<HTMLDivElement>(null);
   const legendPanelRef = useRef<HTMLDivElement>(null);
-  const opacityPanelRef = useRef<HTMLDivElement>(null); // NEW: Opacity panel ref
-  const getSafeOpacityValue = (layerKey: keyof LayerOpacityState): number => {
-    const value = layerOpacities[layerKey];
-    return typeof value === 'number' && !isNaN(value) ? value : 8; // Default fallback
-  };
 
   // Set map container when ref is available
   useEffect(() => {
@@ -127,23 +101,20 @@ const MapComponent: React.FC = () => {
     return () => setMapContainer(null);
   }, [setMapContainer]);
 
-  // Sync layer visibility with MapContext
+  // Check for groundwater layer
   useEffect(() => {
-    setLayerVisibility(prev => ({
-      ...prev,
-      'village-overlay': isVillageOverlayVisible,
-      contours: isContourDisplayed,
-      gsr: isGsrDisplayed ? prev.gsr : false
-    }));
+    if (!mapInstance) return;
 
-    if (mapInstance && isRasterDisplayed) {
-      const layers = mapInstance.getAllLayers();
-      const rasterLayer = layers.find(layer => layer.get('type') === 'raster');
-      if (rasterLayer) {
-        setLayerVisibility(prev => ({ ...prev, raster: rasterLayer.getVisible() }));
-      }
+    const layers = mapInstance.getAllLayers();
+    const groundwaterLayer = layers.find(layer => layer.get('name') === 'groundwater-layer');
+
+    if (groundwaterLayer) {
+      setIsGroundwaterDisplayed(true);
+      setLayerVisibility(prev => ({ ...prev, groundwater: groundwaterLayer.getVisible() }));
+    } else {
+      setIsGroundwaterDisplayed(false);
     }
-  }, [isVillageOverlayVisible, isRasterDisplayed, isContourDisplayed, isTrendDisplayed, isGsrDisplayed, mapInstance]);
+  }, [mapInstance]);
 
   // Mouse move handler for coordinates
   useEffect(() => {
@@ -195,9 +166,6 @@ const MapComponent: React.FC = () => {
       if (legendPanelRef.current && !legendPanelRef.current.contains(event.target as Node)) {
         setIsLegendPanelOpen(false);
       }
-      if (opacityPanelRef.current && !opacityPanelRef.current.contains(event.target as Node)) {
-        setIsOpacityPanelOpen(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -214,83 +182,12 @@ const MapComponent: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Auto-hide other layers when trend layer loads
-  useEffect(() => {
-    if (isTrendDisplayed) {
-      console.log("Trend layer loaded - hiding other layers");
-      setLayerVisibility(prev => ({
-        ...prev,
-        'basin-boundary': false,
-        rivers: false,
-        stretches: false,
-        drains: false,
-        catchments: false,
-        villages: false,
-        'manual-wells': false,
-        raster: false,
-        'village-overlay': false,
-        contours: false,
-        gsr: false,
-        'trend-wells': true // Keep trend visible
-      }));
-    }
-  }, [isTrendDisplayed]);
-
-  // Auto-hide other layers when GSR layer loads
-  useEffect(() => {
-    if (isGsrDisplayed) {
-      console.log("GSR layer loaded - hiding other layers");
-      setLayerVisibility(prev => ({
-        ...prev,
-        'basin-boundary': false,
-        rivers: false,
-        stretches: false,
-        drains: false,
-        catchments: false,
-        villages: false,
-        'manual-wells': false,
-        raster: false,
-        'village-overlay': false,
-        contours: false,
-        'trend-wells': false,
-        gsr: true // Keep GSR visible
-      }));
-    }
-  }, [isGsrDisplayed]);
-
-  // Auto-hide other layers when Raster layer loads
-  useEffect(() => {
-    if (!mapInstance) return;
-
-    // When raster is displayed, hide other layers including GSR
-    if (isRasterDisplayed) {
-      console.log("Raster layer loaded - hiding other layers including GSR");
-      setLayerVisibility(prev => ({
-        ...prev,
-        'basin-boundary': false,
-        rivers: false,
-        stretches: false,
-        drains: false,
-        catchments: false,
-        villages: false,
-        'manual-wells': false,
-        'village-overlay': false,
-        contours: true,
-        'trend-wells': false,
-        gsr: false,  // Hide GSR when raster loads
-        raster: true, // Show raster
-      }));
-    }
-  }, [isRasterDisplayed, mapInstance]);
-
-
   // Sync map layer visibility with state changes
   useEffect(() => {
     if (!mapInstance) return;
 
     const layers = mapInstance.getAllLayers();
 
-    // Apply visibility changes to all layers based on current state
     Object.entries(layerVisibility).forEach(([layerId, visible]) => {
       let targetLayer;
 
@@ -313,20 +210,8 @@ const MapComponent: React.FC = () => {
         case 'villages':
           targetLayer = layers.find(layer => layer.get('name') === 'villages');
           break;
-        case 'manual-wells':
-          targetLayer = layers.find(layer => layer.get('name') === 'manual-wells');
-          break;
-        case 'raster':
-          targetLayer = layers.find(layer => layer.get('type') === 'raster');
-          break;
-        case 'contours':
-          targetLayer = layers.find(layer => layer.get('type') === 'contour');
-          break;
-        case 'trend-wells':
-          targetLayer = layers.find(layer => layer.get('type') === 'trend');
-          break;
-        case 'gsr':
-          targetLayer = layers.find(layer => layer.get('type') === 'gsr');
+        case 'groundwater':
+          targetLayer = layers.find(layer => layer.get('name') === 'groundwater-layer');
           break;
       }
 
@@ -336,17 +221,8 @@ const MapComponent: React.FC = () => {
       }
     });
 
-    // Handle village overlay separately
-    if (layerVisibility['village-overlay'] !== isVillageOverlayVisible) {
-      const villageOverlayLayer = layers.find(layer => layer.get('name') === 'village-overlay');
-      if (villageOverlayLayer) {
-        villageOverlayLayer.setVisible(layerVisibility['village-overlay']);
-      }
-    }
-
-    // Force map refresh
     mapInstance.render();
-  }, [layerVisibility, mapInstance, isVillageOverlayVisible]);
+  }, [layerVisibility, mapInstance]);
 
   const handleBaseMapChange = (baseMapKey: string) => {
     changeBaseMap(baseMapKey);
@@ -378,20 +254,6 @@ const MapComponent: React.FC = () => {
     const layers = mapInstance.getAllLayers();
 
     switch (layerId) {
-      case 'raster':
-        const rasterLayer = layers.find(layer => layer.get('type') === 'raster');
-        if (rasterLayer) {
-          rasterLayer.setVisible(newVisibility);
-          console.log(`Raster layer visibility set to: ${newVisibility}`);
-        }
-        break;
-      case 'contours':
-        const contourLayer = layers.find(layer => layer.get('type') === 'contour');
-        if (contourLayer) {
-          contourLayer.setVisible(newVisibility);
-          console.log(`Contour layer visibility set to: ${newVisibility}`);
-        }
-        break;
       case 'basin-boundary':
         const basinBoundaryLayer = layers.find(layer => layer.get('name') === 'basin-boundary');
         if (basinBoundaryLayer) {
@@ -434,36 +296,15 @@ const MapComponent: React.FC = () => {
           console.log(`Villages layer visibility set to: ${newVisibility}`);
         }
         break;
-      case 'manual-wells':
-        const manualWellLayer = layers.find(layer => layer.get('name') === 'manual-wells');
-        if (manualWellLayer) {
-          manualWellLayer.setVisible(newVisibility);
-          console.log(`Manual wells layer visibility set to: ${newVisibility}`);
-        }
-        break;
-      case 'village-overlay':
-        if (newVisibility !== isVillageOverlayVisible && toggleVillageOverlay) {
-          toggleVillageOverlay();
-        }
-        console.log(`Village overlay toggled to: ${newVisibility}`);
-        break;
-      case 'trend-wells':
-        const trendLayer = layers.find(layer => layer.get('type') === 'trend');
-        if (trendLayer) {
-          trendLayer.setVisible(newVisibility);
-          console.log(`Trend wells layer visibility set to: ${newVisibility}`);
-        }
-        break;
-      case 'gsr':
-        const gsrLayer = layers.find(layer => layer.get('type') === 'gsr');
-        if (gsrLayer) {
-          gsrLayer.setVisible(newVisibility);
-          console.log(`GSR layer visibility set to: ${newVisibility}`);
+      case 'groundwater':
+        const groundwaterLayer = layers.find(layer => layer.get('name') === 'groundwater-layer');
+        if (groundwaterLayer) {
+          groundwaterLayer.setVisible(newVisibility);
+          console.log(`Groundwater layer visibility set to: ${newVisibility}`);
         }
         break;
     }
 
-    // Force map refresh
     mapInstance.render();
   };
 
@@ -473,72 +314,26 @@ const MapComponent: React.FC = () => {
     }
   };
 
-  const zoomToRaster = () => {
-    if (mapInstance && isRasterDisplayed) {
-      const layers = mapInstance.getAllLayers();
-      const rasterLayer = layers.find(layer => layer.get('type') === 'raster');
-      if (rasterLayer) {
-        const extent = rasterLayer.getExtent();
+  const zoomToGroundwater = () => {
+    if (!mapInstance) return;
+    const layers = mapInstance.getAllLayers();
+    const groundwaterLayer = layers.find(layer => layer.get('name') === 'groundwater-layer');
+    if (groundwaterLayer) {
+      const source = groundwaterLayer.getSource() as VectorSource;
+      if (source) {
+        const extent = source.getExtent();
         if (extent) {
           mapInstance.getView().fit(extent, {
-            padding: [50, 50, 50, 50],
-            duration: 1000
+            padding: [60, 60, 60, 60],
+            duration: 1000,
+            maxZoom: 17
           });
         }
       }
     }
   };
 
-  const zoomToContours = () => {
-    if (mapInstance && isContourDisplayed) {
-      const layers = mapInstance.getAllLayers();
-      const contourLayer = layers.find(layer => layer.get('type') === 'contour');
-      if (contourLayer) {
-        const source = contourLayer.getSource() as VectorSource;
-        if (source) {
-          const extent = source.getExtent();
-          if (extent) {
-            mapInstance.getView().fit(extent, {
-              padding: [50, 50, 50, 50],
-              duration: 1000
-            });
-          }
-        }
-      }
-    }
-  };
-
-  const zoomToGsr = () => {
-    if (!mapInstance || !isGsrDisplayed) return;
-    const layers = mapInstance.getAllLayers();
-    const gsrLayer = layers.find(layer => layer.get('type') === 'gsr');
-    if (gsrLayer) {
-      const source = gsrLayer.getSource() as VectorSource;
-      if (source) {
-        const extent = source.getExtent();
-        if (extent) {
-          mapInstance.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 1000 });
-        }
-      }
-    }
-  };
-
-  const getContourColor = (elevation: number, minElevation: number, maxElevation: number) => {
-    const normalizedElevation = (elevation - minElevation) / (maxElevation - minElevation);
-    const red = Math.round(255 * normalizedElevation);
-    const blue = Math.round(255 * (1 - normalizedElevation));
-    const green = Math.round(128 * (1 - Math.abs(normalizedElevation - 0.5) * 2));
-    return `rgb(${red}, ${green}, ${blue})`;
-  };
-
-  const removeContours = () => {
-    if (removeContourLayer) {
-      removeContourLayer();
-      setLayerVisibility(prev => ({ ...prev, contours: false }));
-    }
-  };
-
-  // Updated getCurrentLayers function for drainage system
+  // Get current layers for display
   const getCurrentLayers = (): LayerInfo[] => {
     const layers: LayerInfo[] = [];
 
@@ -563,118 +358,26 @@ const MapComponent: React.FC = () => {
       layers.push({ id: 'catchments', name: 'Catchments', visible: layerVisibility.catchments, type: 'drainage' });
     }
 
-    // Show villages if catchments are selected and villages are chosen
-    if (selectedCatchments.length > 0 && selectedVillages.length > 0) {
+    // Show villages if villages are chosen
+    if (selectedVillages.length > 0) {
       layers.push({ id: 'villages', name: 'Villages', visible: layerVisibility.villages, type: 'drainage' });
     }
 
-    // Show manual wells if area is confirmed
-    if (areaConfirmed) {
-      layers.push({ id: 'manual-wells', name: 'Manual Wells', visible: layerVisibility['manual-wells'], type: 'wells' });
-    }
-
-    // Show raster layer if displayed
-    if (isRasterDisplayed) {
-      layers.push({ id: 'raster', name: 'Raster Layer', visible: layerVisibility.raster, type: 'raster' });
-
-      // Show village overlay if villages exist and raster is displayed
-      if (selectedVillages.length > 0) {
-        layers.push({ id: 'village-overlay', name: 'Village Overlay', visible: layerVisibility['village-overlay'], type: 'village-overlay' });
+    // Show RSQ/Groundwater layer if present
+    if (mapInstance) {
+      const mapLayers = mapInstance.getAllLayers();
+      const groundwaterLayer = mapLayers.find(layer => layer.get('name') === 'groundwater-layer');
+      if (groundwaterLayer) {
+        layers.push({ id: 'groundwater', name: 'RSQ Analysis', visible: layerVisibility.groundwater, type: 'drainage' });
       }
-    }
-
-    // Show contour layer if displayed
-    if (isContourDisplayed) {
-      layers.push({ id: 'contours', name: 'Contour Lines', visible: layerVisibility.contours, type: 'contour' });
-    }
-
-    // Show trend layer if displayed
-    if (isTrendDisplayed) {
-      layers.push({ id: 'trend-wells', name: 'Trend Wells', visible: layerVisibility['trend-wells'], type: 'trend' });
-    }
-
-    // Show GSR polygons if present
-    if (isGsrDisplayed) {
-      layers.push({ id: 'gsr', name: 'GSR Polygons', visible: layerVisibility.gsr, type: 'drainage' });
     }
 
     return layers;
   };
 
   const getLayerIcon = (type: string) => {
-    switch (type) {
-      case 'drainage':
-        return 'M4 4h16v16H4V4zm2 2v12h12V6H6z';
-      case 'raster':
-        return 'M3 3h18v18H3V3zm2 2v14h14V5H5z';
-      case 'wells':
-        return 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z';
-      case 'village-overlay':
-        return 'M4 4h16v16H4V4zm2 2v12h12V6H6z';
-      case 'contour':
-        return 'M3 12h18m-9-9v18';
-      case 'trend':
-        return 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z';
-      default:
-        return 'M4 4h16v16H4V4z';
-    }
+    return 'M4 4h16v16H4V4zm2 2v12h12V6H6z';
   };
-
-  // NEW: Opacity control configuration for drainage system
-  const opacityLayerConfig = [
-    {
-      key: 'basemap' as const,
-      label: 'Base Map',
-      visible: true,
-      description: 'Background map layer'
-    },
-    {
-      key: 'boundaries' as const, // This controls all drainage boundaries together
-      label: 'Drainage Boundaries',
-      visible: true,
-      description: 'Basin, rivers, stretches, drains, catchments, villages'
-    },
-    {
-      key: 'raster' as const,
-      label: 'Raster Data',
-      visible: isRasterDisplayed,
-      description: 'Raster overlay data'
-    },
-    {
-      key: 'contour' as const,
-      label: 'Contours',
-      visible: isContourDisplayed,
-      description: 'Contour lines'
-    },
-    {
-      key: 'trend' as const,
-      label: 'Trend Analysis',
-      visible: isTrendDisplayed,
-      description: 'Trend analysis data'
-    },
-    {
-      key: 'gsr' as const,
-      label: 'GSR Classification',
-      visible: isGsrDisplayed,
-      description: 'Groundwater resource classification'
-    },
-    {
-      key: 'wellPoints' as const,
-      label: 'Well Points',
-      visible: areaConfirmed,
-      description: 'Well point locations'
-    },
-    {
-      key: 'villageOverlay' as const,
-      label: 'Village Overlay',
-      visible: isVillageOverlayVisible && selectedVillages.length > 0,
-
-      description: 'Village boundaries overlay'
-    }
-  ];
-
-  // NEW: Helper function to get opacity percentage
-  const getOpacityPercentage = (value: number) => `${value * 10}%`;
 
   return (
     <div
@@ -766,7 +469,7 @@ const MapComponent: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {(layer.type === 'drainage' || layer.type === 'village-overlay') && (
+                      {layer.id !== 'groundwater' && (
                         <button
                           onClick={zoomToCurrentLayer}
                           className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
@@ -777,60 +480,11 @@ const MapComponent: React.FC = () => {
                           </svg>
                         </button>
                       )}
-                      {layer.type === 'raster' && (
+                      {layer.id === 'groundwater' && (
                         <button
-                          onClick={zoomToRaster}
+                          onClick={zoomToGroundwater}
                           className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
-                          title="Zoom to raster extent"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </button>
-                      )}
-                      {layer.type === 'contour' && (
-                        <>
-                          <button
-                            onClick={zoomToContours}
-                            className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
-                            title="Zoom to contour extent"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={removeContours}
-                            className="p-1 text-gray-500 hover:text-red-600 transition-colors"
-                            title="Remove contour layer"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </>
-                      )}
-                      {layer.type === 'trend' && (
-                        <button
-                          onClick={() => {
-                            if (removeTrendLayer) {
-                              removeTrendLayer();
-                            }
-                            setLayerVisibility(prev => ({ ...prev, 'trend-wells': false }));
-                          }}
-                          className="p-1 text-gray-500 hover:text-red-600 transition-colors"
-                          title="Remove trend wells"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
-                      {layer.id === 'gsr' && (
-                        <button
-                          onClick={zoomToGsr}
-                          className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
-                          title="Zoom to GSR extent"
+                          title="Zoom to RSQ extent"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -855,87 +509,6 @@ const MapComponent: React.FC = () => {
         )}
       </div>
 
-      {/* NEW: Opacity Control Panel */}
-      <div className="absolute top-16 left-9 z-[10]" ref={opacityPanelRef}>
-        <button
-          onClick={() => setIsOpacityPanelOpen(!isOpacityPanelOpen)}
-          className="bg-white hover:bg-gray-50 border border-gray-300 rounded-lg p-3 shadow-lg transition-colors duration-200 flex items-center gap-2"
-          title="Layer Opacity Controls"
-        >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <span className="text-sm font-medium text-gray-700">Opacity</span>
-        </button>
-
-        {isOpacityPanelOpen && (
-          <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-300 rounded-lg shadow-xl z-[1001]">
-            <div className="p-3">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">Layer Opacity</h3>
-                <button
-                  onClick={resetAllOpacities}
-                  className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
-                  title="Reset all opacities to default"
-                >
-                  Reset All
-                </button>
-              </div>
-
-              <div className="space-y-4 max-h-64 overflow-y-auto">
-                {opacityLayerConfig
-                  .filter(layer => layer.visible)
-                  .map((layer) => {
-                    const currentOpacity = getSafeOpacityValue(layer.key);
-
-                    return (
-                      <div key={layer.key} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <label className="text-sm font-medium text-gray-700">
-                                {layer.label}
-                              </label>
-                              <p className="text-xs text-gray-500">{layer.description}</p>
-                            </div>
-                          </div>
-                          <div className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                            {getOpacityPercentage(currentOpacity)}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-400 w-4">1</span>
-                          <div className="flex-1 relative">
-                            <input
-                              type="range"
-                              min="1"
-                              max="10"
-                              step="1"
-                              value={currentOpacity} // Always controlled with valid number
-                              onChange={(e) => {
-                                const newValue = parseInt(e.target.value, 10);
-                                if (!isNaN(newValue)) {
-                                  setLayerOpacity(layer.key, newValue);
-                                }
-                              }}
-                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(currentOpacity - 1) * 11.11}%, #E5E7EB ${(currentOpacity - 1) * 11.11}%, #E5E7EB 100%)`
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs text-gray-400 w-6">10</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Legend Control Panel */}
       <div className="absolute bottom-27 right-4 z-[10]" ref={legendPanelRef}>
         <button
@@ -949,107 +522,41 @@ const MapComponent: React.FC = () => {
           <span className="text-sm font-medium text-gray-700">Legend</span>
         </button>
 
-        {isLegendPanelOpen && (legendData?.raster || legendData?.contour || legendData?.trend || legendData?.gsr) && (
+        {isLegendPanelOpen && (
           <div className="absolute bottom-full right-0 mb-2 w-72 bg-white border border-gray-300 rounded-lg shadow-xl z-[1001] max-h-80 overflow-y-auto">
             <div className="p-3">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Map Legend</h3>
 
-              {legendData?.raster && (
+              {/* RSQ Legend */}
+              {mapInstance && (() => {
+                const layers = mapInstance.getAllLayers();
+                const groundwaterLayer = layers.find(layer => layer.get('name') === 'groundwater-layer');
+                return groundwaterLayer && layerVisibility.groundwater !== false;
+              })() && (
                 <div className="mb-4">
-                  <h4 className="text-xs font-medium text-gray-600 mb-2">
-                    Raster: {legendData.raster.parameter.toUpperCase()}
-                  </h4>
-                  <div className="space-y-1">
-                    {legendData.raster.colors.map((color, index) => (
+                  <h4 className="text-xs font-medium text-gray-600 mb-2">RSQ Classification</h4>
+                  <div className="space-y-1.5">
+                    {RSQ_LEGEND.map((item, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div
-                          className="w-4 h-4 rounded"
-                          style={{ backgroundColor: color }}
+                          className="w-5 h-5 rounded border border-gray-300"
+                          style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-xs text-gray-700">
-                          {legendData?.raster && legendData.raster.colors.length === legendData.raster.labels.length && (
-                            legendData.raster.labels[index]
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {legendData?.gsr && (
-                <div className="mb-4">
-                  <h4 className="text-xs font-medium text-gray-600 mb-2">GSR Classification</h4>
-                  <div className="space-y-1">
-                    {legendData.gsr.classes.map((c, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded" style={{ backgroundColor: c.color }} />
-                        <span className="text-xs text-gray-700">{c.label} ({c.count})</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {legendData?.contour && (
-                <div>
-                  <h4 className="text-xs font-medium text-gray-600 mb-2">
-                    Contours (Elevation)
-                  </h4>
-                  <div className="space-y-1">
-                    {(() => {
-                      const { minElevation, maxElevation, interval } = legendData.contour;
-                      const steps = Math.floor((maxElevation - minElevation) / interval) + 1;
-                      const elevationLevels = Array.from(
-                        { length: steps },
-                        (_, i) => minElevation + i * interval
-                      ).filter((elev) => elev <= maxElevation);
-
-                      return elevationLevels.map((elevation, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div
-                            className="w-4 h-4 rounded"
-                            style={{
-                              backgroundColor: getContourColor(
-                                elevation,
-                                minElevation,
-                                maxElevation
-                              ),
-                            }}
-                          />
-                          <span className="text-xs text-gray-700">
-                            {elevation.toFixed(2)} m
-                          </span>
+                        <div>
+                          <div className="text-xs font-medium text-gray-800">
+                            {item.label}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {item.range}
+                          </div>
                         </div>
-                      ));
-                    })()}
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
-
-              {legendData?.trend && (
-                <div className="mb-4">
-                  <h4 className="text-xs font-medium text-gray-600 mb-2">Trend Wells</h4>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-red-500" />
-                      <span className="text-xs text-gray-700">Increasing Trend</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-green-500" />
-                      <span className="text-xs text-gray-700">Decreasing Trend</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-gray-500" />
-                      <span className="text-xs text-gray-700">No Trend</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-yellow-500" />
-                      <span className="text-xs text-gray-700">Insufficient Data</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    <p>Total Wells: {legendData.trend.totalWells}</p>
-                    <p>Significant: {legendData.trend.significant}</p>
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs text-gray-500 italic">
+                      Stage of Ground Water Extraction
+                    </p>
                   </div>
                 </div>
               )}
