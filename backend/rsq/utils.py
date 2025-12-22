@@ -17,6 +17,6 @@ def get_stage_status_and_color(stage):
     elif stage <= 90:
         return "Semi-Critical", "#f39c12"    # Orange
     elif stage <= 100:
-        return "Critical", "#e74c3c"         # Red
+        return "Critical", "#6006cd"         # Red
     else:
         return "Over-Exploited", "#c0392b"   # Dark Red
