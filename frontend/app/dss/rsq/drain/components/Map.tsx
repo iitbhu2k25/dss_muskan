@@ -4,6 +4,8 @@ import 'ol/ol.css';
 import { toLonLat } from 'ol/proj';
 import { METERS_PER_UNIT } from 'ol/proj/Units';
 import VectorSource from 'ol/source/Vector';
+import { FaTimes, FaLayerGroup, FaEye, FaEyeSlash } from "react-icons/fa";
+
 import { useMap } from '@/contexts/rsq/drain/MapContext';
 import { useLocation } from '@/contexts/rsq/drain/LocationContext';
 
@@ -442,73 +444,105 @@ const MapComponent: React.FC = () => {
       </div>
 
       {/* Layer Control Panel */}
-      <div className="absolute top-2 left-9 z-[10]" ref={layerPanelRef}>
+<div className="absolute top-2 left-3 ml-7 z-[10]" ref={layerPanelRef}>
+  
+  {/* Toggle Button */}
+  <button
+    onClick={() => setIsLayerPanelOpen(!isLayerPanelOpen)}
+    className="bg-white rounded-lg shadow-xl px-3 py-2
+               border border-gray-200
+               flex items-center gap-2
+               hover:bg-gray-50 transition-all"
+    title="Layer Controls"
+  >
+    <FaLayerGroup className="text-blue-600 text-sm" />
+    <span className="text-xs font-semibold text-gray-800">Layers</span>
+  </button>
+
+  {/* Panel */}
+  {isLayerPanelOpen && (
+    <div className="absolute top-full left-0 mt-2 w-64
+                    bg-white rounded-lg shadow-xl p-2 z-[1001]">
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2 pb-2 border-b">
+        <div className="flex items-center gap-2">
+          <FaLayerGroup className="text-blue-600 text-base" />
+          <h3 className="font-semibold text-sm text-gray-800">
+            Active Layers
+          </h3>
+        </div>
+
         <button
-          onClick={() => setIsLayerPanelOpen(!isLayerPanelOpen)}
-          className="bg-white hover:bg-gray-50 border border-gray-300 rounded-lg p-3 shadow-lg transition-colors duration-200 flex items-center gap-2"
-          title="Layer Controls"
+          onClick={() => setIsLayerPanelOpen(false)}
+          className="text-gray-500 hover:text-red-600 p-1 transition-colors"
+          title="Close panel"
         >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-          <span className="text-sm font-medium text-gray-700">Layers</span>
+          <FaTimes className="text-sm" />
         </button>
+      </div>
 
-        {isLayerPanelOpen && (
-          <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-gray-300 rounded-lg shadow-xl z-[1001]">
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Map Layers</h3>
+      {/* Layers List */}
+      <div className="space-y-1 max-h-60 overflow-y-auto">
+        {getCurrentLayers().length > 0 ? (
+          getCurrentLayers().map((layer) => (
+            <div
+              key={layer.id}
+              className="flex items-center justify-between
+                         px-2 py-1 rounded-md
+                         hover:bg-gray-100 transition-all"
+            >
+              {/* Layer Name */}
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-xs font-medium text-gray-700">
+                  {layer.name}
+                </span>
+              </div>
 
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {getCurrentLayers().map((layer) => (
-                  <div key={layer.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md">
-                    <div className="flex items-center gap-3">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getLayerIcon(layer.type)} />
-                      </svg>
-                      <span className="text-sm text-gray-700">{layer.name}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {layer.id !== 'groundwater' && (
-                        <button
-                          onClick={zoomToCurrentLayer}
-                          className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
-                          title="Zoom to extent"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </button>
-                      )}
-                      {layer.id === 'groundwater' && (
-                        <button
-                          onClick={zoomToGroundwater}
-                          className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
-                          title="Zoom to RSQ extent"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </button>
-                      )}
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={layer.visible}
-                          onChange={() => handleLayerToggle(layer.id)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                  </div>
+              {/* Actions */}
+              <div className="flex items-center gap-1">
+                {(layer.id === "groundwater" ? (
+                  <button
+                    onClick={zoomToGroundwater}
+                    className="p-1 text-gray-500 hover:text-blue-600"
+                    title="Zoom"
+                  >
+                    🔍
+                  </button>
+                ) : (
+                  <button
+                    onClick={zoomToCurrentLayer}
+                    className="p-1 text-gray-500 hover:text-blue-600"
+                    title="Zoom"
+                  >
+                    🔍
+                  </button>
                 ))}
+
+                <button
+                  onClick={() => handleLayerToggle(layer.id)}
+                  className={`p-1 rounded-full transition-all text-xs ${
+                    layer.visible
+                      ? "bg-blue-500 text-white hover:bg-blue-600"
+                      : "bg-gray-300 text-gray-600 hover:bg-gray-400"
+                  }`}
+                  title={layer.visible ? "Hide layer" : "Show layer"}
+                >
+                  {layer.visible ? <FaEye /> : <FaEyeSlash />}
+                </button>
               </div>
             </div>
-          </div>
+          ))
+        ) : (
+          <p className="text-xs text-gray-500 text-center py-1">
+            No layers loaded
+          </p>
         )}
       </div>
+    </div>
+  )}
+</div>
+
 
       {/* Legend Control Panel */}
       <div className="absolute bottom-27 right-4 z-[10]" ref={legendPanelRef}>

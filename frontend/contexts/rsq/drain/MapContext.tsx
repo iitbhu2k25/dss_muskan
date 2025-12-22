@@ -809,7 +809,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
       } else if (selectedRiver && riverCode === selectedRiver && !selectedStretch) {
         baseStyle = new Style({
           stroke: new Stroke({
-            color: "rgba(202, 12, 12, 1)ff",
+            color: "rgba(202, 12, 12, 1)",
             width: 3,
           }),
         });
