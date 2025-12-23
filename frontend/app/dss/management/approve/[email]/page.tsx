@@ -31,7 +31,7 @@ export default function ApprovePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const url = `http://localhost:9000/django/management/leave-employee-email-get/${encodedEmail}`;
+        const url = `/django/management/leave-employee-email-get/${encodedEmail}`;
         const res = await fetch(url);
         const json = await res.json();
         setLeaveData(json?.data?.[0] || null);
@@ -51,7 +51,7 @@ export default function ApprovePage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch("http://localhost:9000/django/management/leave-update-status", {
+      const res = await fetch("/django/management/leave-update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

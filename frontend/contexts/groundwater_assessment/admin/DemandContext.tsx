@@ -320,7 +320,7 @@ const updateIndustrialConsumption = (industry: string, subtype: string, newConsu
       setCropsLoading(prev => ({ ...prev, [season]: true }));
       setCropsError(prev => ({ ...prev, [season]: null }));
 
-      const response = await fetch('http://localhost:6500/gwa/crops', {
+      const response = await fetch('/fastm/gwa/crops', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -412,7 +412,7 @@ const updateIndustrialConsumption = (industry: string, subtype: string, newConsu
 
       console.log('Computing domestic demand via forecast-population with payload:', requestPayload);
 
-      const response = await fetch('http://localhost:6500/gwa/forecast-population', {
+      const response = await fetch('/fastm/gwa/forecast-population', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -472,7 +472,7 @@ const updateIndustrialConsumption = (industry: string, subtype: string, newConsu
 
       console.log('Computing agricultural demand with payload:', requestPayload);
 
-      const response = await fetch('http://localhost:6500/gwa/agricultural', {
+      const response = await fetch('/fastm/gwa/agricultural', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -554,7 +554,7 @@ const updateIndustrialConsumption = (industry: string, subtype: string, newConsu
 
       console.log('Computing industrial demand with payload:', requestPayload);
 
-      const response = await fetch('http://localhost:6500/gwa/industrial', {
+      const response = await fetch('/fastm/gwa/industrial', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
