@@ -135,7 +135,7 @@ const sortedEnhancedDistricts = useMemo(() => {
                 disabled={!isStateSelectable(state.id)}
               >
                 {state.name}
-                {!isStateSelectable(state.id) && " (Coming Soon)"}
+                {!isStateSelectable(state.id) && ""}
               </option>
             ))}
           </select>

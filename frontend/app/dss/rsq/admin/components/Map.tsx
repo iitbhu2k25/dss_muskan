@@ -45,7 +45,7 @@ const baseMapNames: Record<string, { name: string; icon: string }> = {
 const RSQ_LEGEND = [
   { label: 'Safe', color: '#27ae60', range: '≤ 70%' },
   { label: 'Semi-Critical', color: '#f39c12', range: '70-90%' },
-  { label: 'Critical', color: '#e74c3c', range: '90-100%' },
+  { label: 'Critical', color: '#6006cd', range: '90-100%' },
   { label: 'Over-Exploited', color: '#c0392b', range: '> 100%' },
   { label: 'No Data', color: '#95a5a6', range: 'N/A' },
 ];
@@ -382,13 +382,13 @@ const Map: React.FC = () => {
         )}
 
         {/* Show Legend Box */}
-{activeLayers.groundwater &&
-  layerVisibility.groundwater !== false &&
-  !showLegendPanel && (
-    <div className="absolute bottom-6 left-3 z-10">
-      <div
-        onClick={() => setShowLegendPanel(true)}
-        className="
+        {activeLayers.groundwater &&
+          layerVisibility.groundwater !== false &&
+          !showLegendPanel && (
+            <div className="absolute bottom-6 left-46 z-10">
+              <div
+                onClick={() => setShowLegendPanel(true)}
+                className="
           cursor-pointer
           bg-white
           border border-blue-200
@@ -400,15 +400,15 @@ const Map: React.FC = () => {
           hover:bg-blue-50
           transition-all
         "
-        title="Show Groundwater Legend"
-      >
-        {/* <FaTint className="text-blue-600 text-sm" /> */}
-        <span className="text-sm font-semibold text-blue-700">
-          Legend
-        </span>
-      </div>
-    </div>
-  )}
+                title="Show Groundwater Legend"
+              >
+                {/* <FaTint className="text-blue-600 text-sm" /> */}
+                <span className="text-sm font-semibold text-blue-700">
+                  Legend
+                </span>
+              </div>
+            </div>
+          )}
 
         {/* Map Controls - BOTTOM RIGHT */}
         <div className="absolute bottom-4 right-4 z-[10] flex flex-col gap-2">
@@ -428,7 +428,7 @@ const Map: React.FC = () => {
         </div>
 
         {/* Coordinates and Scale Display - BOTTOM LEFT */}
-        <div className="absolute bottom-4 left-25 z-[10] bg-white/90 backdrop-blur-sm border border-gray-300 rounded-lg p-3 shadow-lg">
+        <div className="absolute bottom-4 left-3 z-[10] bg-white/90 backdrop-blur-sm border border-gray-300 rounded-lg p-3 shadow-lg">
           <div className="space-y-1 text-xs">
             {coordinates && (
               <div className="flex items-center gap-2">
