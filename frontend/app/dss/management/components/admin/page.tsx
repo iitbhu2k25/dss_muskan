@@ -1,4 +1,6 @@
+
 // components/management/admin/page.tsx
+'use client';
 import { useState } from 'react';
 import { LoginProvider, useLogin } from '@/contexts/management/AdminContext/LoginContext';
 import { RegisterProvider } from '@/contexts/management/AdminContext/RegisterContext';
