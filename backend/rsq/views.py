@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from .models import Block, Village, GroundWaterData
 from .serializers import BlockSerializer, VillageSerializer
 from .utils import get_stage_status_and_color
+from .utils import round_props_to_2_decimals
 
 import os
 import geopandas as gpd
@@ -150,10 +151,11 @@ class VillageGroundWaterGeoJSONAPIView(APIView):
                     props.update(db_dict[vlcode_int])
 
                 features.append({
-                    "type": "Feature",
-                    "geometry": row.geometry.__geo_interface__,   # EPSG:4326 coordinates (lat/lon)
-                    "properties": props
-                })
+                "type": "Feature",
+                "geometry": row.geometry.__geo_interface__,
+                "properties": round_props_to_2_decimals(props)
+            })
+
 
             # Return standard GeoJSON in EPSG:4326 (no CRS declaration needed - it's the default)
             final_geojson = {

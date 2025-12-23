@@ -20,3 +20,17 @@ def get_stage_status_and_color(stage):
         return "Critical", "#6006cd"         # Red
     else:
         return "Over-Exploited", "#c0392b"   # Dark Red
+    
+
+
+def round_props_to_2_decimals(props):
+    rounded = {}
+    for k, v in props.items():
+        if isinstance(v, float):
+            rounded[k] = round(v, 2)
+        elif isinstance(v, int):
+            rounded[k] = v  # keep ints as-is
+        else:
+            rounded[k] = v
+    return rounded
+

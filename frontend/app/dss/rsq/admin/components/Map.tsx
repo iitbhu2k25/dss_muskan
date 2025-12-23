@@ -385,7 +385,7 @@ const Map: React.FC = () => {
         {activeLayers.groundwater &&
           layerVisibility.groundwater !== false &&
           !showLegendPanel && (
-            <div className="absolute bottom-6 left-46 z-10">
+            <div className="absolute bottom-15 right-4 z-10">
               <div
                 onClick={() => setShowLegendPanel(true)}
                 className="
