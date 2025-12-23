@@ -26,9 +26,6 @@ export default function RSQAnalysis() {
   } | null>(null);
 
   const [globalSearch, setGlobalSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
 
@@ -144,15 +141,6 @@ export default function RSQAnalysis() {
     return filtered;
   }, [groundWaterData, sortConfig, globalSearch, statusFilter]);
 
-  /* ================= PAGINATION ================= */
-
-  const paginatedData = processedData.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  const totalPages = Math.ceil(processedData.length / rowsPerPage);
-
   /* ================= STATS ================= */
 
   const stats = useMemo(() => {
@@ -172,7 +160,57 @@ export default function RSQAnalysis() {
   const clearAllFilters = () => {
     setGlobalSearch("");
     setStatusFilter("all");
-    setCurrentPage(1);
+  };
+
+  /* ================= DOWNLOAD CSV ================= */
+
+  const downloadCSV = () => {
+    if (!processedData.length) {
+      alert("No data to download");
+      return;
+    }
+
+    try {
+      // Prepare CSV headers
+      const headers = [...allColumns.map(formatColumnName), "Status"];
+      
+      // Prepare CSV rows
+      const rows = processedData.map(feature => {
+        const p = feature.properties;
+        const rowData = allColumns.map(key => {
+          const value = formatCellValue(p[key]);
+          // Escape commas and quotes in CSV
+          return `"${String(value).replace(/"/g, '""')}"`;
+        });
+        // Add status column
+        rowData.push(`"${p.status || 'No Data'}"`);
+        return rowData.join(',');
+      });
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.map(h => `"${h}"`).join(','),
+        ...rows
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `RSQ_Analysis_${selectedYear.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('✅ CSV downloaded successfully');
+    } catch (error) {
+      console.error('❌ Error downloading CSV:', error);
+      alert('Failed to download CSV. Please try again.');
+    }
   };
 
   if (selectedVillages.length === 0) {
@@ -273,10 +311,7 @@ export default function RSQAnalysis() {
                   type="text"
                   placeholder="Search across all columns..."
                   value={globalSearch}
-                  onChange={(e) => {
-                    setGlobalSearch(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
                   className="border border-gray-300 pl-9 pr-9 py-2 rounded-md w-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 />
                 {globalSearch && (
@@ -291,19 +326,25 @@ export default function RSQAnalysis() {
                 )}
               </div>
 
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="border border-gray-300 px-3 py-2 rounded-md text-sm shadow-sm font-medium hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value={10}>10 rows</option>
-                <option value={25}>25 rows</option>
-                <option value={50}>50 rows</option>
-                <option value={100}>100 rows</option>
-              </select>
+              {/* ✅ RESULTS COUNT */}
+              <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-md">
+                <span className="text-xs font-semibold text-blue-700">
+                  Showing {processedData.length} {processedData.length === 1 ? 'result' : 'results'}
+                </span>
+              </div>
+
+              {/* ✅ DOWNLOAD CSV BUTTON */}
+              {processedData.length > 0 && (
+                <button
+                  onClick={downloadCSV}
+                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-all shadow-sm hover:shadow-md font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download CSV
+                </button>
+              )}
 
               {(globalSearch || statusFilter !== "all") && (
                 <button
@@ -336,16 +377,21 @@ export default function RSQAnalysis() {
             </div>
           )}
 
-          {/* ================= TABLE CARD ================= */}
+          {/* ================= TABLE CARD WITH BOTH SCROLLBARS ================= */}
 
           {groundWaterData && !isLoading && (
             <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-              <div className="overflow-x-auto">
+              {/* ✅ SCROLLABLE CONTAINER - Both vertical AND horizontal scroll */}
+              <div 
+                className="overflow-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
+                style={{ maxHeight: '600px', maxWidth: '100%' }}
+              >
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-slate-700 to-slate-800">
+                  {/* ✅ STICKY HEADER */}
+                  <thead className="bg-gradient-to-r from-slate-700 to-slate-800 sticky top-0 z-10">
                     <tr>
                       {allColumns.map((key) => (
-                        <th key={key} className="px-4 py-3 text-left">
+                        <th key={key} className="px-4 py-3 text-left whitespace-nowrap">
                           <div
                             className="flex items-center gap-1.5 cursor-pointer hover:text-blue-300 transition-colors select-none group"
                             onClick={() => handleSort(key)}
@@ -365,14 +411,14 @@ export default function RSQAnalysis() {
                           </div>
                         </th>
                       ))}
-                      <th className="px-4 py-3 text-left">
+                      <th className="px-4 py-3 text-left whitespace-nowrap">
                         <span className="font-semibold text-xs text-white uppercase tracking-wide">Status</span>
                       </th>
                     </tr>
                   </thead>
 
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedData.length === 0 ? (
+                    {processedData.length === 0 ? (
                       <tr>
                         <td colSpan={allColumns.length + 1} className="text-center py-12">
                           <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -382,7 +428,7 @@ export default function RSQAnalysis() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedData.map((f, i) => {
+                      processedData.map((f, i) => {
                         const p = f.properties;
 
                         return (
@@ -397,7 +443,7 @@ export default function RSQAnalysis() {
                                   : formatCellValue(p[key])}
                               </td>
                             ))}
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span
                                 className="px-2.5 py-1 rounded-md text-white text-xs font-semibold inline-block shadow-sm"
                                 style={{ backgroundColor: p.color || "#999" }}
@@ -412,54 +458,18 @@ export default function RSQAnalysis() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
 
-          {/* ================= PAGINATION CARD ================= */}
-
-          {totalPages > 1 && (
-            <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
-              <div className="flex gap-3 items-center justify-between flex-wrap">
-                <div className="text-xs text-gray-600 font-medium">
-                  Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * rowsPerPage + 1}</span> to{" "}
-                  <span className="font-semibold text-gray-900">{Math.min(currentPage * rowsPerPage, processedData.length)}</span> of{" "}
-                  <span className="font-semibold text-gray-900">{processedData.length}</span> results
+              {/* ✅ SCROLL HINT - Shows when table has many columns */}
+              {allColumns.length > 5 && (
+                <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 text-center">
+                  <p className="text-xs text-gray-500 flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                    Scroll horizontally to view all {allColumns.length + 1} columns
+                  </p>
                 </div>
-
-                <div className="flex gap-1.5 items-center">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
-                  >
-                    First
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
-                  >
-                    Previous
-                  </button>
-                  <span className="px-4 py-1.5 text-xs bg-slate-700 text-white rounded-md font-semibold shadow-sm">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
-                  >
-                    Next
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium hover:border-blue-400"
-                  >
-                    Last
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </>
