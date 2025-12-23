@@ -113,10 +113,11 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // Hide layer without removing from map
-  const hideLayer = (ref: React.MutableRefObject<VectorLayer<any> | null>) => {
+  // Hide layer and update visibility state
+  const hideLayer = (ref: React.MutableRefObject<VectorLayer<any> | null>, layerName: string) => {
     if (ref.current) {
       ref.current.setVisible(false);
+      setLayerVisibility(prev => ({ ...prev, [layerName]: false }));
     }
   };
 
@@ -199,11 +200,11 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // Remove existing groundwater layer
         removeGroundwaterLayer();
 
-        // Hide all other layers
-        hideLayer(stateLayerRef);
-        hideLayer(districtLayerRef);
-        hideLayer(blockLayerRef);
-        hideLayer(villageLayerRef);
+        // Hide all other layers and update visibility state
+        hideLayer(stateLayerRef, 'state');
+        hideLayer(districtLayerRef, 'district');
+        hideLayer(blockLayerRef, 'block');
+        hideLayer(villageLayerRef, 'village');
 
         // Create vector source from GeoJSON
         const vectorSource = new VectorSource({
@@ -236,6 +237,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         groundwaterLayerRef.current = groundwaterLayer;
         mapRef.current.addLayer(groundwaterLayer);
         setActiveLayers(prev => ({ ...prev, groundwater: true }));
+        setLayerVisibility(prev => ({ ...prev, groundwater: true }));
 
         // Fit map to groundwater layer extent
         const extent = vectorSource.getExtent();
@@ -432,7 +434,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const layerName = 'state';
     if (!mapRef.current || !selectedState) {
       if (stateLayerRef.current) {
-        hideLayer(stateLayerRef);
+        hideLayer(stateLayerRef, layerName);
       }
       return;
     }
@@ -448,30 +450,31 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       source: new VectorSource({ format: new GeoJSON(), url }),
       style: makeStateStyle,
       zIndex: 2,
-      visible: layerVisibility.state,
+      visible: layerVisibility.state !== false,
     });
     layer.set("name", "state-layer");
     stateLayerRef.current = layer;
     mapRef.current.addLayer(layer);
     setActiveLayers(prev => ({ ...prev, [layerName]: true }));
+    setLayerVisibility(prev => ({ ...prev, [layerName]: true }));
 
     layer.getSource()?.once("featuresloadend", () => {
       const ext = layer.getSource()!.getExtent();
       if (ext[0] < ext[2]) mapRef.current!.getView().fit(ext, { duration: 800, padding: [50, 50, 50, 50] });
     });
-  }, [selectedState, layerVisibility.state]);
+  }, [selectedState]);
 
   // District layer
   useEffect(() => {
     const layerName = 'district';
     if (!mapRef.current || selectedDistricts.length === 0) {
       if (districtLayerRef.current) {
-        hideLayer(districtLayerRef);
+        hideLayer(districtLayerRef, layerName);
       }
       return;
     }
 
-    hideLayer(stateLayerRef);
+    hideLayer(stateLayerRef, 'state');
 
     if (districtLayerRef.current) {
       mapRef.current.removeLayer(districtLayerRef.current);
@@ -484,31 +487,32 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       source: new VectorSource({ format: new GeoJSON(), url }),
       style: makeDistrictStyle,
       zIndex: 3,
-      visible: layerVisibility.district,
+      visible: layerVisibility.district !== false,
     });
     layer.set("name", "state-districts");
     districtLayerRef.current = layer;
     mapRef.current.addLayer(layer);
     setActiveLayers(prev => ({ ...prev, [layerName]: true }));
+    setLayerVisibility(prev => ({ ...prev, [layerName]: true }));
 
     layer.getSource()?.once("featuresloadend", () => {
       const ext = layer.getSource()!.getExtent();
       if (ext[0] < ext[2]) mapRef.current!.getView().fit(ext, { duration: 800, padding: [50, 50, 50, 50] });
     });
-  }, [selectedDistricts, layerVisibility.district]);
+  }, [selectedDistricts]);
 
   // Block layer
   useEffect(() => {
     const layerName = 'block';
     if (!mapRef.current || selectedBlocks.length === 0) {
       if (blockLayerRef.current) {
-        hideLayer(blockLayerRef);
+        hideLayer(blockLayerRef, layerName);
       }
       return;
     }
 
-    hideLayer(stateLayerRef);
-    hideLayer(districtLayerRef);
+    hideLayer(stateLayerRef, 'state');
+    hideLayer(districtLayerRef, 'district');
 
     if (blockLayerRef.current) {
       mapRef.current.removeLayer(blockLayerRef.current);
@@ -521,18 +525,19 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       source: new VectorSource({ format: new GeoJSON(), url }),
       style: makeBlockStyle,
       zIndex: 4,
-      visible: layerVisibility.block,
+      visible: layerVisibility.block !== false,
     });
     layer.set("name", "district-blocks");
     blockLayerRef.current = layer;
     mapRef.current.addLayer(layer);
     setActiveLayers(prev => ({ ...prev, [layerName]: true }));
+    setLayerVisibility(prev => ({ ...prev, [layerName]: true }));
 
     layer.getSource()?.once("featuresloadend", () => {
       const ext = layer.getSource()!.getExtent();
       if (ext[0] < ext[2]) mapRef.current!.getView().fit(ext, { duration: 800, padding: [50, 50, 50, 50] });
     });
-  }, [selectedBlocks, layerVisibility.block]);
+  }, [selectedBlocks]);
 
   // Village layer
   useEffect(() => {
@@ -541,15 +546,15 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (!mapRef.current || selectedVillages.length === 0) {
       if (villageLayerRef.current) {
-        hideLayer(villageLayerRef);
+        hideLayer(villageLayerRef, layerName);
         setActiveLayers(prev => ({ ...prev, village: false }));
       }
       return;
     }
 
-    hideLayer(stateLayerRef);
-    hideLayer(districtLayerRef);
-    hideLayer(blockLayerRef);
+    hideLayer(stateLayerRef, 'state');
+    hideLayer(districtLayerRef, 'district');
+    hideLayer(blockLayerRef, 'block');
 
     if (villageLayerRef.current) {
       mapRef.current.removeLayer(villageLayerRef.current);
@@ -567,13 +572,14 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }),
       style: makeVillageStyle,
       zIndex: 10,
-      visible: layerVisibility.village,
+      visible: layerVisibility.village !== false,
     });
 
     layer.set("name", "villages");
     villageLayerRef.current = layer;
     mapRef.current.addLayer(layer);
     setActiveLayers(prev => ({ ...prev, [layerName]: true }));
+    setLayerVisibility(prev => ({ ...prev, [layerName]: true }));
 
     layer.getSource()?.once("featuresloadend", () => {
       const ext = layer.getSource()!.getExtent();
@@ -585,7 +591,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       }
     });
-  }, [selectedVillages, layerVisibility.village]);
+  }, [selectedVillages]);
 
   // Label toggle refresh
   useEffect(() => {

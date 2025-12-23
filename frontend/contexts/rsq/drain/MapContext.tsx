@@ -19,9 +19,10 @@ import OSM from "ol/source/OSM";
 import XYZ from "ol/source/XYZ";
 import { fromLonLat } from "ol/proj";
 import { Feature } from 'ol';
-import { Geometry } from 'ol/geom';
+import { Geometry, SimpleGeometry } from 'ol/geom';
 import { useLocation } from "@/contexts/rsq/drain/LocationContext";
 import { useRSQ } from "./RsqContext";
+import CircleStyle from "ol/style/Circle";
 
 // GeoServer configuration
 const GEOSERVER_BASE_URL = "/geoserver/api/myworkspace/wfs";
@@ -177,19 +178,48 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     }),
   });
 
-  const drainStyle = new Style({
+  // Update your drain styles in RSQ MapContext (around line 90-120)
+
+const drainStyle = new Style({
+  stroke: new Stroke({
+    color: "#059669", // Green
+    width: 2,
+  }),
+});
+
+const selectedDrainStyle = new Style({
+  stroke: new Stroke({
+    color: '#FF6B35', // Orange for selected drain
+    width: 4,
+  }),
+});
+
+// ADD THIS: Point-based drain style (in case drains are points)
+const drainPointStyle = new Style({
+  image: new CircleStyle({
+    radius: 5,
+    fill: new Fill({
+      color: '#059669',
+    }),
     stroke: new Stroke({
-      color: "#059669",
+      color: '#FFFFFF',
       width: 2,
     }),
-  });
+  }),
+});
 
-  const selectedDrainStyle = new Style({
-    stroke: new Stroke({
+const selectedDrainPointStyle = new Style({
+  image: new CircleStyle({
+    radius: 8,
+    fill: new Fill({
       color: '#FF6B35',
-      width: 4,
     }),
-  });
+    stroke: new Stroke({
+      color: '#FFFFFF',
+      width: 2,
+    }),
+  }),
+});
 
   const catchmentStyle = new Style({
     stroke: new Stroke({
@@ -506,20 +536,30 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     map.addLayer(stretchesLayer);
 
     // 4. DRAINS LAYER
-    console.log("Adding permanent drains layer from GeoServer");
-    const drainsLayer = new VectorLayer({
-      source: new VectorSource({
-        format: new GeoJSON(),
-        url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Drain&outputFormat=application/json&CQL_FILTER=1=1`,
-      }),
-      style: (feature) => {
-        const drainNo = feature.get('Drain_No');
-        return drainNo === selectedDrain ? selectedDrainStyle : drainStyle;
-      },
-      zIndex: 12,
-      visible: true,
-    });
-
+    // 4. DRAINS LAYER (Show ALL drains)
+console.log("Adding permanent drains layer from GeoServer");
+const drainsLayer = new VectorLayer({
+  source: new VectorSource({
+    format: new GeoJSON(),
+    url: `${GEOSERVER_BASE_URL}?service=WFS&version=1.0.0&request=GetFeature&typeName=myworkspace:Drain&outputFormat=application/json&CQL_FILTER=1=1`,
+  }),
+  style: (feature) => {
+    const drainNo = feature.get('Drain_No');
+    const geometry = feature.getGeometry();
+    const geometryType = geometry?.getType();
+    
+    // Check if geometry is a point or line
+    const isPoint = geometryType === 'Point' || geometryType === 'MultiPoint';
+    
+    if (drainNo === selectedDrain) {
+      return isPoint ? selectedDrainPointStyle : selectedDrainStyle;
+    } else {
+      return isPoint ? drainPointStyle : drainStyle;
+    }
+  },
+  zIndex: 12,
+  visible: true,
+});
     drainsLayer.set('name', 'drains');
     drainsLayer.set('type', 'drainage');
     drainsLayer.set('permanent', true);
@@ -888,93 +928,127 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
   }, [selectedRiver, selectedStretch, showLabels]);
 
   // Effect to UPDATE drains styling when stretch/drain is selected
-  useEffect(() => {
-    if (!mapInstanceRef.current || !drainsLayerRef.current) return;
+// Effect to UPDATE drains styling when stretch/drain is selected
+useEffect(() => {
+  if (!mapInstanceRef.current || !drainsLayerRef.current) return;
 
-    console.log(`Updating drains layer styling for stretch: ${selectedStretch}, drain: ${selectedDrain}`);
+  console.log(`Updating drains layer styling for stretch: ${selectedStretch}, drain: ${selectedDrain}`);
 
-    drainsLayerRef.current.setStyle((feature) => {
-      const drainNo = feature.get('Drain_No');
-      const stretchId = feature.get('Stretch_ID');
-      const riverCode = feature.get('River_Code');
+  drainsLayerRef.current.setStyle((feature) => {
+    const drainNo = feature.get('Drain_No');
+    const stretchId = feature.get('Stretch_ID');
+    const riverCode = feature.get('River_Code');
+    const geometry = feature.getGeometry();
+    const geometryType = geometry?.getType();
+    const isPoint = geometryType === 'Point' || geometryType === 'MultiPoint';
 
-      if (selectedDrain && drainNo === selectedDrain) {
-        return selectedDrainStyle;
-      } else if (selectedStretch && stretchId === selectedStretch && !selectedDrain) {
-        return new Style({
-          stroke: new Stroke({
+    if (selectedDrain && drainNo === selectedDrain) {
+      return isPoint ? selectedDrainPointStyle : selectedDrainStyle;
+    } else if (selectedStretch && stretchId === selectedStretch && !selectedDrain) {
+      return isPoint ? new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({
             color: '#1d05f3ff',
-            width: 3,
           }),
-        });
-      } else if (selectedRiver && riverCode === selectedRiver && !selectedStretch && !selectedDrain) {
-        return new Style({
           stroke: new Stroke({
-            color: "#10B981",
-            width: 2.5,
+            color: '#FFFFFF',
+            width: 2,
           }),
-        });
-      } else {
-        return drainStyle;
-      }
-    });
+        }),
+      }) : new Style({
+        stroke: new Stroke({
+          color: '#1d05f3ff',
+          width: 3,
+        }),
+      });
+    } else if (selectedRiver && riverCode === selectedRiver && !selectedStretch && !selectedDrain) {
+      return isPoint ? new Style({
+        image: new CircleStyle({
+          radius: 5,
+          fill: new Fill({
+            color: '#10B981',
+          }),
+          stroke: new Stroke({
+            color: '#FFFFFF',
+            width: 2,
+          }),
+        }),
+      }) : new Style({
+        stroke: new Stroke({
+          color: "#10B981",
+          width: 2.5,
+        }),
+      });
+    } else {
+      return isPoint ? drainPointStyle : drainStyle;
+    }
+  });
 
-    drainsLayerRef.current.changed();
+  drainsLayerRef.current.changed();
 
-    // ZOOM TO SELECTION
-    setTimeout(() => {
-      const source = drainsLayerRef.current?.getSource();
-      if (!source || !mapInstanceRef.current) return;
+  // ZOOM TO SELECTION
+  setTimeout(() => {
+    const source = drainsLayerRef.current?.getSource();
+    if (!source || !mapInstanceRef.current) return;
 
-      const features = source.getFeatures();
+    const features = source.getFeatures();
+    
+    console.log(`Total drain features: ${features.length}`);
 
-      if (selectedDrain) {
-        const selectedFeature = features.find((f: { get: (arg0: string) => number; }) => f.get('Drain_No') === selectedDrain);
-        if (selectedFeature) {
-          const geometry = selectedFeature.getGeometry();
-          if (geometry) {
-            const extent = geometry.getExtent();
-            mapInstanceRef.current.getView().fit(extent, {
-              padding: [150, 150, 150, 150],
-              duration: 1000,
-              maxZoom: 13,
-            });
-            console.log(`Zoomed to drain ${selectedDrain}`);
-          }
-        }
-      } else if (selectedStretch) {
-        const stretchFeatures = features.filter((f: { get: (arg0: string) => number; }) => f.get('Stretch_ID') === selectedStretch);
-        if (stretchFeatures.length > 0) {
-          let combinedExtent: any = null;
-          stretchFeatures.forEach((feature: { getGeometry: () => any; }) => {
-            const geometry = feature.getGeometry();
-            if (geometry) {
-              const featureExtent = geometry.getExtent();
-              if (!combinedExtent) {
-                combinedExtent = [...featureExtent];
-              } else {
-                combinedExtent[0] = Math.min(combinedExtent[0], featureExtent[0]);
-                combinedExtent[1] = Math.min(combinedExtent[1], featureExtent[1]);
-                combinedExtent[2] = Math.max(combinedExtent[2], featureExtent[2]);
-                combinedExtent[3] = Math.max(combinedExtent[3], featureExtent[3]);
-              }
-            }
+    if (selectedDrain) {
+      const selectedFeature = features.find((f: { get: (arg0: string) => number; }) => f.get('Drain_No') === selectedDrain);
+      
+      if (selectedFeature) {
+        console.log(`Found drain ${selectedDrain}, zooming to it`);
+        const geometry = selectedFeature.getGeometry();
+        if (geometry) {
+          const extent = geometry.getExtent();
+          mapInstanceRef.current.getView().fit(extent, {
+            padding: [150, 150, 150, 150],
+            duration: 1000,
+            maxZoom: 13,
           });
-
-          if (combinedExtent) {
-            mapInstanceRef.current.getView().fit(combinedExtent, {
-              padding: [100, 100, 100, 100],
-              duration: 1000,
-              maxZoom: 12,
-            });
-            console.log(`Zoomed to stretch ${selectedStretch} drains: ${stretchFeatures.length}`);
+          console.log(`Zoomed to drain ${selectedDrain}`);
+        }
+      } else {
+        console.warn(`Drain ${selectedDrain} not found in features`);
+      }
+    } else if (selectedStretch) {
+      const stretchFeatures = features.filter((f: { get: (arg0: string) => number; }) => f.get('Stretch_ID') === selectedStretch);
+      console.log(`Found ${stretchFeatures.length} drains for stretch ${selectedStretch}`);
+      
+      if (stretchFeatures.length > 0) {
+        let combinedExtent: number[] | null = null;
+        stretchFeatures.forEach((feature: { getGeometry: () => any; }) => {
+          const geometry = feature.getGeometry();
+          if (geometry) {
+            const featureExtent = geometry.getExtent();
+            if (!combinedExtent) {
+              combinedExtent = [...featureExtent];
+            } else {
+              combinedExtent[0] = Math.min(combinedExtent[0], featureExtent[0]);
+              combinedExtent[1] = Math.min(combinedExtent[1], featureExtent[1]);
+              combinedExtent[2] = Math.max(combinedExtent[2], featureExtent[2]);
+              combinedExtent[3] = Math.max(combinedExtent[3], featureExtent[3]);
+            }
           }
+        });
+
+        if (combinedExtent) {
+          mapInstanceRef.current.getView().fit(combinedExtent, {
+            padding: [100, 100, 100, 100],
+            duration: 1000,
+            maxZoom: 12,
+          });
+          console.log(`Zoomed to stretch ${selectedStretch} drains`);
         }
       }
-    }, 300);
+    }
+  }, 300);
 
-    console.log(`Drains layer styling updated`);
-  }, [selectedStretch, selectedRiver, selectedDrain]);
+  console.log(`Drains layer styling updated`);
+}, [selectedStretch, selectedRiver, selectedDrain]);
 
   // Effect to handle catchments
   useEffect(() => {

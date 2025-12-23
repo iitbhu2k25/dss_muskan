@@ -300,17 +300,17 @@ const Map: React.FC = () => {
 
                     <button
                       onClick={() => toggleLayerVisibility(key)}
-                      className={`p-1 rounded-full transition-all text-xs ${layerVisibility[key] !== false
+                      className={`p-1 rounded-full transition-all text-xs ${layerVisibility[key] === undefined || layerVisibility[key] === true
                         ? "bg-blue-500 text-white hover:bg-blue-600"
                         : "bg-gray-300 text-gray-600 hover:bg-gray-400"
                         }`}
                       title={
-                        layerVisibility[key] !== false
+                        layerVisibility[key] === undefined || layerVisibility[key] === true
                           ? "Hide layer"
                           : "Show layer"
                       }
                     >
-                      {layerVisibility[key] !== false ? <FaEye /> : <FaEyeSlash />}
+                      {layerVisibility[key] === undefined || layerVisibility[key] === true ? <FaEye /> : <FaEyeSlash />}
                     </button>
                   </div>
                 ))
