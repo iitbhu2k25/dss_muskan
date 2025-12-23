@@ -70,13 +70,23 @@ export default function RSQAnalysis() {
 
   /* ================= FORMAT CELL VALUE ================= */
 
-  const formatCellValue = (value: any) => {
-    if (value === null || value === undefined) return "-";
-    if (typeof value === "number") {
-      return value.toFixed(2);
-    }
-    return String(value);
-  };
+/* ================= FORMAT CELL VALUE ================= */
+
+const formatCellValue = (value: any) => {
+  if (value === null || value === undefined) return "-";
+  
+  // ✅ Handle numbers (already in your code)
+  if (typeof value === "number") {
+    return value.toFixed(2);
+  }
+  
+  // ✅ NEW: Handle numeric strings
+  if (typeof value === "string" && !isNaN(Number(value)) && value.trim() !== "") {
+    return Number(value).toFixed(2);
+  }
+  
+  return String(value);
+};
 
   /* ================= HIGHLIGHT SEARCH TERM ================= */
 
