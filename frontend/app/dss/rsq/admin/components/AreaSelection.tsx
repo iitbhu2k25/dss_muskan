@@ -55,18 +55,25 @@ const AreaSelection: React.FC<AreaSelectionProps> = ({ onAreaConfirmed }) => {
   };
 
   // Enhanced districts with availability
-  const sortedEnhancedDistricts = useMemo(() => {
-    return districts.map((d) => {
+const sortedEnhancedDistricts = useMemo(() => {
+  return [...districts]
+    .map((d) => {
       const id = Number(d.id);
       const allowed = allowedDistrictIds.includes(id);
       return {
         ...d,
+        isAllowed: allowed,
         name: allowed ? d.name : `${d.name} (Not Available)`,
         disabled: !allowed,
         className: !allowed ? "text-gray-400 italic" : "",
       };
+    })
+    .sort((a, b) => {
+      // Allowed districts first
+      return Number(b.isAllowed) - Number(a.isAllowed);
     });
-  }, [districts]);
+}, [districts]);
+
 
   const handleDistrictsChange = (ids: (string | number)[]) => {
     if (selectionsLocked) return;

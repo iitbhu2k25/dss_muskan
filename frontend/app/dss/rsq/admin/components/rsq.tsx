@@ -46,7 +46,7 @@ export default function RSQAnalysis() {
     const props = firstFeature.properties;
 
     const keys = Object.keys(props).filter(
-      key => !['status', 'color','vlcode', 'blockcode','srno','SUBDIS_COD'].includes(key)
+      key => !['status', 'color','vlcode', 'blockcode','srno','SUBDIS_COD', 'Total_Geographical_Area', 'Recharge_Worthy_Area'].includes(key)
     );
 
     return keys;

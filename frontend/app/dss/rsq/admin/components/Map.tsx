@@ -198,13 +198,12 @@ const Map: React.FC = () => {
   return (
     <div
       ref={mapContainerRef}
-      className={`relative w-full h-screen bg-gray-100 px-2 sm:px-3 py-3 ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-lg mr-4 mb-4 overflow-hidden' : ''
-      }`}
+      className={`relative w-full h-screen bg-gray-100 px-2 sm:px-3 py-3 ${isFullscreen ? 'fixed inset-0 z-50 rounded-lg mr-4 mb-4 overflow-hidden' : ''
+        }`}
     >
       {/* MAP WRAPPER (adds margin + rounding) */}
       <div className="relative w-full h-full rounded-2xl overflow-hidden bg-white shadow-lg">
-        
+
         {/* Map Container */}
         <div ref={mapRef} className="w-full h-full" />
 
@@ -219,8 +218,10 @@ const Map: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={baseMapNames[selectedBaseMap]?.icon} />
             </svg>
             <span className="text-sm font-medium text-gray-700">
-              {baseMapNames[selectedBaseMap]?.name}
+              {baseMapNames[selectedBaseMap]?.name ?? "OpenStreet"}
             </span>
+
+
             <svg
               className={`w-4 h-4 text-gray-600 transition-transform ${isBasemapPanelOpen ? 'rotate-180' : ''}`}
               fill="none"
@@ -240,11 +241,10 @@ const Map: React.FC = () => {
                     <button
                       key={key}
                       onClick={() => handleBaseMapChange(key)}
-                      className={`flex items-center gap-3 w-full p-3 rounded-md text-left transition-colors duration-200 ${
-                        selectedBaseMap === key
-                          ? 'bg-blue-50 border border-blue-200 text-blue-700'
-                          : 'hover:bg-gray-50 border border-transparent text-gray-700'
-                      }`}
+                      className={`flex items-center gap-3 w-full p-3 rounded-md text-left transition-colors duration-200 ${selectedBaseMap === key
+                        ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                        : 'hover:bg-gray-50 border border-transparent text-gray-700'
+                        }`}
                     >
                       <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={baseMap.icon} />
@@ -265,7 +265,7 @@ const Map: React.FC = () => {
 
         {/* Layer Control Panel - LEFT SIDE */}
         {showLayerPanel && (
-          <div className="absolute top-2 left-3 ml-7 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
+          <div className="absolute top-2 left-3 ml-6 bg-white rounded-lg shadow-xl p-2 z-10 w-64">
             {/* Header */}
             <div className="flex items-center justify-between mb-2 pb-2 border-b">
               <div className="flex items-center gap-2">
@@ -300,11 +300,10 @@ const Map: React.FC = () => {
 
                     <button
                       onClick={() => toggleLayerVisibility(key)}
-                      className={`p-1 rounded-full transition-all text-xs ${
-                        layerVisibility[key] !== false
-                          ? "bg-blue-500 text-white hover:bg-blue-600"
-                          : "bg-gray-300 text-gray-600 hover:bg-gray-400"
-                      }`}
+                      className={`p-1 rounded-full transition-all text-xs ${layerVisibility[key] !== false
+                        ? "bg-blue-500 text-white hover:bg-blue-600"
+                        : "bg-gray-300 text-gray-600 hover:bg-gray-400"
+                        }`}
                       title={
                         layerVisibility[key] !== false
                           ? "Hide layer"
@@ -328,7 +327,7 @@ const Map: React.FC = () => {
         {activeLayers.groundwater &&
           layerVisibility.groundwater !== false &&
           showLegendPanel && (
-            <div className="absolute bottom-6 left-3 bg-white rounded-lg shadow-xl p-3 z-10 w-56">
+            <div className="absolute bottom-4 right-15 bg-white rounded-lg shadow-xl p-3 z-10 w-56">
               <div className="flex items-center justify-between mb-2 pb-2 border-b">
                 <h3 className="font-semibold text-xs text-gray-800">
                   RSQ Classification
@@ -371,7 +370,7 @@ const Map: React.FC = () => {
 
         {/* Show Layers Button */}
         {!showLayerPanel && (
-          <div className="absolute top-3 left-3 z-10">
+          <div className="absolute top-2 left-10 z-10">
             <button
               onClick={() => setShowLayerPanel(true)}
               className="bg-white rounded-lg shadow-xl p-2 hover:bg-blue-50 transition-all"
@@ -399,16 +398,6 @@ const Map: React.FC = () => {
 
         {/* Map Controls - BOTTOM RIGHT */}
         <div className="absolute bottom-4 right-4 z-[10] flex flex-col gap-2">
-          {/* Labels Toggle Button */}
-          <button
-            onClick={toggleLabels}
-            className={`bg-white hover:bg-gray-50 border border-gray-300 rounded-lg p-2 shadow-lg transition-colors duration-200 ${
-              showLabels ? 'bg-blue-50 border-blue-300' : ''
-            }`}
-            title={showLabels ? "Hide Labels" : "Show Labels"}
-          >
-            <FaMap className={`w-5 h-5 ${showLabels ? 'text-blue-600' : 'text-gray-600'}`} />
-          </button>
 
           {/* Fullscreen Toggle */}
           <button
